@@ -1,0 +1,43 @@
+[
+    {
+        "id":  "cloud_step",
+        "name":  "流云步",
+        "description":  "流云步讲究步势舒卷不断，起落之间如云影贴地而行，最擅在看似寻常的挪移里忽然改位。",
+        "combat_summary":  "兼顾速度与闪避，既能抢先半拍，也能在缠斗中多出几次腾挪余地，属于很均衡的轻灵步法。",
+        "spd_multiplier":  1.16,
+        "eva_bonus":  8.0
+    },
+    {
+        "id":  "shadow_drift",
+        "name":  "掠影身法",
+        "description":  "掠影身法取的是轻、疾、诡三字，身影一晃便似残光掠地而过。敌人往往刚看清人影，招式便已经扑空。",
+        "combat_summary":  "偏向极强闪避与游走，正面硬撞不是重点，重点是让对手难以摸到本体，再慢慢把节奏拖向自己。",
+        "spd_multiplier":  1.1,
+        "eva_bonus":  12.0
+    },
+    {
+        "id":  "earth_root",
+        "name":  "沉岳步",
+        "description":  "沉岳步不求飘忽灵巧，而求下盘稳如山根。步势一沉，整个人的架子便更难被外力轻易打散。",
+        "combat_summary":  "速度并不突出，但能让整套战法更稳，闪避也有基础补益；适合那些更看重站桩和硬桥硬马的角色。",
+        "spd_multiplier":  0.96,
+        "eva_bonus":  5.0
+    }
+,
+    {
+        "id": "lightning_flash",
+        "name": "奔雷步",
+        "description": "势若奔雷，动如闪电，极其刚猛的爆发性轻功，能在瞬间爆发出惊人的前冲之力。",
+        "combat_summary": "极致的直线冲刺速度，非常适合抢占先手或突袭，但灵活性与规避能力较弱。",
+        "spd_multiplier": 1.25,
+        "eva_bonus": 3.0
+    },
+    {
+        "id": "phantom_lotus",
+        "name": "青莲身法",
+        "description": "身法轻灵绝美，真气聚于足下，行进间宛如水波生莲，虚实交错，令人难以捉摸其真实方位。",
+        "combat_summary": "极大幅度提升规避伤害的能力，速度增幅中规中矩，极其适合在敌群中穿梭游斗的持久战。",
+        "spd_multiplier": 1.08,
+        "eva_bonus": 15.0
+    }
+]
