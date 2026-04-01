@@ -2,4 +2,5 @@
 display_name: Name Fight
 version: 1.2.0
 author: kkloas
-desc: Name-based martial duel and peak ranking plugin for AstrBot.
+desc: 一个武侠风格的 AstrBot 名字格斗插件。输入名字即可生成命格固定的角色，围绕武学、内功、轻功展开对战，并在群内累计巅峰分排行。支持同名固定生成、战斗播报、角色切换与巅峰榜冲分。
+repo: https://github.com/kkloas/astrbot_plugin_name_fight
