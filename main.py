@@ -38,6 +38,7 @@ except ImportError:
     )
 
 PENDING_CREATE_TIMEOUT = 60.0
+CHALLENGE_TIMEOUT = 120.0
 
 
 def _safe_call(obj: Any, name: str) -> Any:
@@ -158,7 +159,7 @@ class Main(Star):
         self.engine = CombatEngine()
         self.broadcast_delay = float(self.config.get('broadcast_delay', 1.6))
         self.is_battling = False
-        self.pending_challenges: dict[str, dict[str, str]] = {}
+        self.pending_challenges: dict[str, dict[str, Any]] = {}
         self.pending_creations: dict[str, dict[str, Any]] = {}
         logger.info('[name_fight] plugin loaded')
 
@@ -171,13 +172,42 @@ class Main(Star):
             return None
         return pending
 
+    async def _require_user_id(self, event: AstrMessageEvent) -> str | None:
+        try:
+            return extract_user_id(event)
+        except RuntimeError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return None
+
+    async def _require_group_id(self, event: AstrMessageEvent) -> str | None:
+        try:
+            return extract_group_id(event)
+        except RuntimeError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return None
+
+    def _challenge_key(self, group_id: str, defender_user_id: str) -> str:
+        return f'{group_id}:{defender_user_id}'
+
+    def _cleanup_expired_challenges(self) -> None:
+        now = time.monotonic()
+        expired_keys = [key for key, challenge in self.pending_challenges.items() if challenge.get('expires_at', 0.0) < now]
+        for key in expired_keys:
+            self.pending_challenges.pop(key, None)
+
+    def _consume_pending_challenge(self, group_id: str, defender_user_id: str) -> dict[str, Any] | None:
+        self._cleanup_expired_challenges()
+        return self.pending_challenges.pop(self._challenge_key(group_id, defender_user_id), None)
+
     async def _send_lines(self, event: AstrMessageEvent, lines: list[str]) -> None:
         for index, line in enumerate(lines):
             await event.send(event.plain_result(line))
             if index + 1 < len(lines):
                 await asyncio.sleep(self.broadcast_delay)
 
-    async def _start_battle(self, event: AstrMessageEvent, attacker: dict[str, Any], defender: dict[str, Any], opener: str) -> None:
+    async def _start_battle(self, event: AstrMessageEvent, group_id: str, attacker: dict[str, Any], defender: dict[str, Any], opener: str) -> None:
         if self.is_battling:
             await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u5bf9\u51b3\u6b63\u5728\u64ad\u62a5\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
@@ -190,7 +220,7 @@ class Main(Star):
             await asyncio.sleep(self.broadcast_delay)
             logs, winner_name = self.engine.battle_with_result(attacker, defender)
             await self._send_lines(event, compact_battle_logs(logs))
-            rating_change = self.repo.record_group_battle(extract_group_id(event), attacker['name'], defender['name'], winner_name)
+            rating_change = self.repo.record_group_battle(group_id, attacker['name'], defender['name'], winner_name)
             attacker_change = rating_change['attacker']
             defender_change = rating_change['defender']
             await asyncio.sleep(self.broadcast_delay)
@@ -218,7 +248,9 @@ class Main(Star):
             await event.send(event.plain_result('\u7528\u6cd5: /create \u89d2\u8272\u540d'))
             event.stop_event()
             return
-        user_id = extract_user_id(event)
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
         fighter_name = parts[1].strip()
         self.pending_creations.pop(user_id, None)
         roster = self.repo.get_user_fighters(user_id)
@@ -255,7 +287,9 @@ class Main(Star):
             await event.send(event.plain_result('\u7528\u6cd5: /choose \u5e8f\u53f7'))
             event.stop_event()
             return
-        user_id = extract_user_id(event)
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
         pending = self._consume_pending_creation(user_id)
         if pending is None:
             await event.send(event.plain_result('\u4f60\u5f53\u524d\u6ca1\u6709\u5f85\u786e\u8ba4\u7684\u5019\u9009\u89d2\u8272\u3002'))
@@ -282,7 +316,9 @@ class Main(Star):
 
     @filter.command('roster')
     async def roster_command(self, event: AstrMessageEvent):
-        user_id = extract_user_id(event)
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
         fighters = self.repo.get_user_fighters(user_id)
         await event.send(event.plain_result(roster_message(fighters, MAX_FIGHTERS_PER_USER)))
         event.stop_event()
@@ -295,7 +331,9 @@ class Main(Star):
             await event.send(event.plain_result('\u7528\u6cd5: /use \u89d2\u8272\u540d'))
             event.stop_event()
             return
-        user_id = extract_user_id(event)
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
         fighter_name = parts[1].strip()
         try:
             fighter = self.repo.set_active_fighter(user_id, fighter_name)
@@ -310,7 +348,9 @@ class Main(Star):
     async def profile_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
-        user_id = extract_user_id(event)
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
         if len(parts) == 1:
             fighters = self.repo.get_user_fighters(user_id)
             await event.send(event.plain_result(roster_message(fighters, MAX_FIGHTERS_PER_USER)))
@@ -333,7 +373,12 @@ class Main(Star):
             await event.send(event.plain_result('\u7528\u6cd5: /c \u76ee\u6807\u89d2\u8272\u540d'))
             event.stop_event()
             return
-        challenger_user_id = extract_user_id(event)
+        challenger_user_id = await self._require_user_id(event)
+        if challenger_user_id is None:
+            return
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
         challenger_label = extract_user_label(event)
         challenger = self.repo.get_active_fighter(challenger_user_id)
         if challenger is None:
@@ -355,11 +400,15 @@ class Main(Star):
             await event.send(event.plain_result('\u4e0d\u80fd\u6311\u6218\u81ea\u5df1\u7684\u89d2\u8272\u3002'))
             event.stop_event()
             return
-        self.pending_challenges[defender_user_id] = {
+        self._cleanup_expired_challenges()
+        challenge_key = self._challenge_key(group_id, defender_user_id)
+        self.pending_challenges[challenge_key] = {
+            'group_id': group_id,
             'challenger_user_id': challenger_user_id,
             'challenger_label': challenger_label,
             'challenger_fighter_name': challenger['name'],
             'defender_fighter_name': defender['name'],
+            'expires_at': time.monotonic() + CHALLENGE_TIMEOUT,
         }
         await event.send(event.plain_result(
             f'\u6311\u6218\u5df2\u53d1\u51fa\u3002\u3010{challenger["name"]}\u3011\u5411\u3010{defender["name"]}\u3011\u4e0b\u4e86\u6218\u4e66\u3002\u8bf7\u5bf9\u65b9\u4f7f\u7528 /a \u63a5\u6218\uff0c\u6216\u7528 /r \u62d2\u7edd\u3002'
@@ -374,7 +423,12 @@ class Main(Star):
             await event.send(event.plain_result('\u7528\u6cd5: /fc \u76ee\u6807\u89d2\u8272\u540d'))
             event.stop_event()
             return
-        challenger_user_id = extract_user_id(event)
+        challenger_user_id = await self._require_user_id(event)
+        if challenger_user_id is None:
+            return
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
         challenger_label = extract_user_label(event)
         challenger = self.repo.get_active_fighter(challenger_user_id)
         if challenger is None:
@@ -397,12 +451,17 @@ class Main(Star):
             event.stop_event()
             return
         opener = f'\u3010\u5bf9\u51b3\u5f00\u59cb\u3011{challenger_label} \u5f3a\u884c\u5411\u3010{defender["name"]}\u3011\u53d1\u8d77\u4e86\u6311\u6218\u3002'
-        await self._start_battle(event, challenger, defender, opener)
+        await self._start_battle(event, group_id, challenger, defender, opener)
 
     @filter.command('a', alias={'accept'})
     async def accept_command(self, event: AstrMessageEvent):
-        defender_user_id = extract_user_id(event)
-        challenge = self.pending_challenges.pop(defender_user_id, None)
+        defender_user_id = await self._require_user_id(event)
+        if defender_user_id is None:
+            return
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
+        challenge = self._consume_pending_challenge(group_id, defender_user_id)
         if challenge is None:
             await event.send(event.plain_result('\u5f53\u524d\u6ca1\u6709\u7b49\u5f85\u4f60\u56de\u5e94\u7684\u6311\u6218\u3002'))
             event.stop_event()
@@ -414,12 +473,17 @@ class Main(Star):
             event.stop_event()
             return
         opener = f'\u3010\u5bf9\u51b3\u5f00\u59cb\u3011{challenge["challenger_label"]} \u5411\u3010{defender["name"]}\u3011\u53d1\u8d77\u7684\u6311\u6218\u5df2\u88ab\u63a5\u53d7\u3002'
-        await self._start_battle(event, attacker, defender, opener)
+        await self._start_battle(event, group_id, attacker, defender, opener)
 
     @filter.command('r', alias={'reject'})
     async def reject_command(self, event: AstrMessageEvent):
-        defender_user_id = extract_user_id(event)
-        challenge = self.pending_challenges.pop(defender_user_id, None)
+        defender_user_id = await self._require_user_id(event)
+        if defender_user_id is None:
+            return
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
+        challenge = self._consume_pending_challenge(group_id, defender_user_id)
         if challenge is None:
             await event.send(event.plain_result('\u5f53\u524d\u6ca1\u6709\u7b49\u5f85\u4f60\u62d2\u7edd\u7684\u6311\u6218\u3002'))
             event.stop_event()
@@ -431,7 +495,9 @@ class Main(Star):
 
     @filter.command('rank')
     async def rank_command(self, event: AstrMessageEvent):
-        group_id = extract_group_id(event)
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
         entries = self.repo.get_group_leaderboard(group_id, limit=10)
         await event.send(event.plain_result(leaderboard_message(entries)))
         event.stop_event()

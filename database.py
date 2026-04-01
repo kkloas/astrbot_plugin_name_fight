@@ -308,21 +308,46 @@ class FighterRepository:
                 "SELECT fighter_name FROM user_fighters WHERE user_id = ? AND slot_index = ?",
                 (user_id, slot_index),
             ).fetchone()
-        if row is None:
-            raise ValueError("\u672a\u627e\u5230\u8981\u66ff\u6362\u7684\u89d2\u8272\u680f\u4f4d\u3002")
-        old_name = str(row["fighter_name"])
-        if prepared_fighter is None:
-            if fighter_name is None:
-                raise ValueError("\u4f60\u540d\u4e0b\u6ca1\u6709\u8fd9\u4e2a\u89d2\u8272\u3002")
-            prepared_fighter = self.generate_preview_fighter(fighter_name)
-        else:
-            preview_name = str(prepared_fighter["name"])
-            existing = self.get_fighter_by_name(preview_name)
-            if existing is not None and preview_name != old_name:
-                raise ValueError("\u89d2\u8272\u540d\u5df2\u5b58\u5728: " + preview_name)
-        self._delete_fighter_binding(user_id, old_name)
-        self._insert_generated_fighter(prepared_fighter)
-        with self._connect() as connection:
+            if row is None:
+                raise ValueError("\u672a\u627e\u5230\u8981\u66ff\u6362\u7684\u89d2\u8272\u680f\u4f4d\u3002")
+            old_name = str(row["fighter_name"])
+            if prepared_fighter is None:
+                if fighter_name is None:
+                    raise ValueError("\u4f60\u540d\u4e0b\u6ca1\u6709\u8fd9\u4e2a\u89d2\u8272\u3002")
+                prepared_fighter = self.generate_preview_fighter(fighter_name)
+            else:
+                preview_name = str(prepared_fighter["name"])
+                existing = self.get_fighter_by_name(preview_name)
+                if existing is not None and preview_name != old_name:
+                    raise ValueError("\u89d2\u8272\u540d\u5df2\u5b58\u5728: " + preview_name)
+
+            connection.execute(
+                "DELETE FROM user_fighters WHERE user_id = ? AND fighter_name = ?",
+                (user_id, old_name),
+            )
+            connection.execute("DELETE FROM fighters WHERE name = ?", (old_name,))
+            connection.execute("DELETE FROM fighter_scores WHERE fighter_name = ?", (old_name,))
+            connection.execute(
+                """
+                INSERT INTO fighters (
+                    name, hp, atk, def, spd, crt, eva,
+                    martial_art_id, neigong_id, qinggong_id, star_rating
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    prepared_fighter["name"],
+                    prepared_fighter["stats"]["hp"],
+                    prepared_fighter["stats"]["atk"],
+                    prepared_fighter["stats"]["def"],
+                    prepared_fighter["stats"]["spd"],
+                    prepared_fighter["stats"]["crt"],
+                    prepared_fighter["stats"]["eva"],
+                    prepared_fighter["martial_art_id"],
+                    prepared_fighter["neigong_id"],
+                    prepared_fighter["qinggong_id"],
+                    prepared_fighter["star_rating"],
+                ),
+            )
             connection.execute("UPDATE user_fighters SET is_active = 0 WHERE user_id = ?", (user_id,))
             connection.execute(
                 """
@@ -332,10 +357,12 @@ class FighterRepository:
                 (user_id, prepared_fighter["name"], slot_index),
             )
             connection.commit()
+
         bound = self.get_user_fighter_by_name(user_id, str(prepared_fighter["name"]))
         if bound is None:
             raise RuntimeError("fighter replacement failed")
         return old_name, bound
+
     def _next_slot_index(self, roster: list[dict[str, Any]]) -> int:
         used = {int(fighter.get("slot_index", 0)) for fighter in roster}
         for index in range(1, MAX_FIGHTERS_PER_USER + 1):
