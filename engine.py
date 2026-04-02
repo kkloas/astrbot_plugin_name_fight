@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import random
 from copy import deepcopy
@@ -124,12 +124,12 @@ DODGE_TEMPLATES = [
 ]
 
 STATE_TEXT = {
-    "stunned": "{target} 眼前发黑，陷入【眩晕】。",
-    "slowed": "{target} 下盘一滞，陷入【迟缓】。",
-    "bleeding": "{target} 伤口崩裂，陷入【流血】。",
-    "weakened": "{target} 气力受挫，陷入【虚弱】。",
-    "disarmed": "{target} 手中兵刃被震飞，一时间难以再攻。",
-    "armor_broken": "{target} 护体架势被破，空门大开。",
+    "stunned": "\u203b[{target}:\u7729\u6655]",
+    "slowed": "\u203b[{target}:\u8fdf\u7f13]",
+    "bleeding": "\u203b[{target}:\u6d41\u8840]",
+    "weakened": "\u203b[{target}:\u865a\u5f31]",
+    "disarmed": "\u203b[{target}:\u7f34\u68b0]",
+    "armor_broken": "\u203b[{target}:\u7834\u7532]",
 }
 
 

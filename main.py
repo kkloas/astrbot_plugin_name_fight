@@ -203,7 +203,15 @@ class Main(Star):
 
     async def _send_lines(self, event: AstrMessageEvent, lines: list[str]) -> None:
         for index, line in enumerate(lines):
-            await event.send(event.plain_result(line))
+            try:
+                await event.send(event.plain_result(line))
+            except Exception as exc:
+                logger.warning(f'[name_fight] send failed, retry once: {exc!r}')
+                await asyncio.sleep(min(0.5, self.broadcast_delay))
+                try:
+                    await event.send(event.plain_result(line))
+                except Exception as retry_exc:
+                    logger.warning(f'[name_fight] send dropped after retry: {retry_exc!r}')
             if index + 1 < len(lines):
                 await asyncio.sleep(self.broadcast_delay)
 
