@@ -13,9 +13,16 @@ HELP_LINES = [
     '/profile [\u89d2\u8272\u540d] - \u67e5\u770b\u81ea\u5df1\u7684\u89d2\u8272\u8be6\u60c5\uff1b\u4e0d\u586b\u540d\u5b57\u65f6\u67e5\u770b\u89d2\u8272\u680f',
     '/c \u89d2\u8272\u540d - \u5411\u76ee\u6807\u89d2\u8272\u53d1\u8d77\u6b63\u5e38\u6311\u6218\uff0c\u7b49\u5f85\u5bf9\u65b9 /a \u6216 /r',
     '/fc \u89d2\u8272\u540d - \u76f4\u63a5\u5f3a\u5236\u5f00\u6218\uff0c\u4e0d\u9700\u8981\u5bf9\u65b9\u786e\u8ba4',
+    '/fc3 @\u76ee\u6807\u73a9\u5bb6 - \u76f4\u63a5\u5f3a\u5236\u5f00\u59cb 3v3 \u8fde\u6218\uff0c\u4e0d\u9700\u8981\u5bf9\u65b9\u786e\u8ba4',
     '/a - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684\u6311\u6218',
     '/r - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684\u6311\u6218',
-    '/rank - \u67e5\u770b\u5f53\u524d\u7fa4\u7684\u5dc5\u5cf0\u6392\u884c\u699c',
+    '/rank - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 1v1 \u5dc5\u5cf0\u6392\u884c\u699c',
+    '/team3 - \u67e5\u770b\u5f53\u524d 3v3 \u51fa\u6218\u987a\u5e8f\u4e0e\u9635\u5bb9',
+    '/teamorder 2 1 3 - \u8c03\u6574 3v3 \u51fa\u6218\u987a\u5e8f',
+    '/t3 @\u76ee\u6807 - \u5411\u5bf9\u65b9\u53d1\u8d77 3v3 \u8fde\u6218\u6311\u6218',
+    '/a3 - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
+    '/r3 - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
+    '/rank3 - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 3v3 \u5dc5\u5cf0\u6392\u884c\u699c',
 ]
 
 OUTCOME_PREFIXES = (
@@ -139,6 +146,10 @@ def _martial_flavor(martial_art: dict[str, Any]) -> str:
         return '\u957f\u5175\u538b\u9635'
     if weapon_type == 'short_weapon':
         return '\u62db\u8def\u522b\u81f4'
+    if weapon_type == 'hidden_weapon':
+        return '\u9488\u96e8\u593a\u547d'
+    if weapon_type == 'musical_instrument':
+        return '\u9b54\u97f3\u6444\u9b42'
     return '\u62db\u5f0f\u6210\u5957'
 
 
@@ -162,11 +173,17 @@ def _martial_mechanics(martial_art: dict[str, Any]) -> str:
     if eva >= 1.05:
         parts.append('\u5468\u65cb\u66f4\u7075')
     effects = _effect_labels(martial_art)
-    if effects:
+    if martial_art.get('type') == 'hidden_weapon' and effects:
+        parts = [item for item in parts if item != '\u5468\u65cb\u66f4\u7075']
+        parts.append('\u53ef' + '\u3001'.join(effects[:3]))
+    elif martial_art.get('type') == 'musical_instrument' and effects:
+        parts.append('\u53ef' + '\u3001'.join(effects[:3]))
+    elif effects:
         parts.append('\u53ef' + '\u3001'.join(effects))
     if not parts:
         parts.append('\u62db\u5f0f\u5747\u8861')
-    return '\uff0c'.join(parts[:3])
+    return '\uff0c'.join(parts[:4])
+
 
 
 def _neigong_flavor(neigong: dict[str, Any]) -> str:
@@ -208,7 +225,11 @@ def _neigong_mechanics(neigong: dict[str, Any]) -> str:
         parts.append('\u53ef\u5438\u8840\u7eed\u547d')
     if 'thorns' in passive_types:
         parts.append('\u53ef\u53cd\u9707\u4f24\u654c')
-    if guards and len(parts) < 3:
+    if 'burst_heal' in passive_types:
+        parts.append('\u6b8b\u8840\u7206\u53d1\u56de\u8840')
+    if 'crisis_defense' in passive_types:
+        parts.append('\u6b8b\u8840\u9632\u5fa1\u63d0\u5347')
+    if guards and len(parts) < 4:
         favored = []
         if 'chest' in guards or 'abdomen' in guards:
             favored.append('\u80f8\u8179\u66f4\u8010\u6253')
@@ -217,11 +238,11 @@ def _neigong_mechanics(neigong: dict[str, Any]) -> str:
         if 'head' in guards:
             favored.append('\u4e0a\u8def\u66f4\u7a33')
         for item in favored:
-            if len(parts) < 3 and item not in parts:
+            if len(parts) < 4 and item not in parts:
                 parts.append(item)
     if not parts:
         parts.append('\u8c03\u606f\u62a4\u4f53')
-    return '\uff0c'.join(parts[:3])
+    return '\uff0c'.join(parts[:4])
 
 
 def _qinggong_flavor(qinggong: dict[str, Any]) -> str:
@@ -241,8 +262,14 @@ def _qinggong_flavor(qinggong: dict[str, Any]) -> str:
 def _qinggong_mechanics(qinggong: dict[str, Any]) -> str:
     spd = float(qinggong.get('spd_multiplier', 1.0))
     eva = float(qinggong.get('eva_bonus', 0.0))
+    effect_data = qinggong.get('special_effect_data') or {}
+    effect_type = effect_data.get('type') if isinstance(effect_data, dict) else None
     parts: list[str] = []
-    if spd >= 1.12:
+    if effect_type == 'battle_start_first_strike':
+        parts.append('\u5f00\u573a\u5fc5\u5b9a\u5148\u624b')
+    elif effect_type == 'low_hp_extra_action':
+        parts.append('\u6fd2\u6b7b\u53ef\u989d\u5916\u51fa\u624b')
+    elif spd >= 1.12:
         parts.append('\u64c5\u957f\u62a2\u5148\u624b')
     elif spd >= 1.05:
         parts.append('\u51fa\u624b\u66f4\u5feb')
@@ -399,4 +426,27 @@ def leaderboard_message(entries: list[dict[str, Any]]) -> str:
             lines.append(
                 f'{index}. {entry["fighter_name"]} | {entry["elo_rating"]:.2f} | {title} | \u80dc\u573a {entry["wins"]} | \u5bf9\u6218 {entry["battles"]} | \u80dc\u7387 {entry["win_rate"]:.1f}%'
             )
+    return '\n'.join(lines)
+
+
+def team3_leaderboard_message(entries: list[dict[str, Any]]) -> str:
+    if not entries:
+        return '【群内 3v3 巅峰排行榜】\n当前群还没有任何 3v3 对战记录。'
+    lines = ['【群内 3v3 巅峰排行榜 Top 10】']
+    for index, entry in enumerate(entries, start=1):
+        honor = _leaderboard_honor(index)
+        title, _tag = _peak_title(float(entry['elo_rating']))
+        team_text = ' / '.join(entry.get('team_names') or ['未配置阵容'])
+        name = entry.get('display_name') or entry.get('user_id') or '未知玩家'
+        if honor:
+            lines.append(f'{honor}-{name}-{title}')
+            lines.append(
+                f'{entry["elo_rating"]:.2f} | 胜场 {entry["wins"]} | 对战 {entry["battles"]} | 胜率 {entry["win_rate"]:.1f}%'
+            )
+            lines.append(f'阵容: {team_text}')
+        else:
+            lines.append(
+                f'{index}. {name} | {entry["elo_rating"]:.2f} | {title} | 胜场 {entry["wins"]} | 对战 {entry["battles"]} | 胜率 {entry["win_rate"]:.1f}%'
+            )
+            lines.append(f'阵容: {team_text}')
     return '\n'.join(lines)

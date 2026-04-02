@@ -1,96 +1,142 @@
 [
-    {
-        "id":  "evergreen_breath",
-        "name":  "长青诀",
-        "description":  "此内功气息绵长，真气运转如老木抽新枝，最擅把一口元气拖得极远。练得深时，久战之中反而越打越稳。",
-        "combat_summary":  "主打续战与回春，气血底子会被明显抬高；战线一长，内息便会自行回补伤势，是最典型的缠斗型内功。",
-        "hp_multiplier":  1.18,
-        "def_multiplier":  1.08,
-        "part_guard":  {
-                           "abdomen":  0.88,
-                           "chest":  0.92
-                       },
-        "passives":  [
-                         {
-                             "type":  "regeneration",
-                             "heal_ratio":  0.05,
-                             "chance":  1.0
-                         }
-                     ]
+  {
+    "id": "evergreen_breath",
+    "name": "长青诀",
+    "description": "此内功气息绵长，真气运转如老木抽新枝，最擅把一口元气拖得极远。练得深时，久战之中反而越打越稳。",
+    "combat_summary": "主打续战与回春，气血底子会被明显抬高；战线一长，内息便会自行回补伤势，是最典型的缠斗型内功。",
+    "hp_multiplier": 1.18,
+    "def_multiplier": 1.08,
+    "part_guard": {
+      "abdomen": 0.88,
+      "chest": 0.92
     },
-    {
-        "id":  "iron_wall_art",
-        "name":  "铁壁功",
-        "description":  "此功讲究真气凝练如甲，护体劲一成，胸腹诸处便如披上一层无形铁壁。越是硬碰硬，越能看出这门功法的分量。",
-        "combat_summary":  "重在防御与反震，正面吃招时更稳，尤其适合扛强攻；若对手贸然硬拼，还常会被护体劲反噬。",
-        "hp_multiplier":  1.08,
-        "def_multiplier":  1.22,
-        "part_guard":  {
-                           "head":  0.95,
-                           "chest":  0.82,
-                           "abdomen":  0.84,
-                           "arm":  0.9
-                       },
-        "passives":  [
-                         {
-                             "type":  "thorns",
-                             "reflect_ratio":  0.12
-                         }
-                     ]
+    "passives": [
+      {
+        "type": "regeneration",
+        "heal_ratio": 0.05,
+        "chance": 1.0
+      }
+    ]
+  },
+  {
+    "id": "iron_wall_art",
+    "name": "铁壁功",
+    "description": "此功讲究真气凝练如甲，护体劲一成，胸腹诸处便如披上一层无形铁壁。越是硬碰硬，越能看出这门功法的分量。",
+    "combat_summary": "重在防御与反震，正面吃招时更稳，尤其适合扛强攻；若对手贸然硬拼，还常会被护体劲反噬。",
+    "hp_multiplier": 1.08,
+    "def_multiplier": 1.22,
+    "part_guard": {
+      "head": 0.95,
+      "chest": 0.82,
+      "abdomen": 0.84,
+      "arm": 0.9
     },
-    {
-        "id":  "blood_moon_skill",
-        "name":  "血月心经",
-        "description":  "血月心经路数阴柔诡秘，真气运行时带着一股以伤换生的邪异意味。交手越深，越能显出它以战养战的凶性。",
-        "combat_summary":  "这门内功不靠厚重硬守，而靠吸血维持战线；只要还能不断造成伤势，就很难被一口气彻底拖死。",
-        "hp_multiplier":  1.1,
-        "def_multiplier":  1.0,
-        "part_guard":  {
-                           "head":  0.96,
-                           "leg":  0.92
-                       },
-        "passives":  [
-                         {
-                             "type":  "vampirism",
-                             "leech_ratio":  0.15
-                         }
-                     ]
-    }
-,
-    {
-        "id": "golden_wind_record",
-        "name": "金风录",
-        "description": "唐门秘传心法，气息如金秋之风，肃杀且凌厉。修习者身轻如燕，出手狠辣，常能在绝境中通过伤敌来反哺自身气血。",
-        "combat_summary": "刺客型内功。躯干身板较脆，但四肢灵活且拥有减伤，极度依赖高频攻击带来的吸血收益来维持生存。",
-        "hp_multiplier": 1.08,
-        "def_multiplier": 1.02,
-        "part_guard": {
-            "arm": 0.85,
-            "leg": 0.85
-        },
-        "passives": [
-            {
-                "type": "vampirism",
-                "leech_ratio": 0.12
-            }
-        ]
+    "passives": [
+      {
+        "type": "thorns",
+        "reflect_ratio": 0.12
+      }
+    ]
+  },
+  {
+    "id": "blood_moon_skill",
+    "name": "血月心经",
+    "description": "血月心经路数阴柔诡秘，真气运行时带着一股以伤换生的邪异意味。交手越深，越能显出它以战养战的凶性。",
+    "combat_summary": "这门内功不靠厚重硬守，而靠吸血维持战线；只要还能不断造成伤势，就很难被一口气彻底拖死。",
+    "hp_multiplier": 1.1,
+    "def_multiplier": 1.0,
+    "part_guard": {
+      "head": 0.96,
+      "leg": 0.92
     },
-    {
-        "id": "hunyuan_qigong",
-        "name": "浑元气功",
-        "description": "丐帮代代相传的防身硬气功。真气浑然一体，护住五脏六腑，与敌近身肉搏时常能以强横的内力震退外敌，以伤换伤。",
-        "combat_summary": "重装缠斗型内功。拥有较高的基础气血，胸腹核心区域抗击打能力极强，自带反伤机制，极度适合冲锋陷阵与近战肉搏。",
-        "hp_multiplier": 1.2,
-        "def_multiplier": 1.05,
-        "part_guard": {
-            "chest": 0.88,
-            "abdomen": 0.88
-        },
-        "passives": [
-            {
-                "type": "thorns",
-                "reflect_ratio": 0.1
-            }
-        ]
-    }
+    "passives": [
+      {
+        "type": "vampirism",
+        "leech_ratio": 0.15
+      }
+    ]
+  },
+  {
+    "id": "golden_wind_record",
+    "name": "金风录",
+    "description": "唐门秘传心法，气息如金秋之风，肃杀且凌厉。修习者身轻如燕，出手狠辣，常能在绝境中通过伤敌来反哺自身气血。",
+    "combat_summary": "刺客型内功。躯干身板较脆，但四肢灵活且拥有减伤，极度依赖高频攻击带来的吸血收益来维持生存。",
+    "hp_multiplier": 1.08,
+    "def_multiplier": 1.02,
+    "part_guard": {
+      "arm": 0.85,
+      "leg": 0.85
+    },
+    "passives": [
+      {
+        "type": "vampirism",
+        "leech_ratio": 0.12
+      }
+    ]
+  },
+  {
+    "id": "hunyuan_qigong",
+    "name": "浑元气功",
+    "description": "丐帮代代相传的防身硬气功。真气浑然一体，护住五脏六腑，与敌近身肉搏时常能以强横的内力震退外敌，以伤换伤。",
+    "combat_summary": "重装缠斗型内功。拥有较高的基础气血，胸腹核心区域抗击打能力极强，自带反伤机制，极度适合冲锋陷阵与近战肉搏。",
+    "hp_multiplier": 1.2,
+    "def_multiplier": 1.05,
+    "part_guard": {
+      "chest": 0.88,
+      "abdomen": 0.88
+    },
+    "passives": [
+      {
+        "type": "thorns",
+        "reflect_ratio": 0.1
+      }
+    ]
+  },
+  {
+    "id": "biyun_xinfa",
+    "name": "碧云心法",
+    "description": "行气如碧空浮云，缥缈无定。修此功者胸腹虽有罩门，但在命悬一线之际，能激发潜藏于丹田的庞大生机，瞬间稳住伤势。",
+    "combat_summary": "高风险高爆发型内功。存在躯干受击易伤的罩门，但血量危急时能触发一次极其可观的绝境回血，容错率极高。",
+    "hp_multiplier": 1.1,
+    "def_multiplier": 1.1,
+    "part_guard": {
+      "head": 0.85,
+      "arm": 0.8,
+      "leg": 0.8,
+      "chest": 1.15,
+      "abdomen": 1.1
+    },
+    "passives": [
+      {
+        "type": "burst_heal",
+        "trigger_hp_ratio": 0.3,
+        "heal_ratio": 0.24,
+        "limit": 1,
+        "trigger_msg": "【碧云心法】生机爆发！强行逆转颓势恢复大量气血！"
+      }
+    ]
+  },
+  {
+    "id": "xiantian_qigong",
+    "name": "先天气功",
+    "description": "全真教至高内功，讲究清静无为。真气流转周天毫无死角，平时不显山露水，但在修炼者陷入颓势时，先天罡气便会自动外放，坚如磐石。",
+    "combat_summary": "底盘极稳的后手反击型内功。全身减伤均匀无死角，血量越低防御越恐怖，极其适合在残血状态下反杀对手。",
+    "hp_multiplier": 1.15,
+    "def_multiplier": 1.06,
+    "part_guard": {
+      "head": 0.92,
+      "chest": 0.92,
+      "abdomen": 0.92,
+      "arm": 0.92,
+      "leg": 0.92
+    },
+    "passives": [
+      {
+        "type": "crisis_defense",
+        "trigger_hp_ratio": 0.4,
+        "def_bonus_ratio": 0.5,
+        "trigger_msg": "【先天气功】罡气护体！防御力迎来恐怖暴涨！"
+      }
+    ]
+  }
 ]

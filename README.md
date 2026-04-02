@@ -1,4 +1,4 @@
-﻿# Name Fight
+# Name Fight
 
 ![Name Fight Logo](./logo.png)
 
@@ -103,4 +103,4 @@ Name Fight is an AstrBot plugin built around deterministic fighter generation fr
 
 ## Version
 
-Current version: `1.2.0`
+Current version: `1.2.1`

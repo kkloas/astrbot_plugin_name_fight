@@ -123,6 +123,40 @@ class FighterRepository:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS team3_orders (
+                    user_id TEXT PRIMARY KEY,
+                    slot1 INTEGER NOT NULL DEFAULT 1,
+                    slot2 INTEGER NOT NULL DEFAULT 2,
+                    slot3 INTEGER NOT NULL DEFAULT 3
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS team3_scores (
+                    group_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    display_name TEXT NOT NULL DEFAULT '',
+                    wins INTEGER NOT NULL DEFAULT 0,
+                    battles INTEGER NOT NULL DEFAULT 0,
+                    elo_rating REAL NOT NULL DEFAULT 1200.0,
+                    PRIMARY KEY (group_id, user_id)
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS group_user_labels (
+                    group_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    display_name TEXT NOT NULL DEFAULT '',
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (group_id, user_id)
+                )
+                """
+            )
             fighter_columns = {row["name"] for row in connection.execute("PRAGMA table_info(fighters)").fetchall()}
             if "wins" not in fighter_columns:
                 connection.execute("ALTER TABLE fighters ADD COLUMN wins INTEGER NOT NULL DEFAULT 0")
@@ -184,6 +218,45 @@ class FighterRepository:
             fighter["is_active"] = bool(row["is_active"])
             fighters.append(fighter)
         return fighters
+
+    def _normalize_team3_order(self, order: list[int] | tuple[int, int, int]) -> list[int]:
+        normalized = [int(item) for item in order]
+        if sorted(normalized) != [1, 2, 3]:
+            raise ValueError("3v3 出战顺序只能是 1 2 3 的一种排列。")
+        return normalized
+
+    def get_user_team3_order(self, user_id: str) -> list[int]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT slot1, slot2, slot3 FROM team3_orders WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            return [1, 2, 3]
+        return self._normalize_team3_order([int(row["slot1"]), int(row["slot2"]), int(row["slot3"])])
+
+    def set_user_team3_order(self, user_id: str, order: list[int] | tuple[int, int, int]) -> list[int]:
+        normalized = self._normalize_team3_order(order)
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO team3_orders (user_id, slot1, slot2, slot3)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    slot1 = excluded.slot1,
+                    slot2 = excluded.slot2,
+                    slot3 = excluded.slot3
+                """,
+                (user_id, normalized[0], normalized[1], normalized[2]),
+            )
+            connection.commit()
+        return normalized
+
+    def get_user_team3_fighters(self, user_id: str) -> list[dict[str, Any]]:
+        roster = self.get_user_fighters(user_id)
+        fighters_by_slot = {int(fighter.get("slot_index", 0)): fighter for fighter in roster}
+        order = self.get_user_team3_order(user_id)
+        return [fighters_by_slot[slot] for slot in order if slot in fighters_by_slot]
 
     def get_active_fighter(self, user_id: str) -> dict[str, Any] | None:
         with self._connect() as connection:
@@ -486,6 +559,150 @@ class FighterRepository:
         attacker_new = attacker_rating + self._elo_k_factor(attacker_battles) * (attacker_actual - attacker_expected)
         defender_new = defender_rating + self._elo_k_factor(defender_battles) * (defender_actual - defender_expected)
         return round(attacker_new, 2), round(defender_new, 2)
+
+    def record_group_team3_battle(
+        self,
+        group_id: str,
+        attacker_user_id: str,
+        attacker_label: str,
+        defender_user_id: str,
+        defender_label: str,
+        winner_user_id: str | None,
+    ) -> dict[str, dict[str, float | str]]:
+        with self._connect() as connection:
+            attacker_score = self._ensure_group_team3_score_row(connection, group_id, attacker_user_id, attacker_label)
+            defender_score = self._ensure_group_team3_score_row(connection, group_id, defender_user_id, defender_label)
+
+            attacker_before = float(attacker_score["elo_rating"])
+            defender_before = float(defender_score["elo_rating"])
+            attacker_actual, defender_actual = self._elo_actual_scores(attacker_user_id, defender_user_id, winner_user_id)
+            attacker_elo, defender_elo = self._calculate_elo_pair(
+                attacker_before,
+                defender_before,
+                attacker_actual,
+                defender_actual,
+                int(attacker_score["battles"]),
+                int(defender_score["battles"]),
+            )
+
+            updates = [
+                (attacker_user_id, attacker_label, attacker_actual, attacker_elo),
+                (defender_user_id, defender_label, defender_actual, defender_elo),
+            ]
+            for user_id, display_name, actual_score, elo_rating in updates:
+                win_increment = 1 if actual_score == 1.0 else 0
+                connection.execute(
+                    """
+                    UPDATE team3_scores
+                    SET display_name = ?,
+                        wins = wins + ?,
+                        battles = battles + 1,
+                        elo_rating = ?
+                    WHERE group_id = ? AND user_id = ?
+                    """,
+                    (display_name, win_increment, elo_rating, group_id, user_id),
+                )
+            connection.commit()
+
+        return {
+            "attacker": {
+                "name": attacker_label,
+                "before": round(attacker_before, 2),
+                "after": round(attacker_elo, 2),
+                "delta": round(attacker_elo - attacker_before, 2),
+            },
+            "defender": {
+                "name": defender_label,
+                "before": round(defender_before, 2),
+                "after": round(defender_elo, 2),
+                "delta": round(defender_elo - defender_before, 2),
+            },
+        }
+
+    def _ensure_group_team3_score_row(
+        self,
+        connection: sqlite3.Connection,
+        group_id: str,
+        user_id: str,
+        display_name: str,
+    ) -> sqlite3.Row:
+        connection.execute(
+            """
+            INSERT INTO team3_scores (group_id, user_id, display_name, wins, battles, elo_rating)
+            VALUES (?, ?, ?, 0, 0, ?)
+            ON CONFLICT(group_id, user_id) DO NOTHING
+            """,
+            (group_id, user_id, display_name, ELO_INITIAL_RATING),
+        )
+        row = connection.execute(
+            "SELECT display_name, wins, battles, elo_rating FROM team3_scores WHERE group_id = ? AND user_id = ?",
+            (group_id, user_id),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("team3 score row missing")
+        return row
+
+
+    def set_group_user_label(self, group_id: str, user_id: str, display_name: str) -> None:
+        name = str(display_name).strip()
+        if not name:
+            return
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO group_user_labels (group_id, user_id, display_name)
+                VALUES (?, ?, ?)
+                ON CONFLICT(group_id, user_id) DO UPDATE SET
+                    display_name = excluded.display_name,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (group_id, user_id, name),
+            )
+            connection.commit()
+
+    def get_group_user_label(self, group_id: str, user_id: str) -> str | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT display_name FROM group_user_labels WHERE group_id = ? AND user_id = ?",
+                (group_id, user_id),
+            ).fetchone()
+        if row is None:
+            return None
+        name = str(row["display_name"] or "").strip()
+        return name or None
+
+    def get_group_team3_leaderboard(self, group_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT user_id, display_name, wins, battles, elo_rating
+                FROM team3_scores
+                WHERE group_id = ?
+                ORDER BY elo_rating DESC,
+                         battles DESC,
+                         wins DESC,
+                         user_id ASC
+                LIMIT ?
+                """,
+                (group_id, limit),
+            ).fetchall()
+        entries: list[dict[str, Any]] = []
+        for row in rows:
+            user_id = str(row["user_id"])
+            fighters = self.get_user_team3_fighters(user_id)
+            team_names = [fighter["name"] for fighter in fighters]
+            entries.append(
+                {
+                    "user_id": user_id,
+                    "display_name": self.get_group_user_label(group_id, user_id) or str(row["display_name"] or user_id),
+                    "elo_rating": round(float(row["elo_rating"]), 2),
+                    "wins": int(row["wins"]),
+                    "battles": int(row["battles"]),
+                    "win_rate": 0.0 if int(row["battles"]) <= 0 else (int(row["wins"]) / int(row["battles"])) * 100.0,
+                    "team_names": team_names,
+                }
+            )
+        return entries
 
     def get_group_leaderboard(self, group_id: str, limit: int = 10) -> list[dict[str, Any]]:
         with self._connect() as connection:

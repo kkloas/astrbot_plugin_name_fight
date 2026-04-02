@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 - 2026-04-02
+
+### Changed
+
+- Tagged the current pre-item-system codebase as the 1.2.1 GitHub backup baseline
+
 ## 1.2.0 - 2026-04-01
 
 ### Added

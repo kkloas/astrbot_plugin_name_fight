@@ -97,9 +97,11 @@ BODY_PARTS = {
 TEXT_PART_TO_KEY = {
     "头部": "head",
     "面门": "head",
+    "双眼": "head",
     "咽喉": "head",
     "头顶": "head",
     "天灵": "head",
+    "双耳": "head",
     "胸口": "chest",
     "心口": "chest",
     "手臂": "arm",
@@ -139,17 +141,27 @@ class CombatEngine:
         self.max_actions = max_actions
 
     def battle(self, fighter_a: dict[str, Any], fighter_b: dict[str, Any]) -> list[str]:
-        logs, _winner = self.battle_with_result(fighter_a, fighter_b)
+        logs, _winner, _state = self.battle_with_state(fighter_a, fighter_b)
         return logs
 
     def battle_with_result(self, fighter_a: dict[str, Any], fighter_b: dict[str, Any]) -> tuple[list[str], str | None]:
+        logs, winner_name, _state = self.battle_with_state(fighter_a, fighter_b)
+        return logs, winner_name
+
+    def battle_with_state(
+        self,
+        fighter_a: dict[str, Any],
+        fighter_b: dict[str, Any],
+    ) -> tuple[list[str], str | None, dict[str, float | int | None]]:
         actor_a = self._build_actor(fighter_a)
         actor_b = self._build_actor(fighter_b)
         logs: list[str] = [
             random.choice(INTRO_TEMPLATES).format(attacker=actor_a["name"], defender=actor_b["name"]),
             self._panel_text(actor_a, actor_b),
         ]
+        logs.extend(self._apply_battle_start_effects(actor_a, actor_b))
 
+        winner_name: str | None = None
         ticks = 0
         actions = 0
         while ticks < self.max_ticks and actions < self.max_actions:
@@ -176,7 +188,14 @@ class CombatEngine:
                     winner = attacker if attacker["hp"] > 0 else defender
                     loser = defender if winner is attacker else attacker
                     logs.append(self._pick_outro_text(winner, loser, actions, judged=False))
-                    return logs, winner["name"]
+                    winner_name = winner["name"]
+                    return logs, winner_name, {
+                        "fighter_a_hp": int(actor_a["hp"]),
+                        "fighter_b_hp": int(actor_b["hp"]),
+                        "fighter_a_max_hp": int(actor_a["max_hp"]),
+                        "fighter_b_max_hp": int(actor_b["max_hp"]),
+                        "actions": actions,
+                    }
                 if actions >= self.max_actions:
                     break
 
@@ -184,11 +203,17 @@ class CombatEngine:
         hp_ratio_b = actor_b["hp"] / actor_b["max_hp"]
         if abs(hp_ratio_a - hp_ratio_b) < 0.01:
             logs.append(random.choice(DRAW_TEMPLATES))
-            return logs, None
-
-        winner, loser = (actor_a, actor_b) if hp_ratio_a > hp_ratio_b else (actor_b, actor_a)
-        logs.append(self._pick_outro_text(winner, loser, actions, judged=True))
-        return logs, winner["name"]
+        else:
+            winner, loser = (actor_a, actor_b) if hp_ratio_a > hp_ratio_b else (actor_b, actor_a)
+            logs.append(self._pick_outro_text(winner, loser, actions, judged=True))
+            winner_name = winner["name"]
+        return logs, winner_name, {
+            "fighter_a_hp": int(actor_a["hp"]),
+            "fighter_b_hp": int(actor_b["hp"]),
+            "fighter_a_max_hp": int(actor_a["max_hp"]),
+            "fighter_b_max_hp": int(actor_b["max_hp"]),
+            "actions": actions,
+        }
 
     def _build_actor(self, fighter: dict[str, Any]) -> dict[str, Any]:
         stats = deepcopy(fighter["stats"])
@@ -202,6 +227,8 @@ class CombatEngine:
             "neigong": fighter["neigong"],
             "qinggong": fighter["qinggong"],
             "states": [],
+            "passive_usage": {},
+            "special_usage": {},
             "weapon_ready": True,
         }
 
@@ -302,9 +329,15 @@ class CombatEngine:
         return f"[{body_part_text}]"
 
     def _tagged_attack_text(self, text: str, attacker_name: str, defender_name: str, body_part_text: str) -> str:
-        tagged = text.replace(attacker_name, self._tag_name(attacker_name))
-        tagged = tagged.replace(defender_name, self._tag_name(defender_name))
+        tagged = text
+        token_map: dict[str, str] = {}
+        for index, name in enumerate(sorted({attacker_name, defender_name}, key=len, reverse=True)):
+            token = f'__NAME_TOKEN_{index}__'
+            token_map[token] = self._tag_name(name)
+            tagged = tagged.replace(name, token)
         tagged = tagged.replace(body_part_text, self._tag_part(body_part_text))
+        for token, replacement in token_map.items():
+            tagged = tagged.replace(token, replacement)
         return tagged
 
     def _render_move_text(self, attacker: dict[str, Any], defender: dict[str, Any], move: dict[str, Any], body_part_text: str) -> str:
@@ -380,6 +413,96 @@ class CombatEngine:
                 reflect = max(1, int(damage * passive.get("reflect_ratio", 0.0)))
                 attacker["hp"] = max(0, attacker["hp"] - reflect)
                 logs.append("{name} 护体劲反震而出，令 {target} 反受 {damage} 点伤害。".format(name=defender["name"], target=attacker["name"], damage=reflect))
+        logs.extend(self._resolve_threshold_effects(defender))
+        logs.extend(self._resolve_threshold_effects(attacker))
+        return logs
+
+    def _qinggong_effects(self, actor: dict[str, Any]) -> list[dict[str, Any]]:
+        effect_data = actor["qinggong"].get("special_effect_data")
+        if isinstance(effect_data, dict):
+            return [effect_data]
+        if isinstance(effect_data, list):
+            return [effect for effect in effect_data if isinstance(effect, dict)]
+        return []
+
+    def _format_effect_message(self, template: str | None, actor: dict[str, Any]) -> str | None:
+        if not template:
+            return None
+        return template.format(name=actor["name"], actor=actor["name"])
+
+    def _apply_battle_start_effects(self, actor_a: dict[str, Any], actor_b: dict[str, Any]) -> list[str]:
+        logs: list[str] = []
+        starters: list[tuple[dict[str, Any], int, dict[str, Any]]] = []
+        for actor in (actor_a, actor_b):
+            for index, effect in enumerate(self._qinggong_effects(actor)):
+                if effect.get("type") != "battle_start_first_strike":
+                    continue
+                starters.append((actor, index, effect))
+        if not starters:
+            return logs
+        for actor, index, effect in starters:
+            actor["special_usage"][("qinggong", index)] = 1
+            message = self._format_effect_message(effect.get("trigger_msg"), actor)
+            if message:
+                logs.append(message)
+        if len(starters) == 1:
+            starters[0][0]["ag"] = max(starters[0][0]["ag"], 100.0)
+        else:
+            for actor, _index, _effect in starters:
+                actor["ag"] = max(actor["ag"], 100.0)
+        return logs
+
+    def _resolve_threshold_effects(self, actor: dict[str, Any]) -> list[str]:
+        logs: list[str] = []
+        hp_ratio = 0.0 if actor["max_hp"] <= 0 else actor["hp"] / actor["max_hp"]
+
+        for index, passive in enumerate(actor["neigong"].get("passives", [])):
+            trigger_hp_ratio = float(passive.get("trigger_hp_ratio", 0.0))
+            if trigger_hp_ratio <= 0.0 or hp_ratio > trigger_hp_ratio:
+                continue
+            key = ("neigong", index)
+            trigger_msg = self._format_effect_message(passive.get("trigger_msg"), actor)
+            if passive.get("type") == "burst_heal":
+                limit = int(passive.get("limit", 1))
+                used = int(actor["passive_usage"].get(key, 0))
+                if used >= limit:
+                    continue
+                heal = max(1, int(actor["max_hp"] * float(passive.get("heal_ratio", 0.0))))
+                real_heal = min(heal, actor["max_hp"] - actor["hp"])
+                actor["passive_usage"][key] = used + 1
+                if trigger_msg:
+                    logs.append(trigger_msg)
+                if real_heal > 0:
+                    actor["hp"] += real_heal
+                    logs.append("{name} 强行稳住伤势，恢复了 {heal} 点气血。".format(name=actor["name"], heal=real_heal))
+            elif passive.get("type") == "crisis_defense":
+                if actor["passive_usage"].get(key):
+                    continue
+                actor["passive_usage"][key] = 1
+                actor["states"].append({
+                    "type": "crisis_defense",
+                    "duration": 9999,
+                    "def_bonus_ratio": float(passive.get("def_bonus_ratio", 0.0)),
+                })
+                if trigger_msg:
+                    logs.append(trigger_msg)
+
+        for index, effect in enumerate(self._qinggong_effects(actor)):
+            if effect.get("type") != "low_hp_extra_action":
+                continue
+            trigger_hp_ratio = float(effect.get("trigger_hp_ratio", 0.0))
+            if trigger_hp_ratio <= 0.0 or hp_ratio > trigger_hp_ratio:
+                continue
+            key = ("qinggong", index)
+            limit = int(effect.get("limit", 1))
+            used = int(actor["special_usage"].get(key, 0))
+            if used >= limit:
+                continue
+            actor["special_usage"][key] = used + 1
+            actor["ag"] = max(actor["ag"], 1000.0)
+            message = self._format_effect_message(effect.get("trigger_msg"), actor)
+            if message:
+                logs.append(message)
         return logs
 
     def _apply_move_effects(self, attacker: dict[str, Any], defender: dict[str, Any], move: dict[str, Any], part_key: str) -> list[str]:
@@ -461,6 +584,8 @@ class CombatEngine:
         for state in actor["states"]:
             if state["type"] == "armor_broken":
                 defense *= state.get("def_multiplier", 0.5)
+            elif state["type"] == "crisis_defense":
+                defense *= 1.0 + state.get("def_bonus_ratio", 0.0)
         return defense
 
     def _effective_spd(self, actor: dict[str, Any]) -> float:
