@@ -646,7 +646,7 @@ class Main(Star):
         rating_raw = float(fighter.get('star_rating', 3.0))
         breakthrough = int(fighter.get('breakthrough_stage', 0) or 0)
         
-        # 5 星及以上角色：只发图片，不发文字
+        # 5 星及以上角色：发图片 + 前后附带文字
         if rating_raw >= 5.0 or breakthrough > 0:
             data_dir = os.path.join(os.path.dirname(__file__), "data")
             image_path = None
@@ -659,14 +659,21 @@ class Main(Star):
             if image_path and os.path.exists(image_path):
                 try:
                     from astrbot.api.message_components import Image
+                    # 先发前缀文字（如果有）
+                    if prefix_lines:
+                        await self._send_text_safe(event, join_lines(prefix_lines))
+                    # 发图片
                     res = event.make_result()
                     res.chain.append(Image.fromFileSystem(image_path))
                     await event.send(res)
+                    # 再发后缀文字（如果有，比如选角色提示）
+                    if suffix_lines:
+                        await self._send_text_safe(event, join_lines(suffix_lines))
                     return
                 except Exception as e:
                     logger.warning(f"[name_fight] Failed to send image, fallback to text: {e}")
         
-        # 4 星及以下 或 图片发送失败：回退文字
+        # 4 星及以下 或 图片发送失败：回退纯文字
         lines = list(prefix_lines) if prefix_lines else []
         lines.extend(fighter_summary_lines(fighter, created))
         if suffix_lines:
