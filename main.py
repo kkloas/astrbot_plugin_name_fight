@@ -641,40 +641,37 @@ class Main(Star):
                 await asyncio.sleep(self.broadcast_delay)
 
     async def _send_fighter_summary_safe(self, event: AstrMessageEvent, fighter: dict, created: bool = False, prefix_lines: list[str] | None = None, suffix_lines: list[str] | None = None) -> None:
-        lines = list(prefix_lines) if prefix_lines else []
-        lines.extend(fighter_summary_lines(fighter, created))
-        if suffix_lines:
-            lines.extend(suffix_lines)
-        text = join_lines(lines)
+        import os
         
         rating_raw = float(fighter.get('star_rating', 3.0))
         breakthrough = int(fighter.get('breakthrough_stage', 0) or 0)
         
-        # 截获 6 星角色，进行画图上板
-        if rating_raw >= 6.0 or breakthrough > 0:
-            import os
+        # 5 星及以上角色：只发图片，不发文字
+        if rating_raw >= 5.0 or breakthrough > 0:
             data_dir = os.path.join(os.path.dirname(__file__), "data")
             image_path = None
             try:
-                from .render_profile import render_6_star_card
-                image_path = render_6_star_card(fighter, data_dir)
+                from .render_profile import render_star_card
+                image_path = render_star_card(fighter, data_dir)
             except Exception as e:
-                logger.error(f"[name_fight] render 6-star failed: {e}")
+                logger.error(f"[name_fight] render star card failed: {e}")
                 
             if image_path and os.path.exists(image_path):
                 try:
                     from astrbot.api.message_components import Image
-                    res = event.make_result().message(text + "\n")
+                    res = event.make_result()
                     res.chain.append(Image.fromFileSystem(image_path))
                     await event.send(res)
                     return
                 except Exception as e:
-                    import traceback
-                    tb = traceback.format_exc()
-                    text += f"\n[调试信息-图片发送失败]: {e}\n{tb}"
-                    logger.warning(f"[name_fight] Failed to send image message, fallback to text: {e}")
-                    
-        await self._send_text_safe(event, text)
+                    logger.warning(f"[name_fight] Failed to send image, fallback to text: {e}")
+        
+        # 4 星及以下 或 图片发送失败：回退文字
+        lines = list(prefix_lines) if prefix_lines else []
+        lines.extend(fighter_summary_lines(fighter, created))
+        if suffix_lines:
+            lines.extend(suffix_lines)
+        await self._send_text_safe(event, join_lines(lines))
 
     async def _start_battle(
         self,
