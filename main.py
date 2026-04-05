@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import re
 import time
+from datetime import date, datetime, timedelta
 from copy import deepcopy
 from typing import Any
 
@@ -12,36 +13,55 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
 
 try:
-    from .database import FighterRepository, MAX_FIGHTERS_PER_USER
+    from .database import BATTLE_POINT_REWARDS, FighterRepository, MAX_FIGHTERS_PER_USER, TEAM3_TEAM_SIZE
     from .engine import CombatEngine
     from .text_resources import (
+        GUIDE_LINES,
         HELP_LINES,
+        bag_message,
         battle_overview_line,
+        breakthrough_message,
         compact_battle_logs,
+        feed_result_message,
         fighter_summary_lines,
         join_lines,
         leaderboard_message,
-        team3_leaderboard_message,
+        loadout_reroll_message,
+        martial_choice_message,
+        martial_reroll_message,
         pending_replace_message,
         roster_message,
+        shop_message,
+        team3_leaderboard_message,
+        wallet_message,
     )
 except ImportError:
-    from database import FighterRepository, MAX_FIGHTERS_PER_USER
+    from database import BATTLE_POINT_REWARDS, FighterRepository, MAX_FIGHTERS_PER_USER, TEAM3_TEAM_SIZE
     from engine import CombatEngine
     from text_resources import (
+        GUIDE_LINES,
         HELP_LINES,
+        bag_message,
         battle_overview_line,
+        breakthrough_message,
         compact_battle_logs,
+        feed_result_message,
         fighter_summary_lines,
         join_lines,
         leaderboard_message,
-        team3_leaderboard_message,
+        loadout_reroll_message,
+        martial_choice_message,
+        martial_reroll_message,
         pending_replace_message,
         roster_message,
+        shop_message,
+        team3_leaderboard_message,
+        wallet_message,
     )
 
 PENDING_CREATE_TIMEOUT = 60.0
 CHALLENGE_TIMEOUT = 120.0
+MARTIAL_CHOICE_TIMEOUT = 120.0
 
 
 def _safe_call(obj: Any, name: str) -> Any:
@@ -212,7 +232,46 @@ class Main(Star):
         self.pending_challenges: dict[str, dict[str, Any]] = {}
         self.pending_creations: dict[str, dict[str, Any]] = {}
         self.pending_team3_challenges: dict[str, dict[str, Any]] = {}
+        self.pending_martial_choices: dict[str, dict[str, Any]] = {}
+        self._daily_settlement_task: asyncio.Task | None = None
+        self._ensure_daily_settlement_task()
         logger.info('[name_fight] plugin loaded')
+
+    def _ensure_daily_settlement_task(self) -> None:
+        task = self._daily_settlement_task
+        if task is not None and not task.done():
+            return
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            return
+        self._daily_settlement_task = loop.create_task(self._daily_settlement_loop())
+
+    async def _daily_settlement_loop(self) -> None:
+        while True:
+            now = datetime.now()
+            next_midnight = datetime.combine((now + timedelta(days=1)).date(), datetime.min.time())
+            wait_seconds = max(1.0, (next_midnight - now).total_seconds())
+            try:
+                await asyncio.sleep(wait_seconds)
+                day_key = (date.today() - timedelta(days=1)).isoformat()
+                await self._run_daily_settlements(day_key)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.warning(f'[name_fight] daily settlement failed: {exc!r}')
+                await asyncio.sleep(5.0)
+
+    async def _run_daily_settlements(self, day_key: str) -> None:
+        total_rewards = 0
+        for board in ('1v1', '3v3'):
+            for group_id in self.repo.get_tracked_group_ids(board):
+                try:
+                    result = self.repo.settle_daily_leaderboard(group_id, board, day_key)
+                except ValueError:
+                    continue
+                total_rewards += len(result.get('rewards', []))
+        logger.info(f'[name_fight] daily settlements finished: day={day_key}, rewards={total_rewards}')
 
     def _consume_pending_creation(self, user_id: str) -> dict[str, Any] | None:
         pending = self.pending_creations.get(user_id)
@@ -220,6 +279,15 @@ class Main(Star):
             return None
         if pending['expires_at'] < time.monotonic():
             self.pending_creations.pop(user_id, None)
+            return None
+        return pending
+
+    def _consume_pending_martial_choice(self, user_id: str) -> dict[str, Any] | None:
+        pending = self.pending_martial_choices.get(user_id)
+        if pending is None:
+            return None
+        if pending['expires_at'] < time.monotonic():
+            self.pending_martial_choices.pop(user_id, None)
             return None
         return pending
 
@@ -235,6 +303,7 @@ class Main(Star):
         try:
             group_id = extract_group_id(event)
             self._remember_group_user_label(event, group_id)
+            self._ensure_daily_settlement_task()
             return group_id
         except RuntimeError as exc:
             await event.send(event.plain_result(str(exc)))
@@ -252,6 +321,85 @@ class Main(Star):
 
     def _challenge_key(self, group_id: str, defender_user_id: str) -> str:
         return f'{group_id}:{defender_user_id}'
+
+    def _current_week_key(self) -> str:
+        today = date.today()
+        iso_year, iso_week, _iso_weekday = today.isocalendar()
+        return f'{iso_year}-W{iso_week:02d}'
+
+    def _rank_reward_bonus(self, mode: str, winner_before: float, loser_before: float) -> int:
+        diff = loser_before - winner_before
+        if mode == '1v1':
+            if diff >= 200:
+                return 18
+            if diff >= 100:
+                return 12
+            if diff > 0:
+                return 6
+            return 0
+        if diff >= 200:
+            return 30
+        if diff >= 100:
+            return 20
+        if diff > 0:
+            return 10
+        return 0
+
+    def _grant_ranked_battle_points(
+        self,
+        mode: str,
+        rating_change: dict[str, dict[str, float | str]],
+        attacker_user_id: str,
+        attacker_label: str,
+        defender_user_id: str,
+        defender_label: str,
+        winner_side: str | None,
+    ) -> tuple[int, int, int, int, int, int]:
+        win_key = f'accepted_{mode}_win'
+        loss_key = f'accepted_{mode}_loss'
+        attacker_base = BATTLE_POINT_REWARDS[loss_key]
+        defender_base = BATTLE_POINT_REWARDS[loss_key]
+        attacker_bonus = 0
+        defender_bonus = 0
+        attacker_before = float(rating_change['attacker']['before'])
+        defender_before = float(rating_change['defender']['before'])
+        if winner_side == 'attacker':
+            attacker_base = BATTLE_POINT_REWARDS[win_key]
+            attacker_bonus = self._rank_reward_bonus(mode, attacker_before, defender_before)
+        elif winner_side == 'defender':
+            defender_base = BATTLE_POINT_REWARDS[win_key]
+            defender_bonus = self._rank_reward_bonus(mode, defender_before, attacker_before)
+        attacker_gain = attacker_base + attacker_bonus
+        defender_gain = defender_base + defender_bonus
+        attacker_points = self.repo.grant_points(attacker_user_id, attacker_gain)
+        defender_points = self.repo.grant_points(defender_user_id, defender_gain)
+        return attacker_points, defender_points, attacker_gain, defender_gain, attacker_bonus, defender_bonus
+
+    def _format_weekly_settlement_lines(self, result: dict[str, Any]) -> list[str]:
+        board = '1v1' if result['board_type'] == '1v1' else '3v3'
+        lines = [f'\u3010\u5468\u699c\u7ed3\u7b97\u3011{result["week_key"]} {board} \u5956\u52b1\u5df2\u53d1\u653e\u3002']
+        rewards = result.get('rewards', [])
+        if not rewards:
+            lines.append('\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002')
+            return lines
+        for reward in rewards:
+            line = f"\u7b2c{reward['rank']}\u540d {reward['display_name']} +{reward['points']}\u79ef\u5206"
+            if reward.get('item_name') and int(reward.get('item_quantity', 0)) > 0:
+                line += f" + {reward['item_name']} x{reward['item_quantity']}"
+            lines.append(line)
+        return lines
+
+    def _format_daily_settlement_lines(self, result: dict[str, Any]) -> list[str]:
+        board = '1v1' if result['board_type'] == '1v1' else '3v3'
+        lines = [f'\u3010\u65e5\u699c\u7ed3\u7b97\u3011{result["day_key"]} {board} \u5956\u52b1\u5df2\u53d1\u653e\u3002']
+        rewards = result.get('rewards', [])
+        if not rewards:
+            lines.append('\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002')
+            return lines
+        for reward in rewards:
+            lines.append(f"\u7b2c{reward['rank']}\u540d {reward['display_name']} +{reward['points']}\u79ef\u5206")
+        return lines
+
 
     def _cleanup_expired_challenges(self) -> None:
         now = time.monotonic()
@@ -276,19 +424,23 @@ class Main(Star):
     def _build_team3_status_lines(self, user_id: str) -> list[str]:
         roster = self.repo.get_user_fighters(user_id)
         lines = ['【3v3 阵容】']
-        if len(roster) < MAX_FIGHTERS_PER_USER:
-            lines.append(f'你当前只有 {len(roster)}/{MAX_FIGHTERS_PER_USER} 个角色，暂时无法参加 3v3。')
-            for fighter in roster:
-                lines.append(f'{fighter["slot_index"]}号位: {fighter["name"]} | {fighter["martial_art"]["name"]}')
-            lines.append('请先补满 3 个角色后，再使用 /teamorder 调整顺序。')
-            return lines
         fighters_by_slot = {int(fighter['slot_index']): fighter for fighter in roster}
+        if len(roster) < TEAM3_TEAM_SIZE:
+            lines.append(f'当前角色不足: {len(roster)}/{TEAM3_TEAM_SIZE}')
+            for slot in range(1, MAX_FIGHTERS_PER_USER + 1):
+                fighter = fighters_by_slot.get(slot)
+                if fighter is None:
+                    lines.append(f'{slot}号位: 空位')
+                else:
+                    lines.append(f'{slot}号位: {fighter["name"]} | {fighter["martial_art"]["name"]}')
+            lines.append(f'至少需要凑满 {TEAM3_TEAM_SIZE} 个角色，才能组成 3v3 阵容。')
+            return lines
         order = self.repo.get_user_team3_order(user_id)
         lines.append(f'当前顺序: {order[0]} -> {order[1]} -> {order[2]}')
         for slot in range(1, MAX_FIGHTERS_PER_USER + 1):
             fighter = fighters_by_slot.get(slot)
             if fighter is None:
-                lines.append(f'{slot}号位: 空缺')
+                lines.append(f'{slot}号位: 空位')
             else:
                 lines.append(f'{slot}号位: {fighter["name"]} | {fighter["martial_art"]["name"]}')
         team = [fighters_by_slot[slot] for slot in order if slot in fighters_by_slot]
@@ -297,7 +449,7 @@ class Main(Star):
 
     def _get_ready_team3_fighters(self, user_id: str) -> list[dict[str, Any]]:
         team = self.repo.get_user_team3_fighters(user_id)
-        if len(team) < MAX_FIGHTERS_PER_USER:
+        if len(team) < TEAM3_TEAM_SIZE:
             raise ValueError('你当前角色未满 3 个，暂时无法参加 3v3。')
         return team
 
@@ -410,9 +562,11 @@ class Main(Star):
         defender_label: str,
         defender_team: list[dict[str, Any]],
         opener: str,
+        reward_enabled: bool = False,
+        elo_scale: float = 1.0,
     ) -> None:
         if self.is_battling:
-            await event.send(event.plain_result('当前已有对决正在播报，请稍后再试。'))
+            await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
             return
         self.is_battling = True
@@ -433,15 +587,33 @@ class Main(Star):
                 defender_user_id,
                 defender_label,
                 winner_user_id,
+                elo_scale=elo_scale,
             )
             await asyncio.sleep(self.broadcast_delay)
             await event.send(event.plain_result(
-                f'本场 3v3 巅峰分变动: '
+                f'\u30103v3 \u79ef\u5206\u53d8\u5316\u3011: '
                 f'{rating_change["attacker"]["name"]} {rating_change["attacker"]["delta"]:+.2f} '
                 f'({rating_change["attacker"]["before"]:.2f} -> {rating_change["attacker"]["after"]:.2f}) | '
                 f'{rating_change["defender"]["name"]} {rating_change["defender"]["delta"]:+.2f} '
                 f'({rating_change["defender"]["before"]:.2f} -> {rating_change["defender"]["after"]:.2f})'
             ))
+            if reward_enabled:
+                attacker_points, defender_points, gain_a, gain_d, bonus_a, bonus_d = self._grant_ranked_battle_points(
+                    '3v3',
+                    rating_change,
+                    attacker_user_id,
+                    attacker_label,
+                    defender_user_id,
+                    defender_label,
+                    winner_side,
+                )
+                reward_detail_a = f'\u57fa\u7840{gain_a - bonus_a}' + (f' + \u6311\u6218\u5956\u52b1{bonus_a}' if bonus_a else '')
+                reward_detail_d = f'\u57fa\u7840{gain_d - bonus_d}' + (f' + \u6311\u6218\u5956\u52b1{bonus_d}' if bonus_d else '')
+                await asyncio.sleep(self.broadcast_delay)
+                await event.send(event.plain_result(
+                    f'\u3010\u79ef\u5206\u5956\u52b1\u3011{attacker_label} +{gain_a} ({reward_detail_a}\uff0c\u73b0\u6709 {attacker_points}) | '
+                    f'{defender_label} +{gain_d} ({reward_detail_d}\uff0c\u73b0\u6709 {defender_points})'
+                ))
         finally:
             self.is_battling = False
             event.stop_event()
@@ -468,9 +640,55 @@ class Main(Star):
             if index + 1 < len(lines):
                 await asyncio.sleep(self.broadcast_delay)
 
-    async def _start_battle(self, event: AstrMessageEvent, group_id: str, attacker: dict[str, Any], defender: dict[str, Any], opener: str) -> None:
+    async def _send_fighter_summary_safe(self, event: AstrMessageEvent, fighter: dict, created: bool = False, prefix_lines: list[str] | None = None, suffix_lines: list[str] | None = None) -> None:
+        lines = list(prefix_lines) if prefix_lines else []
+        lines.extend(fighter_summary_lines(fighter, created))
+        if suffix_lines:
+            lines.extend(suffix_lines)
+        text = join_lines(lines)
+        
+        rating_raw = float(fighter.get('star_rating', 3.0))
+        breakthrough = int(fighter.get('breakthrough_stage', 0) or 0)
+        
+        # 截获 6 星角色，进行画图上板
+        if rating_raw >= 6.0 or breakthrough > 0:
+            import os
+            data_dir = os.path.join(os.path.dirname(__file__), "data")
+            image_path = None
+            try:
+                from .render_profile import render_6_star_card
+                image_path = render_6_star_card(fighter, data_dir)
+            except Exception as e:
+                logger.error(f"[name_fight] render 6-star failed: {e}")
+                
+            if image_path and os.path.exists(image_path):
+                try:
+                    from astrbot.api.message_components import Image
+                    res = event.make_result().message(text + "\n")
+                    res.chain.append(Image.fromFileSystem(image_path))
+                    await event.send(res)
+                    return
+                except Exception as e:
+                    import traceback
+                    tb = traceback.format_exc()
+                    text += f"\n[调试信息-图片发送失败]: {e}\n{tb}"
+                    logger.warning(f"[name_fight] Failed to send image message, fallback to text: {e}")
+                    
+        await self._send_text_safe(event, text)
+
+    async def _start_battle(
+        self,
+        event: AstrMessageEvent,
+        group_id: str,
+        attacker: dict[str, Any],
+        defender: dict[str, Any],
+        opener: str,
+        reward_users: tuple[str, str] | None = None,
+        reward_labels: tuple[str, str] | None = None,
+        elo_scale: float = 1.0,
+    ) -> None:
         if self.is_battling:
-            await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u5bf9\u51b3\u6b63\u5728\u64ad\u62a5\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
+            await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
             return
         self.is_battling = True
@@ -481,32 +699,68 @@ class Main(Star):
             await asyncio.sleep(self.broadcast_delay)
             logs, winner_name = self.engine.battle_with_result(attacker, defender)
             await self._send_lines(event, compact_battle_logs(logs))
-            rating_change = self.repo.record_group_battle(group_id, attacker['name'], defender['name'], winner_name)
+            rating_change = self.repo.record_group_battle(
+                group_id,
+                attacker['name'],
+                defender['name'],
+                winner_name,
+                elo_scale=elo_scale,
+            )
             attacker_change = rating_change['attacker']
             defender_change = rating_change['defender']
             await asyncio.sleep(self.broadcast_delay)
             await event.send(event.plain_result(
-                f'\u672c\u573a\u5dc5\u5cf0\u5206\u53d8\u52a8: '
+                f'\u3010\u79ef\u5206\u53d8\u5316\u3011: '
                 f'{attacker_change["name"]} {attacker_change["delta"]:+.2f} '
                 f'({attacker_change["before"]:.2f} -> {attacker_change["after"]:.2f}) | '
                 f'{defender_change["name"]} {defender_change["delta"]:+.2f} '
                 f'({defender_change["before"]:.2f} -> {defender_change["after"]:.2f})'
             ))
+            if reward_users is not None:
+                attacker_user_id, defender_user_id = reward_users
+                attacker_label, defender_label = reward_labels or (attacker['name'], defender['name'])
+                winner_side = None
+                if winner_name == attacker['name']:
+                    winner_side = 'attacker'
+                elif winner_name == defender['name']:
+                    winner_side = 'defender'
+                attacker_points, defender_points, gain_a, gain_d, bonus_a, bonus_d = self._grant_ranked_battle_points(
+                    '1v1',
+                    rating_change,
+                    attacker_user_id,
+                    attacker_label,
+                    defender_user_id,
+                    defender_label,
+                    winner_side,
+                )
+                reward_detail_a = f'\u57fa\u7840{gain_a - bonus_a}' + (f' + \u6311\u6218\u5956\u52b1{bonus_a}' if bonus_a else '')
+                reward_detail_d = f'\u57fa\u7840{gain_d - bonus_d}' + (f' + \u6311\u6218\u5956\u52b1{bonus_d}' if bonus_d else '')
+                await asyncio.sleep(self.broadcast_delay)
+                await event.send(event.plain_result(
+                    f'\u3010\u79ef\u5206\u5956\u52b1\u3011{attacker_label} +{gain_a} ({reward_detail_a}\uff0c\u73b0\u6709 {attacker_points}) | '
+                    f'{defender_label} +{gain_d} ({reward_detail_d}\uff0c\u73b0\u6709 {defender_points})'
+                ))
         finally:
             self.is_battling = False
             event.stop_event()
 
-    @filter.command('fhelp')
+    @filter.command('fhelp', alias={'help', 'HELP', '\u5e2e\u52a9'})
     async def help_command(self, event: AstrMessageEvent):
         await event.send(event.plain_result(join_lines(HELP_LINES)))
         event.stop_event()
 
-    @filter.command('create')
+
+    @filter.command('guide', alias={'\u6559\u7a0b'})
+    async def guide_command(self, event: AstrMessageEvent):
+        await event.send(event.plain_result(join_lines(GUIDE_LINES)))
+        event.stop_event()
+
+    @filter.command('create', alias={'\u521b\u5efa\u89d2\u8272'})
     async def create_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
         if len(parts) != 2 or not parts[1].strip():
-            await event.send(event.plain_result('\u7528\u6cd5: /create \u89d2\u8272\u540d'))
+            await event.send(event.plain_result('\u7528\u6cd5: /\u521b\u5efa\u89d2\u8272 \u89d2\u8272\u540d'))
             event.stop_event()
             return
         user_id = await self._require_user_id(event)
@@ -526,9 +780,10 @@ class Main(Star):
                 'fighter': fighter,
                 'expires_at': time.monotonic() + PENDING_CREATE_TIMEOUT,
             }
-            lines = fighter_summary_lines(fighter, True)
-            lines.append(pending_replace_message(fighter_name, roster, int(PENDING_CREATE_TIMEOUT)))
-            await self._send_text_safe(event, join_lines(lines))
+            await self._send_fighter_summary_safe(
+                event, fighter, True, 
+                suffix_lines=[pending_replace_message(fighter_name, roster, int(PENDING_CREATE_TIMEOUT))]
+            )
             event.stop_event()
             return
         try:
@@ -537,15 +792,15 @@ class Main(Star):
             await event.send(event.plain_result(str(exc)))
             event.stop_event()
             return
-        await self._send_text_safe(event, join_lines(fighter_summary_lines(fighter, True)))
+        await self._send_fighter_summary_safe(event, fighter, True)
         event.stop_event()
 
-    @filter.command('choose')
+    @filter.command('choose', alias={'\u9009\u62e9\u89d2\u8272'})
     async def choose_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
         if len(parts) != 2 or not parts[1].strip().isdigit():
-            await event.send(event.plain_result('\u7528\u6cd5: /choose \u5e8f\u53f7'))
+            await event.send(event.plain_result('\u7528\u6cd5: /\u9009\u62e9\u89d2\u8272 \u5e8f\u53f7'))
             event.stop_event()
             return
         user_id = await self._require_user_id(event)
@@ -568,14 +823,11 @@ class Main(Star):
             event.stop_event()
             return
         self.pending_creations.pop(user_id, None)
-        lines = [
-            f'\u3010\u89d2\u8272\u66f4\u66ff\u3011\u5df2\u7528\u3010{fighter["name"]}\u3011\u9876\u66ff\u3010{old_name}\u3011\u5165\u5217\uff0c\u5e76\u81ea\u52a8\u8bbe\u4e3a\u5f53\u524d\u51fa\u6218\u89d2\u8272\u3002',
-            *fighter_summary_lines(fighter, False),
-        ]
-        await self._send_text_safe(event, join_lines(lines))
+        prefix = f'\u3010\u89d2\u8272\u66f4\u66ff\u3011\u5df2\u7528\u3010{fighter["name"]}\u3011\u9876\u66ff\u3010{old_name}\u3011\u5165\u5217\uff0c\u5e76\u81ea\u52a8\u8bbe\u4e3a\u5f53\u524d\u51fa\u6218\u89d2\u8272\u3002'
+        await self._send_fighter_summary_safe(event, fighter, False, prefix_lines=[prefix])
         event.stop_event()
 
-    @filter.command('roster')
+    @filter.command('roster', alias={'\u89d2\u8272\u5217\u8868'})
     async def roster_command(self, event: AstrMessageEvent):
         user_id = await self._require_user_id(event)
         if user_id is None:
@@ -584,12 +836,12 @@ class Main(Star):
         await event.send(event.plain_result(roster_message(fighters, MAX_FIGHTERS_PER_USER)))
         event.stop_event()
 
-    @filter.command('use')
+    @filter.command('use', alias={'\u5207\u6362\u89d2\u8272'})
     async def use_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
         if len(parts) != 2 or not parts[1].strip():
-            await event.send(event.plain_result('\u7528\u6cd5: /use \u89d2\u8272\u540d'))
+            await event.send(event.plain_result('\u7528\u6cd5: /\u5207\u6362\u89d2\u8272 \u89d2\u8272\u540d'))
             event.stop_event()
             return
         user_id = await self._require_user_id(event)
@@ -605,7 +857,7 @@ class Main(Star):
         await event.send(event.plain_result(f'\u5f53\u524d\u51fa\u6218\u89d2\u8272\u5df2\u5207\u6362\u4e3a\u3010{fighter["name"]}\u3011\u3002'))
         event.stop_event()
 
-    @filter.command('profile')
+    @filter.command('profile', alias={'\u89d2\u8272\u8be6\u60c5'})
     async def profile_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
@@ -623,15 +875,370 @@ class Main(Star):
             await event.send(event.plain_result('\u4f60\u540d\u4e0b\u6ca1\u6709\u8fd9\u4e2a\u89d2\u8272\u3002'))
             event.stop_event()
             return
-        await self._send_text_safe(event, join_lines(fighter_summary_lines(fighter, False)))
+        await self._send_fighter_summary_safe(event, fighter, False)
         event.stop_event()
 
-    @filter.command('c', alias={'challenge'})
+    @filter.command('signin', alias={'\u7b7e\u5230'})
+    async def signin_command(self, event: AstrMessageEvent):
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        today = date.today().isoformat()
+        try:
+            wallet = self.repo.claim_daily_signin(user_id, today)
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await event.send(event.plain_result(f"\u3010\u7b7e\u5230\u6210\u529f\u3011\u83b7\u5f97 {wallet['gained']} \u79ef\u5206, \u5f53\u524d\u5171\u6709 {wallet['points']} \u79ef\u5206\u3002"))
+        event.stop_event()
+
+    @filter.command('wallet', alias={'\u79ef\u5206'})
+    async def wallet_command(self, event: AstrMessageEvent):
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        await event.send(event.plain_result(wallet_message(self.repo.get_user_wallet(user_id))))
+        event.stop_event()
+
+    @filter.command('gift', alias={'\u8d60\u9001'})
+    async def gift_command(self, event: AstrMessageEvent):
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
+        target_user_id = extract_mentioned_user_id(event)
+        if target_user_id is None:
+            await event.send(event.plain_result('\u7528\u6cd5: /\u8d60\u9001 @\u5bf9\u65b9 100'))
+            event.stop_event()
+            return
+        if target_user_id == user_id:
+            await event.send(event.plain_result('\u4e0d\u80fd\u7ed9\u81ea\u5df1\u8d60\u9001\u79ef\u5206\u3002'))
+            event.stop_event()
+            return
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split()
+        if len(parts) < 3:
+            await event.send(event.plain_result('\u7528\u6cd5: /\u8d60\u9001 @\u5bf9\u65b9 100'))
+            event.stop_event()
+            return
+        try:
+            amount = int(parts[-1])
+        except ValueError:
+            await event.send(event.plain_result('\u8d60\u9001\u79ef\u5206\u5fc5\u987b\u662f\u6b63\u6574\u6570\u3002'))
+            event.stop_event()
+            return
+        if amount <= 0:
+            await event.send(event.plain_result('\u8d60\u9001\u79ef\u5206\u5fc5\u987b\u662f\u6b63\u6574\u6570\u3002'))
+            event.stop_event()
+            return
+        receiver_label = self.repo.get_group_user_label(group_id, target_user_id) or f'QQ:{target_user_id}'
+        sender_label = extract_user_label(event)
+        try:
+            result = self.repo.transfer_points(user_id, target_user_id, amount)
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        self.repo.set_group_user_label(group_id, user_id, sender_label)
+        await event.send(event.plain_result(
+            f'\u3010\u8d60\u9001\u6210\u529f\u3011{sender_label} \u5411 {receiver_label} \u8d60\u9001\u4e86 {result["amount"]} \u79ef\u5206\u3002'
+            f' \u4f60\u5f53\u524d\u5269\u4f59 {result["sender_points"]} \u79ef\u5206\uff0c\u5bf9\u65b9\u5f53\u524d\u5171\u6709 {result["receiver_points"]} \u79ef\u5206\u3002'
+        ))
+        event.stop_event()
+
+    @filter.command('bag', alias={'\u80cc\u5305'})
+    async def bag_command(self, event: AstrMessageEvent):
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        await event.send(event.plain_result(bag_message(self.repo.get_user_items(user_id))))
+        event.stop_event()
+
+    @filter.command('shop', alias={'\u5546\u5e97'})
+    async def shop_command(self, event: AstrMessageEvent):
+        await event.send(event.plain_result(shop_message(self.repo.get_shop_items())))
+        event.stop_event()
+
+    @filter.command('buy', alias={'\u8d2d\u4e70'})
+    async def buy_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split()
+        if len(parts) < 2:
+            await event.send(event.plain_result('\u7528\u6cd5: /\u8d2d\u4e70 \u9053\u5177\u540d \u6570\u91cf'))
+            event.stop_event()
+            return
+        quantity = 1
+        if len(parts) >= 3:
+            try:
+                quantity = int(parts[-1])
+                item_name = ' '.join(parts[1:-1]).strip()
+            except ValueError:
+                item_name = ' '.join(parts[1:]).strip()
+        else:
+            item_name = parts[1].strip()
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.buy_item(user_id, item_name, quantity)
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await event.send(event.plain_result(
+            f"\u3010\u8d2d\u4e70\u6210\u529f\u3011{result['item_name']} x{result['quantity']}, \u82b1\u8d39 {result['cost']} \u79ef\u5206, \u5f53\u524d\u5269\u4f59 {result['points']}\u3002"
+        ))
+        event.stop_event()
+
+    @filter.command('feed', alias={'\u5582\u517b'})
+    async def feed_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split()
+        if len(parts) < 3:
+            await event.send(event.plain_result('\u7528\u6cd5: /\u5582\u517b \u89d2\u8272\u540d \u9053\u5177\u540d [\u6570\u91cf]'))
+            event.stop_event()
+            return
+        fighter_name = parts[1].strip()
+        quantity = 1
+        if len(parts) >= 4:
+            try:
+                quantity = int(parts[-1])
+                item_name = ' '.join(parts[2:-1]).strip()
+            except ValueError:
+                item_name = ' '.join(parts[2:]).strip()
+        else:
+            item_name = ' '.join(parts[2:]).strip()
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.feed_fighter_star_exp(user_id, fighter_name, item_name, quantity)
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, feed_result_message(result))
+        event.stop_event()
+
+    @filter.command('break', alias={'\u7a81\u7834'})
+    async def break_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await event.send(event.plain_result('\u7528\u6cd5: /\u7a81\u7834 \u89d2\u8272\u540d'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.breakthrough_fighter(user_id, parts[1].strip())
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, breakthrough_message(result))
+        event.stop_event()
+
+    @filter.command('randommartial', alias={'随机换武学', '洗髓符'})
+    async def random_martial_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await event.send(event.plain_result('用法: /随机换武学 角色名'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.reroll_loadout_random(user_id, parts[1].strip(), 'martial_art', 'martial_token_basic')
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, loadout_reroll_message(result))
+        event.stop_event()
+
+    @filter.command('swapneigong', alias={'换内功'})
+    async def swap_neigong_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await event.send(event.plain_result('用法: /换内功 角色名'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.reroll_loadout_random(user_id, parts[1].strip(), 'neigong', 'martial_token_type')
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, loadout_reroll_message(result))
+        event.stop_event()
+
+    @filter.command('swapqinggong', alias={'换轻功'})
+    async def swap_qinggong_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await event.send(event.plain_result('用法: /换轻功 角色名'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.reroll_loadout_random(user_id, parts[1].strip(), 'qinggong', 'martial_token_type')
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, loadout_reroll_message(result))
+        event.stop_event()
+
+    @filter.command('swapmartial', alias={'换武功'})
+    async def swap_martial_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await event.send(event.plain_result('用法: /换武功 角色名'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.reroll_loadout_random(user_id, parts[1].strip(), 'martial_art', 'martial_token_type')
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, loadout_reroll_message(result))
+        event.stop_event()
+
+    @filter.command('secttoken', alias={'换宗令'})
+    async def sect_token_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split()
+        if len(parts) != 3:
+            await event.send(event.plain_result('用法: /换宗令 内功|轻功|武功 角色名'))
+            event.stop_event()
+            return
+        category_map = {'内功': 'neigong', '轻功': 'qinggong', '武功': 'martial_art'}
+        category = category_map.get(parts[1].strip())
+        if category is None:
+            await event.send(event.plain_result('换宗令只能选择 内功、轻功 或 武功'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.reroll_loadout_random(user_id, parts[2].strip(), category, 'martial_token_type')
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, loadout_reroll_message(result))
+        event.stop_event()
+
+    @filter.command('reroll', alias={'洗武学'})
+    async def reroll_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split()
+        if len(parts) != 3:
+            await event.send(event.plain_result('\u7528\u6cd5: /\u6d17\u6b66\u5b66 \u89d2\u8272\u540d \u521d\u7ea7|\u4e2d\u7ea7'))
+            event.stop_event()
+            return
+        fighter_name = parts[1].strip()
+        mode = parts[2].strip()
+        item_name = '\u6d17\u9ad3\u7b26' if mode == '\u521d\u7ea7' else '\u6362\u5b97\u4ee4' if mode == '\u4e2d\u7ea7' else ''
+        if not item_name:
+            await event.send(event.plain_result('\u6d17\u7ec3\u7b49\u7ea7\u53ea\u80fd\u662f \u521d\u7ea7 \u6216 \u4e2d\u7ea7'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            result = self.repo.reroll_martial_random(user_id, fighter_name, item_name)
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        await self._send_text_safe(event, martial_reroll_message(result))
+        event.stop_event()
+
+    @filter.command('reroll3', alias={'\u9ad8\u7ea7\u6d17\u6b66\u5b66', '\u81ea\u9009\u6362\u6b66\u5b66', '\u5929\u673a\u6b8b\u5377'})
+    async def reroll3_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip():
+            await event.send(event.plain_result('\u7528\u6cd5: /\u9ad8\u7ea7\u6d17\u6b66\u5b66 \u89d2\u8272\u540d'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        try:
+            payload = self.repo.create_martial_choice_options(user_id, parts[1].strip())
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        self.pending_martial_choices[user_id] = {
+            'fighter_name': payload['fighter_name'],
+            'options': payload['options'],
+            'expires_at': time.monotonic() + MARTIAL_CHOICE_TIMEOUT,
+        }
+        await self._send_text_safe(event, martial_choice_message(payload))
+        event.stop_event()
+
+    @filter.command('pick', alias={'\u9009\u62e9\u6b66\u5b66'})
+    async def pick_command(self, event: AstrMessageEvent):
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        if len(parts) != 2 or not parts[1].strip().isdigit():
+            await event.send(event.plain_result('\u7528\u6cd5: /\u9009\u62e9\u6b66\u5b66 1|2|3'))
+            event.stop_event()
+            return
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        pending = self._consume_pending_martial_choice(user_id)
+        if pending is None:
+            await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
+            event.stop_event()
+            return
+        choice = int(parts[1].strip())
+        if choice < 1 or choice > len(pending['options']):
+            await event.send(event.plain_result('\u5019\u9009\u5e8f\u53f7\u8d85\u51fa\u8303\u56f4'))
+            event.stop_event()
+            return
+        martial_art = pending['options'][choice - 1]
+        try:
+            result = self.repo.apply_martial_choice(user_id, pending['fighter_name'], martial_art['id'])
+        except ValueError as exc:
+            await event.send(event.plain_result(str(exc)))
+            event.stop_event()
+            return
+        self.pending_martial_choices.pop(user_id, None)
+        await self._send_text_safe(event, f"\u3010\u9009\u62e9\u5b8c\u6210\u3011{pending['fighter_name']} \u5df2\u5c06\u6b66\u5b66\u66f4\u6362\u4e3a\u3010{martial_art['name']}\u3011\u3002")
+        event.stop_event()
+
+    @filter.command('c', alias={'challenge', '\u6392\u4f4d\u6311\u6218'})
     async def challenge_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
         if len(parts) != 2 or not parts[1].strip():
-            await event.send(event.plain_result('\u7528\u6cd5: /c \u76ee\u6807\u89d2\u8272\u540d'))
+            await event.send(event.plain_result('\u7528\u6cd5: /\u6392\u4f4d\u6311\u6218 \u76ee\u6807\u89d2\u8272\u540d'))
             event.stop_event()
             return
         challenger_user_id = await self._require_user_id(event)
@@ -672,16 +1279,16 @@ class Main(Star):
             'expires_at': time.monotonic() + CHALLENGE_TIMEOUT,
         }
         await event.send(event.plain_result(
-            f'\u6311\u6218\u5df2\u53d1\u51fa\u3002\u3010{challenger["name"]}\u3011\u5411\u3010{defender["name"]}\u3011\u4e0b\u4e86\u6218\u4e66\u3002\u8bf7\u5bf9\u65b9\u4f7f\u7528 /a \u63a5\u6218\uff0c\u6216\u7528 /r \u62d2\u7edd\u3002'
+            f'\u6311\u6218\u5df2\u53d1\u51fa\u3002\u3010{challenger["name"]}\u3011\u5411\u3010{defender["name"]}\u3011\u4e0b\u4e86\u6218\u4e66\u3002\u8bf7\u5bf9\u65b9\u4f7f\u7528 /\u63a5\u53d7 \u63a5\u6218\uff0c\u6216\u7528 /\u62d2\u7edd \u62d2\u7edd\u3002'
         ))
         event.stop_event()
 
-    @filter.command('fc')
+    @filter.command('fc', alias={'\u6311\u6218'})
     async def force_challenge_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split(maxsplit=1)
         if len(parts) != 2 or not parts[1].strip():
-            await event.send(event.plain_result('\u7528\u6cd5: /fc \u76ee\u6807\u89d2\u8272\u540d'))
+            await event.send(event.plain_result('\u7528\u6cd5: /\u6311\u6218 \u76ee\u6807\u89d2\u8272\u540d'))
             event.stop_event()
             return
         challenger_user_id = await self._require_user_id(event)
@@ -712,9 +1319,9 @@ class Main(Star):
             event.stop_event()
             return
         opener = f'\u3010\u5bf9\u51b3\u5f00\u59cb\u3011{challenger_label} \u5f3a\u884c\u5411\u3010{defender["name"]}\u3011\u53d1\u8d77\u4e86\u6311\u6218\u3002'
-        await self._start_battle(event, group_id, challenger, defender, opener)
+        await self._start_battle(event, group_id, challenger, defender, opener, elo_scale=2.0 / 5.0)
 
-    @filter.command('fc3')
+    @filter.command('fc3', alias={'\u6311\u62183'})
     async def force_team3_challenge_command(self, event: AstrMessageEvent):
         challenger_user_id = await self._require_user_id(event)
         if challenger_user_id is None:
@@ -725,7 +1332,7 @@ class Main(Star):
         challenger_label = extract_user_label(event)
         target_user_id = extract_mentioned_user_id(event)
         if target_user_id is None:
-            await event.send(event.plain_result('\u7528\u6cd5: /fc3 @\u76ee\u6807\u73a9\u5bb6'))
+            await event.send(event.plain_result('\u7528\u6cd5: /\u6311\u62183 @\u76ee\u6807\u73a9\u5bb6'))
             event.stop_event()
             return
         if target_user_id == challenger_user_id:
@@ -755,9 +1362,10 @@ class Main(Star):
             self.repo.get_group_user_label(group_id, target_user_id) or f'QQ:{target_user_id}',
             defender_team,
             opener,
+            elo_scale=2.0 / 5.0,
         )
 
-    @filter.command('a', alias={'accept'})
+    @filter.command('a', alias={'accept', '\u63a5\u53d7'})
     async def accept_command(self, event: AstrMessageEvent):
         defender_user_id = await self._require_user_id(event)
         if defender_user_id is None:
@@ -777,9 +1385,17 @@ class Main(Star):
             event.stop_event()
             return
         opener = f'\u3010\u5bf9\u51b3\u5f00\u59cb\u3011{challenge["challenger_label"]} \u5411\u3010{defender["name"]}\u3011\u53d1\u8d77\u7684\u6311\u6218\u5df2\u88ab\u63a5\u53d7\u3002'
-        await self._start_battle(event, group_id, attacker, defender, opener)
+        await self._start_battle(
+            event,
+            group_id,
+            attacker,
+            defender,
+            opener,
+            reward_users=(str(challenge['challenger_user_id']), defender_user_id),
+            reward_labels=(str(challenge['challenger_label']), extract_user_label(event)),
+        )
 
-    @filter.command('r', alias={'reject'})
+    @filter.command('r', alias={'reject', '\u62d2\u7edd'})
     async def reject_command(self, event: AstrMessageEvent):
         defender_user_id = await self._require_user_id(event)
         if defender_user_id is None:
@@ -797,7 +1413,7 @@ class Main(Star):
         ))
         event.stop_event()
 
-    @filter.command('team3')
+    @filter.command('team3', alias={'\u4e09\u4eba\u961f\u4f0d'})
     async def team3_command(self, event: AstrMessageEvent):
         user_id = await self._require_user_id(event)
         if user_id is None:
@@ -805,26 +1421,26 @@ class Main(Star):
         await self._send_text_safe(event, join_lines(self._build_team3_status_lines(user_id)))
         event.stop_event()
 
-    @filter.command('teamorder')
+    @filter.command('teamorder', alias={'队伍顺序'})
     async def teamorder_command(self, event: AstrMessageEvent):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split()
         if len(parts) != 4:
-            await event.send(event.plain_result('用法: /teamorder 2 1 3'))
+            await event.send(event.plain_result('用法: /teamorder 5 3 2'))
             event.stop_event()
             return
         try:
             order = [int(parts[1]), int(parts[2]), int(parts[3])]
         except ValueError:
-            await event.send(event.plain_result('用法: /teamorder 2 1 3'))
+            await event.send(event.plain_result('用法: /teamorder 5 3 2'))
             event.stop_event()
             return
         user_id = await self._require_user_id(event)
         if user_id is None:
             return
         roster = self.repo.get_user_fighters(user_id)
-        if len(roster) < MAX_FIGHTERS_PER_USER:
-            await event.send(event.plain_result('你当前角色未满 3 个，暂时无法设置 3v3 出战顺序。'))
+        if len(roster) < TEAM3_TEAM_SIZE:
+            await event.send(event.plain_result(f'至少需要拥有 {TEAM3_TEAM_SIZE} 个角色，才能设置 3v3 阵容。'))
             event.stop_event()
             return
         try:
@@ -833,10 +1449,10 @@ class Main(Star):
             await event.send(event.plain_result(str(exc)))
             event.stop_event()
             return
-        await event.send(event.plain_result(f'3v3 出战顺序已调整为: {normalized[0]} -> {normalized[1]} -> {normalized[2]}'))
+        await event.send(event.plain_result(f'3v3 出战顺序已更新为: {normalized[0]} -> {normalized[1]} -> {normalized[2]}'))
         event.stop_event()
 
-    @filter.command('t3')
+    @filter.command('t3', alias={'\u6392\u4f4d\u6311\u62183'})
     async def team3_challenge_command(self, event: AstrMessageEvent):
         challenger_user_id = await self._require_user_id(event)
         if challenger_user_id is None:
@@ -880,7 +1496,7 @@ class Main(Star):
         ))
         event.stop_event()
 
-    @filter.command('a3')
+    @filter.command('a3', alias={'\u63a5\u53d73'})
     async def team3_accept_command(self, event: AstrMessageEvent):
         defender_user_id = await self._require_user_id(event)
         if defender_user_id is None:
@@ -913,9 +1529,10 @@ class Main(Star):
             defender_label,
             defender_team,
             opener,
+            reward_enabled=True,
         )
 
-    @filter.command('r3')
+    @filter.command('r3', alias={'\u62d2\u7edd3'})
     async def team3_reject_command(self, event: AstrMessageEvent):
         defender_user_id = await self._require_user_id(event)
         if defender_user_id is None:
@@ -931,7 +1548,7 @@ class Main(Star):
         await event.send(event.plain_result(f'【3v3挑战作废】你拒绝了 {challenge["challenger_label"]} 发起的 3v3 挑战。'))
         event.stop_event()
 
-    @filter.command('rank3')
+    @filter.command('rank3', alias={'\u4e09\u6392\u699c'})
     async def team3_rank_command(self, event: AstrMessageEvent):
         group_id = await self._require_group_id(event)
         if group_id is None:
@@ -940,7 +1557,7 @@ class Main(Star):
         await event.send(event.plain_result(team3_leaderboard_message(entries)))
         event.stop_event()
 
-    @filter.command('rank')
+    @filter.command('rank', alias={'\u6392\u4f4d\u699c'})
     async def rank_command(self, event: AstrMessageEvent):
         group_id = await self._require_group_id(event)
         if group_id is None:
@@ -949,6 +1566,71 @@ class Main(Star):
         await event.send(event.plain_result(leaderboard_message(entries)))
         event.stop_event()
 
-    @filter.regex(r'(?:[/!??])(?:fhelp|create|choose|roster|use|profile|c|challenge|fc|fc3|a|accept|r|reject|rank|team3|teamorder|t3|a3|r3|rank3)(?:\s|$)', priority=-10)
+    
+    @filter.command('daysettle', alias={'\u65e5\u699c\u7ed3\u7b97'})
+    async def daily_settle_command(self, event: AstrMessageEvent):
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split()
+        mode = 'all'
+        day_key = (date.today() - timedelta(days=1)).isoformat()
+        if len(parts) >= 2:
+            candidate = parts[1].strip().lower()
+            if candidate in ('all', '1v1', '3v3'):
+                mode = candidate
+            else:
+                day_key = parts[1].strip()
+        if len(parts) >= 3:
+            day_key = parts[2].strip()
+        try:
+            datetime.strptime(day_key, '%Y-%m-%d')
+        except ValueError:
+            await event.send(event.plain_result('\u7528\u6cd5: /\u65e5\u699c\u7ed3\u7b97 [1v1|3v3|all] [YYYY-MM-DD]'))
+            event.stop_event()
+            return
+        boards = ['1v1', '3v3'] if mode == 'all' else [mode]
+        lines: list[str] = []
+        for board in boards:
+            try:
+                result = self.repo.settle_daily_leaderboard(group_id, board, day_key)
+            except ValueError as exc:
+                lines.append(f'\u3010\u5468\u699c\u7ed3\u7b97\u3011{board}: {exc}')
+                continue
+            lines.extend(self._format_daily_settlement_lines(result))
+        if not lines:
+            lines.append('\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002')
+        await self._send_text_safe(event, join_lines(lines))
+        event.stop_event()
+
+    @filter.command('weeksettle', alias={'weeklysettle', '\u5468\u699c\u7ed3\u7b97'})
+    async def weekly_settle_command(self, event: AstrMessageEvent):
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
+        text = str(getattr(event, 'message_str', '') or '').strip()
+        parts = text.split(maxsplit=1)
+        mode = parts[1].strip().lower() if len(parts) == 2 and parts[1].strip() else 'all'
+        if mode not in ('all', '1v1', '3v3'):
+            await event.send(event.plain_result('用法: /周榜结算 [1v1|3v3|all]'))
+            event.stop_event()
+            return
+        boards = ['1v1', '3v3'] if mode == 'all' else [mode]
+        week_key = self._current_week_key()
+        lines: list[str] = []
+        for board in boards:
+            try:
+                result = self.repo.settle_weekly_leaderboard(group_id, board, week_key)
+            except ValueError as exc:
+                lines.append(f'\u3010\u5468\u699c\u7ed3\u7b97\u3011{board}: {exc}')
+                continue
+            lines.extend(self._format_weekly_settlement_lines(result))
+        if not lines:
+            lines.append('\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002')
+        await self._send_text_safe(event, join_lines(lines))
+        event.stop_event()
+
+    @filter.regex(r'(?:[/!?\uFF1F])(?:fhelp|help|HELP|\u5e2e\u52a9|guide|\u6559\u7a0b|create|\u521b\u5efa\u89d2\u8272|choose|\u9009\u62e9\u89d2\u8272|roster|\u89d2\u8272\u5217\u8868|use|\u5207\u6362\u89d2\u8272|profile|\u89d2\u8272\u8be6\u60c5|signin|\u7b7e\u5230|wallet|\u79ef\u5206|gift|\u8d60\u9001|bag|\u80cc\u5305|shop|\u5546\u5e97|buy|\u8d2d\u4e70|feed|\u5582\u517b|break|\u7a81\u7834|randommartial|\u968f\u673a\u6362\u6b66\u5b66|\u6d17\u9ad3\u7b26|swapneigong|\u6362\u5185\u529f|swapqinggong|\u6362\u8f7b\u529f|swapmartial|\u6362\u6b66\u529f|secttoken|\u6362\u5b97\u4ee4|reroll|\u6d17\u6b66\u5b66|reroll3|\u9ad8\u7ea7\u6d17\u6b66\u5b66|\u81ea\u9009\u6362\u6b66\u5b66|\u5929\u673a\u6b8b\u5377|pick|\u9009\u62e9\u6b66\u5b66|c|challenge|\u6392\u4f4d\u6311\u6218|fc|\u6311\u6218|fc3|\u6311\u62183|a|accept|\u63a5\u53d7|r|reject|\u62d2\u7edd|rank|\u6392\u4f4d\u699c|team3|\u4e09\u4eba\u961f\u4f0d|teamorder|\u961f\u4f0d\u987a\u5e8f|t3|\u6392\u4f4d\u6311\u62183|a3|\u63a5\u53d73|r3|\u62d2\u7edd3|rank3|\u4e09\u6392\u699c|daysettle|\u65e5\u699c\u7ed3\u7b97|weeksettle|weeklysettle|\u5468\u699c\u7ed3\u7b97)(?:\s|$)', priority=-10)
     async def regex_fallback(self, event: AstrMessageEvent):
         event.stop_event()
