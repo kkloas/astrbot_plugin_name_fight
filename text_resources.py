@@ -5,24 +5,78 @@ from typing import Any
 
 HELP_LINES = [
     '\u53ef\u7528\u6307\u4ee4:',
-    '/fhelp - \u67e5\u770b\u5168\u90e8\u6307\u4ee4\u8bf4\u660e',
-    '/create \u89d2\u8272\u540d - \u521b\u5efa\u65b0\u89d2\u8272\uff1b\u82e5\u540d\u4e0b\u5df2\u6ee1 3 \u4eba\uff0c\u5219\u8fdb\u5165\u9876\u66ff\u9009\u62e9',
-    '/choose \u5e8f\u53f7 - \u5728\u5019\u9009\u89d2\u8272\u51fa\u73b0\u540e\uff0c\u9009\u62e9\u8981\u88ab\u9876\u66ff\u7684\u65e7\u89d2\u8272\u680f\u4f4d',
-    '/roster - \u67e5\u770b\u4f60\u5f53\u524d\u540d\u4e0b\u5168\u90e8\u89d2\u8272',
-    '/use \u89d2\u8272\u540d - \u5207\u6362\u5f53\u524d\u51fa\u6218\u89d2\u8272',
-    '/profile [\u89d2\u8272\u540d] - \u67e5\u770b\u81ea\u5df1\u7684\u89d2\u8272\u8be6\u60c5\uff1b\u4e0d\u586b\u540d\u5b57\u65f6\u67e5\u770b\u89d2\u8272\u680f',
-    '/c \u89d2\u8272\u540d - \u5411\u76ee\u6807\u89d2\u8272\u53d1\u8d77\u6b63\u5e38\u6311\u6218\uff0c\u7b49\u5f85\u5bf9\u65b9 /a \u6216 /r',
-    '/fc \u89d2\u8272\u540d - \u76f4\u63a5\u5f3a\u5236\u5f00\u6218\uff0c\u4e0d\u9700\u8981\u5bf9\u65b9\u786e\u8ba4',
-    '/fc3 @\u76ee\u6807\u73a9\u5bb6 - \u76f4\u63a5\u5f3a\u5236\u5f00\u59cb 3v3 \u8fde\u6218\uff0c\u4e0d\u9700\u8981\u5bf9\u65b9\u786e\u8ba4',
-    '/a - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684\u6311\u6218',
-    '/r - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684\u6311\u6218',
-    '/rank - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 1v1 \u5dc5\u5cf0\u6392\u884c\u699c',
-    '/team3 - \u67e5\u770b\u5f53\u524d 3v3 \u51fa\u6218\u987a\u5e8f\u4e0e\u9635\u5bb9',
-    '/teamorder 2 1 3 - \u8c03\u6574 3v3 \u51fa\u6218\u987a\u5e8f',
-    '/t3 @\u76ee\u6807 - \u5411\u5bf9\u65b9\u53d1\u8d77 3v3 \u8fde\u6218\u6311\u6218',
-    '/a3 - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
-    '/r3 - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
-    '/rank3 - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 3v3 \u5dc5\u5cf0\u6392\u884c\u699c',
+    '/\u5e2e\u52a9 - \u67e5\u770b\u5168\u90e8\u6307\u4ee4\u8bf4\u660e',
+    '/\u6559\u7a0b - \u67e5\u770b\u65b0\u624b\u6559\u7a0b\u548c\u517b\u6210\u8bf4\u660e',
+    '/\u521b\u5efa\u89d2\u8272 \u89d2\u8272\u540d - \u521b\u5efa\u65b0\u89d2\u8272\uff1b\u82e5\u540d\u4e0b\u5df2\u6ee1 3 \u4eba\uff0c\u5219\u8fdb\u5165\u9876\u66ff\u9009\u62e9',
+    '/\u9009\u62e9\u89d2\u8272 \u5e8f\u53f7 - \u5728\u5019\u9009\u89d2\u8272\u51fa\u73b0\u540e\uff0c\u9009\u62e9\u8981\u88ab\u9876\u66ff\u7684\u65e7\u89d2\u8272\u680f\u4f4d',
+    '/\u89d2\u8272\u5217\u8868 - \u67e5\u770b\u4f60\u5f53\u524d\u540d\u4e0b\u5168\u90e8\u89d2\u8272',
+    '/\u5207\u6362\u89d2\u8272 \u89d2\u8272\u540d - \u5207\u6362\u5f53\u524d\u51fa\u6218\u89d2\u8272',
+    '/\u89d2\u8272\u8be6\u60c5 [\u89d2\u8272\u540d] - \u67e5\u770b\u89d2\u8272\u8be6\u60c5\uff1b\u4e0d\u586b\u540d\u5b57\u65f6\u67e5\u770b\u89d2\u8272\u680f',
+    '/\u7b7e\u5230 - \u6bcf\u65e5\u7b7e\u5230\u9886\u53d6\u79ef\u5206',
+    '/\u79ef\u5206 - \u67e5\u770b\u5f53\u524d\u79ef\u5206',
+    '/\u8d60\u9001 @\u5bf9\u65b9 100 - \u7ed9\u540c\u7fa4\u73a9\u5bb6\u8d60\u9001\u79ef\u5206',
+    '/\u80cc\u5305 - \u67e5\u770b\u80cc\u5305\u9053\u5177',
+    '/\u5546\u5e97 - \u67e5\u770b\u79ef\u5206\u5546\u5e97',
+    '/\u8d2d\u4e70 \u9053\u5177\u540d \u6570\u91cf - \u4ece\u5546\u5e97\u5151\u6362\u9053\u5177',
+    '/\u5582\u517b \u89d2\u8272\u540d \u9053\u5177\u540d [\u6570\u91cf] - \u7ed9\u89d2\u8272\u5582\u661f\u7ecf\u9a8c\u9053\u5177',
+    '/\u7a81\u7834 \u89d2\u8272\u540d - \u8ba9 5 \u661f\u89d2\u8272\u7a81\u7834\u5230 6 \u661f',
+    '/\u968f\u673a\u6362\u6b66\u5b66 \u89d2\u8272\u540d - \u6d88\u8017\u6d17\u9ad3\u7b26\uff0c\u5168\u6b66\u5b66\u6c60\u968f\u673a\u6362 1 \u4e2a\u6b66\u529f',
+    '/\u6d17\u9ad3\u7b26 \u89d2\u8272\u540d - \u4e0e /\u968f\u673a\u6362\u6b66\u5b66 \u7b49\u4ef7',
+    '/\u6362\u5185\u529f \u89d2\u8272\u540d - \u6d88\u8017\u6362\u5b97\u4ee4\uff0c\u968f\u673a\u66f4\u6362 1 \u4e2a\u5185\u529f',
+    '/\u6362\u8f7b\u529f \u89d2\u8272\u540d - \u6d88\u8017\u6362\u5b97\u4ee4\uff0c\u968f\u673a\u66f4\u6362 1 \u4e2a\u8f7b\u529f',
+    '/\u6362\u6b66\u529f \u89d2\u8272\u540d - \u6d88\u8017\u6362\u5b97\u4ee4\uff0c\u968f\u673a\u66f4\u6362 1 \u4e2a\u6b66\u529f',
+    '/\u6362\u5b97\u4ee4 \u5185\u529f|\u8f7b\u529f|\u6b66\u529f \u89d2\u8272\u540d - \u6309\u6307\u5b9a\u7c7b\u578b\u968f\u673a\u66f4\u6362',
+    '/\u81ea\u9009\u6362\u6b66\u5b66 \u89d2\u8272\u540d - \u6d88\u8017\u5929\u673a\u6b8b\u5377\uff0c\u83b7\u5f97 3 \u4e2a\u6b66\u529f\u5019\u9009',
+    '/\u9ad8\u7ea7\u6d17\u5185\u529f \u89d2\u8272\u540d - \u6d88\u8017\u5929\u673a\u6b8b\u5377\uff0c\u83b7\u5f97 3 \u4e2a\u5185\u529f\u5019\u9009',
+    '/\u9ad8\u7ea7\u6d17\u8f7b\u529f \u89d2\u8272\u540d - \u6d88\u8017\u5929\u673a\u6b8b\u5377\uff0c\u83b7\u5f97 3 \u4e2a\u8f7b\u529f\u5019\u9009',
+    '/\u5929\u673a\u6b8b\u5377 \u6b66\u529f|\u5185\u529f|\u8f7b\u529f \u89d2\u8272\u540d - \u6309\u6307\u5b9a\u7c7b\u578b\u751f\u6210 3 \u4e2a\u5019\u9009',
+    '/\u9009\u62e9\u6b66\u5b66 1|2|3 - \u5728\u9ad8\u7ea7\u81ea\u9009\u540e\u9009\u62e9\u6700\u7ec8\u6761\u76ee',
+    '/\u6392\u4f4d\u6311\u6218 \u89d2\u8272\u540d - \u5411\u76ee\u6807\u89d2\u8272\u53d1\u8d77\u6392\u4f4d\u6311\u6218\uff0c\u7b49\u5f85\u5bf9\u65b9 /\u63a5\u53d7 \u6216 /\u62d2\u7edd',
+    '/\u6311\u6218 \u89d2\u8272\u540d - \u76f4\u63a5\u5f3a\u5236\u5f00\u6218\uff0c\u4e0d\u9700\u8981\u5bf9\u65b9\u786e\u8ba4\uff1b\u53ea\u8bb0 1/3 \u5a31\u4e50\u5411 ELO\uff0c\u4e0d\u4ea7\u79ef\u5206',
+    '/\u63a5\u53d7 - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684 1v1 \u6311\u6218',
+    '/\u62d2\u7edd - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684 1v1 \u6311\u6218',
+    '/\u6392\u4f4d\u699c - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 1v1 \u5dc5\u5cf0\u6392\u884c\u699c',
+    '/\u4e09\u4eba\u961f\u4f0d - \u67e5\u770b\u5f53\u524d 3v3 \u51fa\u6218\u987a\u5e8f\u4e0e\u9635\u5bb9',
+    '/\u961f\u4f0d\u987a\u5e8f 2 1 3 - \u8c03\u6574 3v3 \u51fa\u6218\u987a\u5e8f',
+    '/\u6392\u4f4d\u6311\u62183 @\u76ee\u6807 - \u5411\u5bf9\u65b9\u53d1\u8d77 3v3 \u6392\u4f4d\u6311\u6218',
+    '/\u6311\u62183 @\u76ee\u6807\u73a9\u5bb6 - \u76f4\u63a5\u5f3a\u5236\u5f00\u59cb 3v3 \u8fde\u6218\uff1b\u53ea\u8bb0 1/3 \u5a31\u4e50\u5411 ELO\uff0c\u4e0d\u4ea7\u79ef\u5206',
+    '/\u63a5\u53d73 - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
+    '/\u62d2\u7edd3 - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
+    '/\u4e09\u6392\u699c - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 3v3 \u5dc5\u5cf0\u6392\u884c\u699c',
+    '/\u5468\u699c\u7ed3\u7b97 [1v1|3v3|all] - \u624b\u52a8\u7ed3\u7b97\u672c\u5468\u6392\u884c\u699c\u5956\u52b1',
+    '/\u65e5\u699c\u7ed3\u7b97 [1v1|3v3|all] [YYYY-MM-DD] - \u624b\u52a8\u8865\u7ed3\u7b97\u67d0\u4e00\u5929\u7684\u65e5\u699c\u5956\u52b1',
+]
+
+GUIDE_LINES = [
+    '\u65b0\u624b\u6559\u7a0b:',
+    '1. \u5148\u521b\u5efa\u89d2\u8272: /\u521b\u5efa\u89d2\u8272 \u89d2\u8272\u540d',
+    '2. \u67e5\u770b\u540d\u4e0b\u89d2\u8272\u5e76\u5207\u6362\u51fa\u6218: /\u89d2\u8272\u5217\u8868, /\u5207\u6362\u89d2\u8272 \u89d2\u8272\u540d',
+    '3. \u901a\u8fc7\u6b63\u5e38\u5bf9\u6218\u8d5a\u79ef\u5206: 1v1 \u7528 /\u6392\u4f4d\u6311\u6218 \u89d2\u8272\u540d, 3v3 \u7528 /\u6392\u4f4d\u6311\u62183 @\u76ee\u6807',
+    '4. \u6bcf\u5929\u8bb0\u5f97\u7b7e\u5230: /\u7b7e\u5230',
+    '5. \u67e5\u770b\u79ef\u5206\u548c\u5546\u5e97: /\u79ef\u5206, /\u5546\u5e97',
+    '6. \u8d2d\u4e70\u5e76\u67e5\u770b\u9053\u5177: /\u8d2d\u4e70 \u9053\u5177\u540d \u6570\u91cf, /\u80cc\u5305',
+    '7. \u7528\u661f\u7ecf\u9a8c\u4e39\u57f9\u517b\u89d2\u8272: /\u5582\u517b \u89d2\u8272\u540d \u9053\u5177\u540d [\u6570\u91cf]',
+    '8. \u89d2\u8272\u5230 5.0 \u661f\u540e\u53ef\u7a81\u7834\u5230 6.0 \u661f: /\u7a81\u7834 \u89d2\u8272\u540d',
+    '9. \u60f3\u6362\u6d41\u6d3e\u53ef\u76f4\u63a5\u7528\u9053\u5177\u547d\u4ee4: /\u968f\u673a\u6362\u6b66\u5b66, /\u6362\u5185\u529f, /\u6362\u8f7b\u529f, /\u6362\u6b66\u529f, /\u81ea\u9009\u6362\u6b66\u5b66, /\u9ad8\u7ea7\u6d17\u5185\u529f, /\u9ad8\u7ea7\u6d17\u8f7b\u529f, /\u9009\u62e9\u6b66\u5b66',
+    '10. \u60f3\u7ed9\u670b\u53cb\u8f6c\u79ef\u5206: /\u8d60\u9001 @\u5bf9\u65b9 100',
+    '',
+    '\u517b\u6210\u4e3b\u7ebf:',
+    '\u521b\u5efa\u89d2\u8272 -> \u6392\u4f4d\u6311\u6218\u8d5a\u79ef\u5206 -> \u5546\u5e97\u4e70\u9053\u5177 -> \u5582\u7ecf\u9a8c\u8865\u5230 5 \u661f -> \u7a81\u7834 6 \u661f -> \u6d17\u6b66\u5b66\u4f18\u5316',
+    '',
+    '\u9053\u5177\u8bf4\u660e:',
+    '- \u5c0f\u661f\u5c18\u4e39 / \u4e2d\u661f\u5c18\u4e39: \u63d0\u4f9b\u661f\u7ecf\u9a8c\uff0c\u7528\u6765\u628a\u4f4e\u661f\u89d2\u8272\u8865\u5230 5 \u661f',
+    '- \u7834\u5883\u4e39: \u53ea\u80fd\u5bf9 5.0 \u661f\u89d2\u8272\u4f7f\u7528\uff0c\u4f7f\u5176\u7a81\u7834\u5230 6.0 \u661f',
+    '- \u6d17\u9ad3\u7b26: \u5168\u6b66\u5b66\u6c60\u968f\u673a\u6362\u6b66\u5b66\uff0c\u547d\u4ee4\u4e3a /\u968f\u673a\u6362\u6b66\u5b66 \u89d2\u8272\u540d',
+    '- \u6362\u5b97\u4ee4: \u6307\u5b9a\u66ff\u6362 \u5185\u529f\u3001\u8f7b\u529f \u6216 \u6b66\u529f \u4e2d\u7684 1 \u7c7b\uff0c\u968f\u673a\u6362 1 \u4e2a',
+    '- \u5929\u673a\u6b8b\u5377: \u53ef\u4ee5\u7528\u6765\u81ea\u9009 \u6b66\u529f\u3001\u5185\u529f \u6216 \u8f7b\u529f\uff0c\u6bcf\u6b21\u5148\u751f\u6210 3 \u4e2a\u5019\u9009\uff0c\u518d\u7528 /\u9009\u62e9\u6b66\u5b66 1|2|3 \u786e\u5b9a',
+    '',
+    '\u5173\u952e\u89c4\u5219:',
+    '- 1.0 \u5230 5.0 \u661f\u5c5e\u4e8e\u57fa\u7840\u8d44\u8d28\u4f53\u7cfb\uff0c\u540e\u5929\u8865\u5230 5.0 \u661f\u540e\u4e0e\u5148\u5929 5.0 \u661f\u7b49\u4ef7',
+    '- \u5f53\u524d\u7248\u672c\u4e0a\u9650\u662f 6.0 \u661f\uff0c\u53ea\u6709\u5230 5.0 \u661f\u540e\u624d\u80fd\u7a81\u7834',
+    '- \u6392\u4f4d\u6311\u6218\u4f1a\u4ea7\u51fa\u79ef\u5206\uff0c\u5e76\u6309\u5bf9\u624b\u5f3a\u5ea6\u7ed9\u6311\u6218\u5956\u52b1',
+    '- /\u6311\u6218 \u548c /\u6311\u62183 \u53ea\u7528\u4e8e\u5a31\u4e50\uff0c\u4e0d\u4ea7\u79ef\u5206\uff0c\u53ea\u8bb0\u5f55 2/5 \u5e45\u5ea6\u7684\u8f7b\u91cf ELO \u53d8\u5316',
+    '- \u6d17\u6b66\u5b66\u53ea\u6539\u6b66\u5b66\uff0c\u4e0d\u4f1a\u91cd\u7f6e\u4f60\u7684\u8865\u661f\u548c\u7a81\u7834\u8fdb\u5ea6',
+    '- \u5468\u699c\u7ed3\u7b97\u53ef\u53d1\u653e\u989d\u5916\u79ef\u5206\u548c\u7a00\u6709\u6d17\u7ec3\u9053\u5177',
 ]
 
 OUTCOME_PREFIXES = (
@@ -58,9 +112,22 @@ EFFECT_LABELS = {
     'armor_broken': '\u7834\u7532',
 }
 
+STAR_REQUIREMENTS = {
+    1.0: 100,
+    1.5: 140,
+    2.0: 190,
+    2.5: 250,
+    3.0: 330,
+    3.5: 400,
+    4.0: 450,
+    4.5: 540,
+}
+
 
 def stat_comment(stat: str, value: float) -> str:
     if stat == 'hp':
+        if value >= 760:
+            return '\u5317\u51a5\u5316\u751f'
         if value >= 620:
             return '\u6c14\u8840\u5982\u8679'
         if value >= 520:
@@ -69,6 +136,8 @@ def stat_comment(stat: str, value: float) -> str:
             return '\u5185\u606f\u8fde\u7ef5'
         return '\u672c\u5143\u7a0d\u6b20'
     if stat == 'atk':
+        if value >= 140:
+            return '\u648c\u5929\u52a8\u5730'
         if value >= 100:
             return '\u6240\u5411\u62ab\u9761'
         if value >= 85:
@@ -77,6 +146,8 @@ def stat_comment(stat: str, value: float) -> str:
             return '\u84c4\u52bf\u6210\u52b2'
         return '\u5b88\u62d9\u6c42\u7a33'
     if stat == 'def':
+        if value >= 130:
+            return '\u82cd\u5c71\u8d1f\u96ea'
         if value >= 95:
             return '\u4e0d\u52a8\u5982\u5c71'
         if value >= 80:
@@ -85,6 +156,8 @@ def stat_comment(stat: str, value: float) -> str:
             return '\u4e25\u9635\u4ee5\u5f85'
         return '\u8f7b\u7532\u8584\u9635'
     if stat == 'spd':
+        if value >= 110:
+            return '\u6d6e\u5149\u63a0\u5f71'
         if value >= 72:
             return '\u8ffd\u98ce\u9010\u7535'
         if value >= 58:
@@ -93,6 +166,8 @@ def stat_comment(stat: str, value: float) -> str:
             return '\u8fdb\u9000\u6709\u5ea6'
         return '\u6b65\u5c65\u6c89\u7a33'
     if stat == 'crt':
+        if value >= 36:
+            return '\u767d\u8679\u8d2f\u65e5'
         if value >= 24:
             return '\u6740\u673a\u70bd\u76db'
         if value >= 18:
@@ -101,6 +176,8 @@ def stat_comment(stat: str, value: float) -> str:
             return '\u5076\u9732\u5ce5\u5d58'
         return '\u7a33\u4e2d\u6c42\u80dc'
     if stat == 'eva':
+        if value >= 42:
+            return '\u7fe9\u82e5\u60ca\u9e3f'
         if value >= 28:
             return '\u98d8\u6e3a\u96be\u6d4b'
         if value >= 22:
@@ -112,11 +189,30 @@ def stat_comment(stat: str, value: float) -> str:
 
 
 def star_line(fighter: dict[str, Any]) -> str:
-    rating = max(1.0, min(5.0, float(fighter.get('star_rating', 3.0))))
+    rating = float(fighter.get('star_rating', 3.0))
+    if rating >= 6.0:
+        return '资质: ★★★★★★（6.0星）'
+    rating = max(1.0, min(5.0, rating))
     full_stars = int(rating)
     has_half = (rating - full_stars) >= 0.5
-    stars = '\u2605' * full_stars + ('\u2606' if has_half else '')
-    return f'\u8d44\u8d28: {stars}\uff08{rating:.1f}\u661f\uff09'
+    stars = '★' * full_stars + ('☆' if has_half else '')
+    return f'资质: {stars}（{rating:.1f}星）'
+
+
+def growth_line(fighter: dict[str, Any]) -> str:
+    base_star_raw = float(fighter.get('base_star_rating', fighter.get('star_rating', 3.0)))
+    base_star = max(1.0, min(6.0, base_star_raw))
+    current_star = float(fighter.get('star_rating', base_star))
+    breakthrough_stage = int(fighter.get('breakthrough_stage', 0) or 0)
+    if current_star >= 6.0 or breakthrough_stage > 0:
+        if base_star >= 6.0 and breakthrough_stage <= 0:
+            return '成长: 先天 6.0星 | 当前 6.0星 | 天生绝品'
+        return f'成长: 先天 {min(base_star, 5.0):.1f}星 | 当前 6.0星 | 已突破'
+    if current_star >= 5.0:
+        return f'成长: 先天 {base_star:.1f}星 | 当前 5.0星 | 可突破'
+    star_exp = int(fighter.get('star_exp', 0) or 0)
+    requirement = STAR_REQUIREMENTS.get(round(current_star, 1), 0)
+    return f'成长: 先天 {base_star:.1f}星 | 当前 {current_star:.1f}星 | 星经验 {star_exp}/{requirement}'
 
 
 def _effect_labels(martial_art: dict[str, Any]) -> list[str]:
@@ -186,11 +282,37 @@ def _martial_mechanics(martial_art: dict[str, Any]) -> str:
 
 
 
+
+def _martial_signature(martial_art: dict[str, Any]) -> str:
+    martial_id = str(martial_art.get('id') or '')
+    if martial_id == 'staff_bainiaochaofeng':
+        return '\u7279\u6027\uff1a\u51fa\u624b\u4e89\u5148\uff0c\u53ef\u6d41\u8840\u3001\u7834\u7532'
+    if martial_id == 'short_shenghuoling':
+        return '\u7279\u6027\uff1a\u6b65\u6cd5\u8be1\u5947\uff0c\u53ef\u7f34\u68b0\u3001\u7729\u6655\u3001\u8fdf\u7f13'
+    tags: list[str] = []
+    modifiers = martial_art.get('stat_modifiers', {})
+    if float(modifiers.get('spd', 1.0)) >= 1.1:
+        tags.append('\u51fa\u624b\u4e89\u5148')
+    if float(modifiers.get('atk', 1.0)) >= 1.12:
+        tags.append('\u91cd\u624b\u7834\u9635')
+    effects = _effect_labels(martial_art)
+    if effects:
+        tags.append('\u53ef' + '\u3001'.join(effects[:3]))
+    if not tags:
+        return ''
+    return '\u7279\u6027\uff1a' + '\uff0c'.join(tags[:2])
+
 def _neigong_flavor(neigong: dict[str, Any]) -> str:
     hp = float(neigong.get('hp_multiplier', 1.0))
     defense = float(neigong.get('def_multiplier', 1.0))
     passives = neigong.get('passives', [])
     passive_types = {item.get('type') for item in passives}
+    if 'damage_defer' in passive_types:
+        return '刚柔并济'
+    if 'stacking_defense' in passive_types:
+        return '紫气绵长'
+    if 'part_counter' in passive_types:
+        return '借力挪劲'
     if 'regeneration' in passive_types:
         return '\u6c14\u606f\u7ef5\u957f'
     if 'vampirism' in passive_types:
@@ -225,6 +347,12 @@ def _neigong_mechanics(neigong: dict[str, Any]) -> str:
         parts.append('\u53ef\u5438\u8840\u7eed\u547d')
     if 'thorns' in passive_types:
         parts.append('\u53ef\u53cd\u9707\u4f24\u654c')
+    if 'damage_defer' in passive_types:
+        parts.append('可化爆发为内伤')
+    if 'stacking_defense' in passive_types:
+        parts.append('防御会越战越强')
+    if 'part_counter' in passive_types:
+        parts.append('四肢受击可反震')
     if 'burst_heal' in passive_types:
         parts.append('\u6b8b\u8840\u7206\u53d1\u56de\u8840')
     if 'crisis_defense' in passive_types:
@@ -245,9 +373,51 @@ def _neigong_mechanics(neigong: dict[str, Any]) -> str:
     return '\uff0c'.join(parts[:4])
 
 
+
+def _neigong_signature(neigong: dict[str, Any]) -> str:
+    neigong_id = str(neigong.get('id') or '')
+    if neigong_id == 'shenzhao_jing':
+        return '\u7279\u6027\uff1a\u53ef\u62b5\u6297\u81f4\u547d\u4e00\u51fb'
+    if neigong_id == 'jinzhong_zhao':
+        return '\u7279\u6027\uff1a\u5468\u8eab\u6781\u786c\uff0c\u8179\u90e8\u6709\u7f69\u95e8'
+    tags: list[str] = []
+    passives = neigong.get('passives', [])
+    passive_types = {item.get('type') for item in passives}
+    guards = neigong.get('part_guard', {})
+    if 'fatal_block' in passive_types:
+        tags.append('\u53ef\u62b5\u6297\u81f4\u547d\u4e00\u51fb')
+    if 'regeneration' in passive_types:
+        tags.append('\u53ef\u6301\u7eed\u56de\u6625')
+    if 'vampirism' in passive_types:
+        tags.append('\u53ef\u5438\u8840\u7eed\u547d')
+    if 'thorns' in passive_types:
+        tags.append('\u53ef\u53cd\u9707\u4f24\u654c')
+    if 'damage_defer' in passive_types:
+        tags.append('可延后承受重伤')
+    if 'stacking_defense' in passive_types:
+        tags.append('回合越久防御越强')
+    if 'part_counter' in passive_types:
+        tags.append('四肢受击可借力反打')
+    if 'burst_heal' in passive_types:
+        tags.append('\u6b8b\u8840\u53ef\u7206\u53d1\u56de\u8840')
+    if 'crisis_defense' in passive_types:
+        tags.append('\u6b8b\u8840\u65f6\u9632\u5fa1\u66b4\u6da8')
+    abdomen_guard = float(guards.get('abdomen', 1.0)) if guards else 1.0
+    if abdomen_guard >= 1.3:
+        tags.append('\u8179\u90e8\u6709\u7f69\u95e8')
+    if not tags:
+        return ''
+    return '\u7279\u6027\uff1a' + '\uff0c'.join(tags[:2])
+
 def _qinggong_flavor(qinggong: dict[str, Any]) -> str:
     spd = float(qinggong.get('spd_multiplier', 1.0))
     eva = float(qinggong.get('eva_bonus', 0.0))
+    effect_data = qinggong.get('special_effect_data') or {}
+    effect_type = effect_data.get('type') if isinstance(effect_data, dict) else None
+    if effect_type == 'action_spd_stack':
+        return '御风渐疾'
+    if effect_type == 'dodge_damage_boost':
+        return '步藏星变'
     if spd >= 1.12 and eva >= 8:
         return '\u6b65\u52bf\u8f7b\u7075'
     if spd >= 1.12:
@@ -269,6 +439,10 @@ def _qinggong_mechanics(qinggong: dict[str, Any]) -> str:
         parts.append('\u5f00\u573a\u5fc5\u5b9a\u5148\u624b')
     elif effect_type == 'low_hp_extra_action':
         parts.append('\u6fd2\u6b7b\u53ef\u989d\u5916\u51fa\u624b')
+    elif effect_type == 'action_spd_stack':
+        parts.append('行动后会越来越快')
+    elif effect_type == 'dodge_damage_boost':
+        parts.append('闪避后可强化下一击')
     elif spd >= 1.12:
         parts.append('\u64c5\u957f\u62a2\u5148\u624b')
     elif spd >= 1.05:
@@ -284,6 +458,23 @@ def _qinggong_mechanics(qinggong: dict[str, Any]) -> str:
     return '\uff0c'.join(parts[:2])
 
 
+def _qinggong_signature(qinggong: dict[str, Any]) -> str:
+    effect_data = qinggong.get('special_effect_data') or {}
+    effect_type = effect_data.get('type') if isinstance(effect_data, dict) else None
+    tags: list[str] = []
+    if effect_type == 'battle_start_first_strike':
+        tags.append('开场可夺绝对先手')
+    if effect_type == 'low_hp_extra_action':
+        tags.append('濒死时可额外出手')
+    if effect_type == 'action_spd_stack':
+        tags.append('行动越多身法越快')
+    if effect_type == 'dodge_damage_boost':
+        tags.append('闪避后下一击更重')
+    if not tags:
+        return ''
+    return '特性：' + '，'.join(tags[:2])
+
+
 def fighter_summary_lines(fighter: dict[str, Any], created: bool) -> list[str]:
     stats = fighter['stats']
     martial_art = fighter['martial_art']
@@ -293,10 +484,13 @@ def fighter_summary_lines(fighter: dict[str, Any], created: bool) -> list[str]:
         opener = f'\u3010\u65b0\u89d2\u8272\u751f\u6210\u3011{fighter["name"]}\u521d\u5165\u6c5f\u6e56\uff0c\u540d\u518c\u5df2\u6210\u3002'
     else:
         opener = f'\u3010\u89d2\u8272\u67e5\u770b\u3011{fighter["name"]}\u7684\u5f53\u524d\u9762\u677f\u5982\u4e0b\u3002'
-    lines = [opener, star_line(fighter)]
-    lines.append(f'\u6b66\u5b66: \u3010{martial_art["name"]}\u3011{_martial_flavor(martial_art)}\uff0c{_martial_mechanics(martial_art)}\u3002')
-    lines.append(f'\u5185\u529f: \u3010{neigong["name"]}\u3011{_neigong_flavor(neigong)}\uff0c{_neigong_mechanics(neigong)}\u3002')
-    lines.append(f'\u8f7b\u529f: \u3010{qinggong["name"]}\u3011{_qinggong_flavor(qinggong)}\uff0c{_qinggong_mechanics(qinggong)}\u3002')
+    lines = [opener, star_line(fighter), growth_line(fighter)]
+    martial_signature = _martial_signature(martial_art)
+    lines.append(f'\u6b66\u5b66: \u3010{martial_art["name"]}\u3011{_martial_flavor(martial_art)}\uff0c{_martial_mechanics(martial_art)}\u3002' + (f' {martial_signature}' if martial_signature else ''))
+    neigong_signature = _neigong_signature(neigong)
+    lines.append(f'\u5185\u529f: \u3010{neigong["name"]}\u3011{_neigong_flavor(neigong)}\uff0c{_neigong_mechanics(neigong)}\u3002' + (f' {neigong_signature}' if neigong_signature else ''))
+    qinggong_signature = _qinggong_signature(qinggong)
+    lines.append(f'\u8f7b\u529f: \u3010{qinggong["name"]}\u3011{_qinggong_flavor(qinggong)}\uff0c{_qinggong_mechanics(qinggong)}\u3002' + (f' {qinggong_signature}' if qinggong_signature else ''))
     lines.append(
         f'\u9762\u677f: \u6c14\u8840 {stats["hp"]}\u3010{stat_comment("hp", stats["hp"])}\u3011 '
         f'| \u653b\u51fb {stats["atk"]}\u3010{stat_comment("atk", stats["atk"])}\u3011 '
@@ -449,4 +643,202 @@ def team3_leaderboard_message(entries: list[dict[str, Any]]) -> str:
                 f'{index}. {name} | {entry["elo_rating"]:.2f} | {title} | 胜场 {entry["wins"]} | 对战 {entry["battles"]} | 胜率 {entry["win_rate"]:.1f}%'
             )
             lines.append(f'阵容: {team_text}')
+    return '\n'.join(lines)
+
+
+def wallet_message(wallet: dict[str, Any]) -> str:
+    return f'【积分】当前持有 {int(wallet.get("points", 0))} 点。'
+
+
+def bag_message(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return '【背包】你当前还没有任何道具。'
+    lines = ['【背包】']
+    for item in items:
+        lines.append(f"{item['name']} x{item['quantity']}")
+    return '\n'.join(lines)
+
+
+def shop_message(items: list[dict[str, Any]]) -> str:
+    lines = ['【积分商店】']
+    for item in items:
+        lines.append(f"{item['name']} | {item['price']}积分")
+    return '\n'.join(lines)
+
+
+def _format_stat_delta(stat_delta: dict[str, Any]) -> str:
+    labels = {
+        "hp": "\u6c14\u8840",
+        "atk": "\u653b\u51fb",
+        "def": "\u9632\u5fa1",
+        "spd": "\u901f\u5ea6",
+        "crt": "\u66b4\u51fb",
+        "eva": "\u95ea\u907f",
+    }
+    lines = ["\u672c\u6b21\u63d0\u5347:"]
+    for key in ("hp", "atk", "def", "spd", "crt", "eva"):
+        value = float(stat_delta.get(key, 0))
+        if abs(value) <= 0:
+            continue
+        display = f"{value:g}" if key in ("spd", "crt", "eva") else str(int(round(value)))
+        lines.append(f"{labels[key]} +{display}")
+    if len(lines) == 1:
+        lines.append("\u672c\u6b21\u65e0\u660e\u663e\u5c5e\u6027\u53d8\u5316")
+    return "\n".join(lines)
+
+
+def feed_result_message(result: dict[str, Any]) -> str:
+    fighter = result["fighter"]
+    before_star = float(result.get("before_star_rating", fighter.get("base_star_rating", 0.0)))
+    after_star = float(fighter.get("star_rating", before_star))
+    node_text = f" 本次提升了 {result['level_ups']} 个星级节点。" if result.get("level_ups") else ""
+    if result.get("next_requirement") is None:
+        progress = "当前已到 5.0 星，后续不能再喂星级经验。"
+    else:
+        progress = f"当前星级经验: {result['star_exp']}/{result['next_requirement']}"
+    lines = [
+        f"【喂养成功】{fighter['name']} 使用了 {result['item_name']} x{result['quantity']}，获得 {result['gained_exp']} 星级经验。{node_text}",
+        f"星级变化: {before_star:.1f}星 -> {after_star:.1f}星",
+        star_line(fighter),
+        growth_line(fighter),
+    ]
+    if result.get("level_ups"):
+        lines.append(_format_stat_delta(result.get("stat_delta", {})))
+    if result.get("unused_quantity", 0) > 0:
+        lines.append(f"已自动封顶，本次只消耗 {result['quantity']} 个；另外 {result['unused_quantity']} 个未使用。")
+    lines.append(progress)
+    return "\n".join(lines)
+
+
+def breakthrough_message(result: dict[str, Any]) -> str:
+    fighter = result["fighter"]
+    lines = [
+        f"\u3010\u7a81\u7834\u6210\u529f\u3011{fighter['name']} \u4f7f\u7528\u4e86 {result['item_name']}\uff0c\u5df2\u8e0f\u5165 6.0 \u661f\u3002",
+        star_line(fighter),
+        growth_line(fighter),
+        _format_stat_delta(result.get("stat_delta", {})),
+    ]
+    return "\n".join(lines)
+
+
+def loadout_reroll_message(result: dict[str, Any]) -> str:
+    fighter = result['fighter']
+    return (
+        f"\u3010\u66ff\u6362\u6210\u529f\u3011{fighter['name']} \u4f7f\u7528\u4e86 {result['item_name']}\u3002\n"
+        f"\u5df2\u5c06{result['target_label']}\u4ece\u3010{result['old_entry']['name']}\u3011\u66f4\u6362\u4e3a\u3010{result['new_entry']['name']}\u3011\u3002\n"
+        f"{star_line(fighter)}"
+    )
+
+
+def martial_reroll_message(result: dict[str, Any]) -> str:
+    fighter = result['fighter']
+    return (
+        f'【武学更换】{fighter["name"]} 使用【{result["item_name"]}】，'
+        f'武学由【{result["old_martial"]["name"]}】变为【{result["new_martial"]["name"]}】。\n'
+        f'{star_line(fighter)}'
+    )
+
+
+def martial_choice_message(payload: dict[str, Any]) -> str:
+    target_label = payload.get("target_label", "\u6b66\u529f")
+    old_entry = payload.get("old_entry") or payload.get("old_martial")
+    lines = [
+        f'【天机残卷】{payload["fighter_name"]} 当前{target_label}为【{old_entry["name"]}】，请使用 /pick 1|2|3 选择:',
+    ]
+    for index, item in enumerate(payload['options'], start=1):
+        lines.append(f"{index}. {item['name']}")
+        summary = _loadout_choice_summary(item, payload.get("category"))
+        if summary:
+            lines.append(f"   {summary}")
+    return '\n'.join(lines)
+
+
+def _loadout_choice_summary(item: dict[str, Any], category: str | None) -> str:
+    normalized = str(category or "").strip().lower()
+    if normalized == "martial_art":
+        flavor = _martial_flavor(item)
+        mechanics = _martial_mechanics(item)
+        signature = _martial_signature(item)
+        parts = [part for part in (flavor, mechanics, signature) if part]
+        return " | ".join(parts[:3])
+    if normalized == "neigong":
+        flavor = _neigong_flavor(item)
+        mechanics = _neigong_mechanics(item)
+        signature = _neigong_signature(item)
+        parts = [part for part in (flavor, mechanics, signature) if part]
+        return " | ".join(parts[:3])
+    if normalized == "qinggong":
+        flavor = _qinggong_flavor(item)
+        mechanics = _qinggong_mechanics(item)
+        signature = _qinggong_signature(item)
+        parts = [part for part in (flavor, mechanics, signature) if part]
+        return " | ".join(parts[:3])
+    return ""
+
+
+
+def boss_status_message(activity: dict[str, Any] | None, entries: list[dict[str, Any]], remaining_attempts: int | None = None, daily_limit: int | None = None) -> str:
+    if activity is None:
+        return '\u3010\u4e16\u754cBOSS\u3011\u5f53\u524d\u7fa4\u8fd8\u6ca1\u6709\u6b63\u5728\u8fdb\u884c\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002'
+    lines = [
+        f"\u3010\u4e16\u754cBOSS\u3011{activity['boss_name']}",
+        '\u89c4\u5219: \u6bcf\u6b21\u6311\u6218\u90fd\u5148\u6253\u4e00\u9636\u6bb5, \u53ea\u6709\u4e8c\u9636\u6bb5\u4f24\u5bb3\u8ba1\u5165\u7fa4\u5171\u4eab\u8840\u91cf\u4e0e\u8d21\u732e\u699c\u3002',
+        f"\u4e8c\u9636\u6bb5\u8840\u91cf: {activity['phase2_current_hp']}/{activity['phase2_max_hp']}",
+    ]
+    if remaining_attempts is not None and daily_limit is not None:
+        used = max(0, int(daily_limit) - int(remaining_attempts))
+        lines.append(f'\u4eca\u65e5\u6b21\u6570: {used}/{daily_limit}, \u5269\u4f59 {remaining_attempts}')
+    if not entries:
+        lines.append('\u5f53\u524d\u8fd8\u6ca1\u6709\u4efb\u4f55\u4e8c\u9636\u6bb5\u4f24\u5bb3\u8bb0\u5f55\u3002')
+        return '\n'.join(lines)
+    lines.append('\u8d21\u732e\u699c Top 5:')
+    for index, entry in enumerate(entries[:5], start=1):
+        lines.append(f"{index}. {entry['display_name']} | \u4f24\u5bb3 {entry['total_damage']} | \u6311\u6218 {entry['attempts']}")
+    return '\n'.join(lines)
+
+
+def boss_rank_message(entries: list[dict[str, Any]]) -> str:
+    if not entries:
+        return '\u3010\u4e16\u754cBOSS\u8d21\u732e\u699c\u3011\u5f53\u524d\u8fd8\u6ca1\u6709\u4efb\u4f55\u4e8c\u9636\u6bb5\u8d21\u732e\u8bb0\u5f55\u3002'
+    lines = ['\u3010\u4e16\u754cBOSS\u8d21\u732e\u699c Top 10\u3011']
+    for index, entry in enumerate(entries[:10], start=1):
+        lines.append(f"{index}. {entry['display_name']} | \u4f24\u5bb3 {entry['total_damage']} | \u6311\u6218 {entry['attempts']}")
+    return '\n'.join(lines)
+
+
+def boss_fight_result_message(result: dict[str, Any]) -> str:
+    boss_name = str(result.get('boss_name') or '\u4e16\u754cBOSS')
+    lines = [f'\u3010\u4e16\u754cBOSS\u6311\u6218\u3011{boss_name}']
+    if not result.get('phase1_cleared'):
+        lines.append('\u4f60\u5012\u5728\u4e86\u4e00\u9636\u6bb5\u95e8\u69db\u524d, \u672c\u6b21\u672a\u80fd\u8fdb\u5165\u4e8c\u9636\u6bb5\u3002')
+        lines.append(f"\u4eca\u65e5\u5269\u4f59\u6b21\u6570: {result['remaining_attempts']}/{result['daily_limit']}")
+        return '\n'.join(lines)
+    lines.append('\u4f60\u5df2\u51fb\u7834\u4e00\u9636\u6bb5, \u6b8b\u9635\u8fdb\u5165\u4e8c\u9636\u6bb5\u3002')
+    if not result.get('entered_phase2'):
+        lines.append('\u4f46\u4f60\u7684\u961f\u4f0d\u5df2\u5728\u8fc7\u95e8\u540e\u8017\u5c3d, \u672c\u6b21\u672a\u5bf9\u4e8c\u9636\u6bb5\u9020\u6210\u4f24\u5bb3\u3002')
+        lines.append(f"\u4eca\u65e5\u5269\u4f59\u6b21\u6570: {result['remaining_attempts']}/{result['daily_limit']}")
+        return '\n'.join(lines)
+    lines.append(f"\u672c\u6b21\u4e8c\u9636\u6bb5\u4f24\u5bb3: {result['phase2_damage']}")
+    lines.append(f"\u4e8c\u9636\u6bb5\u5269\u4f59\u8840\u91cf: {result['phase2_current_hp']}/{result['phase2_max_hp']}")
+    lines.append(f"\u4f60\u7684\u7d2f\u8ba1\u8d21\u732e: {result['total_damage']}")
+    lines.append(f"\u4eca\u65e5\u5269\u4f59\u6b21\u6570: {result['remaining_attempts']}/{result['daily_limit']}")
+    if result.get('is_killed'):
+        lines.append('\u4f60\u4eec\u51fb\u6740\u4e86\u8fd9\u671f\u4e16\u754cBOSS\u3002')
+    return '\n'.join(lines)
+
+
+def boss_settlement_message(payload: dict[str, Any] | None, closed_without_kill: bool = False) -> str:
+    if closed_without_kill:
+        return '\u3010\u4e16\u754cBOSS\u5df2\u5173\u95ed\u3011\u672c\u671f\u4e16\u754cBOSS\u672a\u88ab\u51fb\u6740, \u4e0d\u53d1\u653e\u51fb\u6740\u5956\u52b1\u3002'
+    if not payload:
+        return '\u3010\u4e16\u754cBOSS\u7ed3\u7b97\u3011\u5f53\u524d\u6ca1\u6709\u53ef\u5c55\u793a\u7684\u51fb\u6740\u7ed3\u7b97\u3002'
+    lines = [f"\u3010\u4e16\u754cBOSS\u7ed3\u7b97\u3011{payload.get('boss_name', '\u4e16\u754cBOSS')}"]
+    rewards = payload.get('rewards') or []
+    if not rewards:
+        lines.append('\u672c\u671f\u6ca1\u6709\u53ef\u53d1\u653e\u7684\u8d21\u732e\u5956\u52b1\u3002')
+        return '\n'.join(lines)
+    for reward in rewards[:10]:
+        lines.append(
+            f"\u7b2c{reward['rank']}\u540d {reward['display_name']} | \u4f24\u5bb3 {reward['total_damage']} | +{reward['points']}\u79ef\u5206"
+        )
     return '\n'.join(lines)
