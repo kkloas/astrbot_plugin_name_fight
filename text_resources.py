@@ -3,6 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
+try:
+    from .stat_quality import stat_quality_comment
+except ImportError:
+    from stat_quality import stat_quality_comment
+
 HELP_LINES = [
     '\u53ef\u7528\u6307\u4ee4:',
     '/\u5e2e\u52a9 - \u67e5\u770b\u5168\u90e8\u6307\u4ee4\u8bf4\u660e',
@@ -125,67 +130,7 @@ STAR_REQUIREMENTS = {
 
 
 def stat_comment(stat: str, value: float) -> str:
-    if stat == 'hp':
-        if value >= 760:
-            return '\u5317\u51a5\u5316\u751f'
-        if value >= 620:
-            return '\u6c14\u8840\u5982\u8679'
-        if value >= 520:
-            return '\u6839\u57fa\u6df1\u539a'
-        if value >= 420:
-            return '\u5185\u606f\u8fde\u7ef5'
-        return '\u672c\u5143\u7a0d\u6b20'
-    if stat == 'atk':
-        if value >= 140:
-            return '\u648c\u5929\u52a8\u5730'
-        if value >= 100:
-            return '\u6240\u5411\u62ab\u9761'
-        if value >= 85:
-            return '\u950b\u8292\u6bd5\u9732'
-        if value >= 70:
-            return '\u84c4\u52bf\u6210\u52b2'
-        return '\u5b88\u62d9\u6c42\u7a33'
-    if stat == 'def':
-        if value >= 130:
-            return '\u82cd\u5c71\u8d1f\u96ea'
-        if value >= 95:
-            return '\u4e0d\u52a8\u5982\u5c71'
-        if value >= 80:
-            return '\u5b88\u52bf\u6c89\u96c4'
-        if value >= 65:
-            return '\u4e25\u9635\u4ee5\u5f85'
-        return '\u8f7b\u7532\u8584\u9635'
-    if stat == 'spd':
-        if value >= 110:
-            return '\u6d6e\u5149\u63a0\u5f71'
-        if value >= 72:
-            return '\u8ffd\u98ce\u9010\u7535'
-        if value >= 58:
-            return '\u8eab\u8f7b\u5982\u71d5'
-        if value >= 45:
-            return '\u8fdb\u9000\u6709\u5ea6'
-        return '\u6b65\u5c65\u6c89\u7a33'
-    if stat == 'crt':
-        if value >= 36:
-            return '\u767d\u8679\u8d2f\u65e5'
-        if value >= 24:
-            return '\u6740\u673a\u70bd\u76db'
-        if value >= 18:
-            return '\u5947\u950b\u6697\u85cf'
-        if value >= 12:
-            return '\u5076\u9732\u5ce5\u5d58'
-        return '\u7a33\u4e2d\u6c42\u80dc'
-    if stat == 'eva':
-        if value >= 42:
-            return '\u7fe9\u82e5\u60ca\u9e3f'
-        if value >= 28:
-            return '\u98d8\u6e3a\u96be\u6d4b'
-        if value >= 22:
-            return '\u95ea\u8f6c\u817e\u632a'
-        if value >= 16:
-            return '\u8f6c\u5708\u81ea\u5982'
-        return '\u820d\u907f\u5c31\u6321'
-    return ''
+    return stat_quality_comment(stat, value)
 
 
 def star_line(fighter: dict[str, Any]) -> str:

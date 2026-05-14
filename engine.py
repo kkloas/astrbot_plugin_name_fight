@@ -148,6 +148,16 @@ class CombatEngine:
         logs, winner_name, _state = self.battle_with_state(fighter_a, fighter_b)
         return logs, winner_name
 
+    def battle_with_events(self, fighter_a: dict[str, Any], fighter_b: dict[str, Any]) -> dict[str, Any]:
+        logs, winner_name, state = self.battle_with_state(fighter_a, fighter_b)
+        events = self._events_from_battle_result(fighter_a, fighter_b, logs, winner_name, state)
+        return {
+            "logs": logs,
+            "winner": winner_name,
+            "state": state,
+            "events": events,
+        }
+
     def battle_with_state(
         self,
         fighter_a: dict[str, Any],
@@ -214,6 +224,144 @@ class CombatEngine:
             "fighter_b_max_hp": int(actor_b["max_hp"]),
             "actions": actions,
         }
+
+    def _events_from_battle_result(
+        self,
+        fighter_a: dict[str, Any],
+        fighter_b: dict[str, Any],
+        logs: list[str],
+        winner_name: str | None,
+        state: dict[str, float | int | None],
+    ) -> list[dict[str, Any]]:
+        max_a = int(fighter_a["stats"]["hp"])
+        max_b = int(fighter_b["stats"]["hp"])
+        final_a = int(state.get("fighter_a_hp") or 0)
+        final_b = int(state.get("fighter_b_hp") or 0)
+        actions = max(1, int(state.get("actions") or 1))
+        events: list[dict[str, Any]] = [
+            {
+                "type": "battle_start",
+                "time": 0,
+                "fighters": {
+                    "a": self._fighter_event_summary(fighter_a, max_a),
+                    "b": self._fighter_event_summary(fighter_b, max_b),
+                },
+                "message": logs[0] if logs else "",
+            }
+        ]
+        hp_a = max_a
+        hp_b = max_b
+        action_no = 0
+        for line in logs[2:]:
+            if action_no >= actions:
+                break
+            if not line:
+                continue
+            attacker_key = "a" if action_no % 2 == 0 else "b"
+            defender_key = "b" if attacker_key == "a" else "a"
+            action_no += 1
+            events.append(
+                {
+                    "type": "turn_start",
+                    "time": action_no * 900,
+                    "action": action_no,
+                    "actor": attacker_key,
+                    "target": defender_key,
+                    "message": line,
+                }
+            )
+            if any(token in line for token in ("闪", "避", "miss", "MISS")):
+                events.append(
+                    {
+                        "type": "dodge",
+                        "time": action_no * 900 + 260,
+                        "actor": defender_key,
+                        "message": line,
+                    }
+                )
+                continue
+            if defender_key == "a":
+                next_hp = max(final_a, int(round(max_a - ((max_a - final_a) * action_no / actions))))
+                damage = max(0, hp_a - next_hp)
+                hp_before = hp_a
+                hp_a = next_hp
+            else:
+                next_hp = max(final_b, int(round(max_b - ((max_b - final_b) * action_no / actions))))
+                damage = max(0, hp_b - next_hp)
+                hp_before = hp_b
+                hp_b = next_hp
+            events.append(
+                {
+                    "type": "attack",
+                    "time": action_no * 900 + 220,
+                    "actor": attacker_key,
+                    "target": defender_key,
+                    "message": line,
+                }
+            )
+            events.append(
+                {
+                    "type": "damage",
+                    "time": action_no * 900 + 480,
+                    "target": defender_key,
+                    "amount": damage,
+                    "hpBefore": hp_before,
+                    "hpAfter": next_hp,
+                    "maxHp": max_a if defender_key == "a" else max_b,
+                    "crit": any(token in line for token in ("暴", "crit", "CRIT")),
+                    "message": line,
+                }
+            )
+            status = self._detect_status_from_line(line)
+            if status:
+                events.append(
+                    {
+                        "type": "status_apply",
+                        "time": action_no * 900 + 640,
+                        "target": defender_key,
+                        "status": status,
+                        "message": line,
+                    }
+                )
+        events.append(
+            {
+                "type": "battle_end",
+                "time": (action_no + 1) * 900,
+                "winner": winner_name,
+                "final": {
+                    "a": {"hp": final_a, "maxHp": max_a},
+                    "b": {"hp": final_b, "maxHp": max_b},
+                },
+                "message": logs[-1] if logs else "",
+            }
+        )
+        return events
+
+    def _fighter_event_summary(self, fighter: dict[str, Any], max_hp: int) -> dict[str, Any]:
+        return {
+            "name": fighter["name"],
+            "maxHp": max_hp,
+            "hp": max_hp,
+            "stats": dict(fighter["stats"]),
+            "martialArt": fighter["martial_art"]["name"],
+            "neigong": fighter["neigong"]["name"],
+            "qinggong": fighter["qinggong"]["name"],
+        }
+
+    def _detect_status_from_line(self, line: str) -> str | None:
+        status_terms = {
+            "bleeding": ("流血", "bleed"),
+            "stunned": ("眩晕", "stun"),
+            "slowed": ("迟缓", "slow"),
+            "weakened": ("虚弱", "weak"),
+            "disarmed": ("缴械", "disarm"),
+            "armor_broken": ("破甲", "armor"),
+        }
+        lowered = line.lower()
+        for status, terms in status_terms.items():
+            if any(term in line or term in lowered for term in terms):
+                return status
+        return None
 
     def _build_actor(self, fighter: dict[str, Any]) -> dict[str, Any]:
         stats = deepcopy(fighter["stats"])
