@@ -780,6 +780,75 @@ input:focus {
 
 .hero-card.compact { grid-template-columns: 168px 1fr; }
 
+.side-panel > .hero-card.compact {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.24), rgba(235, 230, 216, 0.36)),
+    url("/assets/sucai/04_info_panel_right_texture.png");
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.side-panel > .hero-card.compact .portrait {
+  width: min(210px, 76%);
+  min-height: 236px;
+  justify-self: center;
+}
+
+.side-panel > .hero-card.compact .hero-meta {
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.side-panel > .hero-card.compact .hero-meta h3,
+.side-panel > .hero-card.compact .hero-meta p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-panel > .hero-card.compact .hero-meta h3 {
+  text-align: center;
+  font-size: 24px;
+  margin-top: 2px;
+}
+
+.side-panel > .hero-card.compact .star-line {
+  justify-content: center;
+}
+
+.side-panel > .hero-card.compact .style-line {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 8px;
+}
+
+.side-panel > .hero-card.compact .stat-bars {
+  margin-top: 10px;
+}
+
+.side-panel > .hero-card.compact .stat-row {
+  grid-template-columns: 24px 42px minmax(92px, 1fr) 56px;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.side-panel > .hero-card.compact .stat-label {
+  display: block;
+}
+
+.side-panel > .hero-card.compact .stat-track {
+  min-width: 0;
+}
+
+.side-panel > .hero-card.compact .stat-value {
+  text-align: right;
+}
+
 /* =========================================================
    角色头像
    - portrait-card：五星/六星角色卡面图，优先展示完整卡面
@@ -819,7 +888,8 @@ input:focus {
 
 /* 五/六星卡面：完整展示，不裁切 */
 .portrait-card { background: #17140f; }
-.portrait-card img {
+.portrait-card img,
+.portrait-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;          /* 展示整个卡面 */
@@ -828,7 +898,20 @@ input:focus {
   transition: transform 600ms var(--ease-ink), filter 600ms var(--ease-ink);
 }
 
-.portrait-card::after {
+.portrait-avatar {
+  background: #ede7d8;
+}
+
+.portrait-avatar img {
+  filter: contrast(1.03) saturate(0.72);
+}
+
+.portrait-avatar-high img {
+  filter: contrast(1.05) saturate(0.78);
+}
+
+.portrait-card::after,
+.portrait-avatar::after {
   /* 顶部提亮、底部加深，让卡面更立体 */
   content: "";
   position: absolute;
@@ -839,6 +922,7 @@ input:focus {
 }
 
 .hero-card:hover .portrait-card img,
+.hero-card:hover .portrait-avatar img,
 .stage-fighter:hover .portrait-card img {
   transform: scale(1.04);
   filter: brightness(1.06);
@@ -976,6 +1060,8 @@ input:focus {
 .stat-row .stat-label {
   color: var(--ink-mid);
   font-weight: 600;
+  white-space: nowrap;
+  padding-left: 0;
 }
 
 .stat-track,
@@ -1039,16 +1125,9 @@ input:focus {
 .stat-row.tier-5 .stat-value { color: #9a1212; text-shadow: 0 0 9px rgba(150, 18, 18, 0.42); font-weight: 900; }
 
 /* 档位左侧小印：在 stat-label 前加一个彩色圆点暗示档位 */
-.stat-row .stat-label { position: relative; padding-left: 10px; }
+.stat-row .stat-label { position: relative; padding-left: 0; }
 .stat-row .stat-label::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 50%;
-  width: 5px; height: 5px; margin-top: -2.5px;
-  border-radius: 50%;
-  background: var(--tier-0);
-  box-shadow: 0 0 6px var(--tier-0-glow);
-  transition: background 260ms var(--ease-ink), box-shadow 260ms var(--ease-ink);
+  display: none;
 }
 .stat-row.tier-1 .stat-label::before { background: var(--tier-1); box-shadow: 0 0 6px var(--tier-1-glow); }
 .stat-row.tier-2 .stat-label::before { background: var(--tier-2); box-shadow: 0 0 6px var(--tier-2-glow); }
@@ -1203,7 +1282,7 @@ input:focus {
 }
 
 .stage-fighter h3 {
-  font-size: 22px;
+  font-size: 26px;
   letter-spacing: 4px;
   margin: 8px 0 4px;
 }
@@ -1211,6 +1290,7 @@ input:focus {
 .stage-fighter p {
   color: var(--ink-mid);
   letter-spacing: 2px;
+  font-size: 17px;
   margin: 0;
 }
 
@@ -1250,7 +1330,7 @@ input:focus {
 
 .stage-versus button {
   min-width: 140px;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: 6px;
   padding: 10px 18px;
   background: linear-gradient(180deg, #312c25, #1a1713);
@@ -1354,7 +1434,7 @@ input:focus {
 .workflow-card h3,
 .status-card h3 {
   margin: 6px 0 8px;
-  font-size: 20px;
+  font-size: 22px;
   letter-spacing: 3px;
 }
 
@@ -1363,7 +1443,13 @@ input:focus {
   margin: 4px 0;
   color: var(--ink-mid);
   letter-spacing: 1px;
-  line-height: 1.6;
+  line-height: 1.72;
+  font-size: 17px;
+}
+
+.workflow-card span,
+.section-mark {
+  font-size: 22px;
 }
 
 /* =========================================================
@@ -1719,6 +1805,7 @@ input:focus {
 }
 
 .shop-card {
+  position: relative;
   padding: 14px;
   border: 1px solid rgba(25, 23, 20, 0.55);
   background: rgba(247, 243, 232, 0.82);
@@ -1737,12 +1824,76 @@ input:focus {
   letter-spacing: 2px;
 }
 
+.item-help {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(124, 38, 29, 0.65);
+  border-radius: 50%;
+  color: var(--seal-red);
+  background: rgba(247, 243, 232, 0.96);
+  font: 700 13px/1 serif;
+  cursor: help;
+  z-index: 4;
+}
+
+.item-tooltip {
+  position: absolute;
+  top: 27px;
+  right: -4px;
+  width: 220px;
+  padding: 9px 11px;
+  border: 1px solid rgba(192, 146, 70, 0.75);
+  background: rgba(32, 29, 25, 0.96);
+  box-shadow: var(--shadow-md);
+  color: #f2e8cf;
+  font: 13px/1.6 serif;
+  letter-spacing: 1px;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+}
+
+.item-help:hover .item-tooltip,
+.item-help:focus-visible .item-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
 .bag-list {
   border: 1px solid rgba(25, 23, 20, 0.55);
   background: rgba(247, 243, 232, 0.72);
   padding: 14px;
   min-height: 220px;
   letter-spacing: 1px;
+}
+
+.bag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 7px 0;
+  border-bottom: 1px dashed rgba(25, 23, 20, 0.28);
+}
+
+.bag-item:last-child {
+  border-bottom: 0;
+}
+
+.bag-item button {
+  flex: 0 0 auto;
+  padding: 5px 9px;
 }
 
 /* =========================================================
@@ -1859,7 +2010,7 @@ input:focus {
 /* Character roster layout fix: cards were allowed to shrink below the
    portrait-plus-stat minimum, causing the card face and stats to overlap. */
 .fighters-view .card-grid {
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
   align-items: start;
 }
 
@@ -1871,13 +2022,14 @@ input:focus {
 .fighters-view .fighter-card .hero-card {
   width: 100%;
   min-width: 0;
-  grid-template-columns: minmax(132px, 42%) minmax(0, 1fr);
+  grid-template-columns: 168px minmax(0, 1fr);
   gap: 14px;
   padding: 10px;
 }
 
 .fighters-view .fighter-card .portrait {
-  width: 100%;
+  width: 168px;
+  max-width: 168px;
   min-width: 0;
 }
 
@@ -1894,11 +2046,262 @@ input:focus {
 }
 
 .fighters-view .fighter-card .stat-row {
-  grid-template-columns: 38px minmax(48px, 1fr) 48px;
-  gap: 8px;
+  grid-template-columns: 22px 34px minmax(92px, 1fr) 54px;
+  gap: 7px;
+  margin: 4px 0;
 }
 
 .fighters-view .fighter-card .stat-value {
   min-width: 0;
   text-align: right;
+}
+
+/* =========================================================
+   Material asset integration
+   ========================================================= */
+
+button:where(:not(.fighter-card):not(.workflow-card):not(.topbar nav button)) {
+  background-image:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.20), rgba(235, 226, 201, 0.22)),
+    url("/assets/material/11_buttons/paper_button_frame.png");
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-blend-mode: normal, normal;
+  color: #1c1814;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgba(255, 253, 244, 0.85);
+}
+
+.stage-versus button,
+.battle-controls button:first-child {
+  background-image:
+    linear-gradient(180deg, rgba(25, 23, 20, 0.12), rgba(12, 11, 10, 0.18)),
+    url("/assets/material/11_buttons/black_brush_button.png");
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-blend-mode: normal, normal;
+  border-color: transparent;
+  color: #fff7e8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72), 0 0 8px rgba(255, 247, 232, 0.16);
+  box-shadow: none;
+}
+
+.stage-ready::before,
+.arena::after,
+.paper-section::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.stage-ready::before {
+  inset: 40px 8% 70px;
+  background: url("/assets/material/03_ink_backgrounds/mountain_strip_02.png") center bottom / min(68%, 520px) auto no-repeat;
+  opacity: 0.26;
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+.arena::after {
+  left: 8%;
+  right: 8%;
+  bottom: 18px;
+  height: 112px;
+  background:
+    url("/assets/material/03_ink_backgrounds/ink_wash_strip.png") center bottom / 60% auto no-repeat,
+    url("/assets/material/03_ink_backgrounds/mountain_strip_01.png") center bottom / 48% auto no-repeat;
+  opacity: 0.34;
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+.arena::before {
+  z-index: 0;
+}
+
+.arena > * {
+  position: relative;
+  z-index: 1;
+}
+
+.paper-section::after {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 90px;
+  background: url("/assets/material/03_ink_backgrounds/mountain_strip_02.png") center bottom / 95% auto no-repeat;
+  opacity: 0.17;
+  mix-blend-mode: screen;
+  z-index: 0;
+}
+
+.paper-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.battle-log h3 {
+  background-image:
+    linear-gradient(90deg, rgba(21, 20, 17, 0.82), rgba(21, 20, 17, 0.30), transparent),
+    url("/assets/material/11_buttons/black_brush_button.png");
+  background-size: 100% 100%, 220px 42px;
+  background-position: left center;
+  background-repeat: no-repeat;
+}
+
+.battle-log p + p {
+  background-image: url("/assets/material/10_dividers/divider_02.png");
+  background-size: min(72%, 360px) 18px;
+  background-position: left top;
+  background-repeat: no-repeat;
+  padding-top: 12px;
+}
+
+.stat-row {
+  grid-template-columns: 24px 42px minmax(72px, 1fr) 58px;
+}
+
+.fighters-view .fighter-card .stat-row {
+  grid-template-columns: 22px 34px minmax(92px, 1fr) 54px;
+}
+
+.stat-icon,
+.chip-icon {
+  display: block;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  mix-blend-mode: multiply;
+}
+
+.stat-icon {
+  width: 22px;
+  height: 22px;
+  opacity: 0.86;
+}
+
+.chip-icon {
+  width: 24px;
+  height: 24px;
+  align-self: center;
+  grid-row: 1 / 3;
+}
+
+.stat-hp-gourd .stat-icon,
+.stat-hp-gourd .chip-icon { background-image: url("/assets/material/06_stat_icons/hp_gourd_light.png"); }
+.stat-atk-sword .stat-icon,
+.stat-atk-sword .chip-icon { background-image: url("/assets/material/06_stat_icons/atk_sword_light.png"); }
+.stat-def-shield .stat-icon,
+.stat-def-shield .chip-icon { background-image: url("/assets/material/06_stat_icons/def_shield_light.png"); }
+.stat-spd-runner .stat-icon,
+.stat-spd-runner .chip-icon { background-image: url("/assets/material/06_stat_icons/spd_runner_light.png"); }
+.stat-crit-burst .stat-icon,
+.stat-crit-burst .chip-icon { background-image: url("/assets/material/06_stat_icons/crit_burst_light.png"); }
+.stat-eva-cloud .stat-icon,
+.stat-eva-cloud .chip-icon { background-image: url("/assets/material/06_stat_icons/eva_cloud_light.png"); }
+
+.tier-chip {
+  grid-template-columns: 28px 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+}
+
+.tier-chip .chip-label,
+.tier-chip .chip-value,
+.tier-chip .chip-comment {
+  grid-column: 2;
+}
+
+.fighter-card.selected::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  width: 58px;
+  height: 58px;
+  background: url("/assets/material/08_stamps/red_ink_splash.png") center / contain no-repeat;
+  opacity: 0.28;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.fighter-card.selected > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Sucai panel texture placement */
+.workflow-card,
+.status-card,
+.fighters-view .fighter-card .hero-card {
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.workflow-roster {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.42), rgba(235, 230, 216, 0.56)),
+    url("/assets/sucai/06_step_module_texture_01.png");
+}
+
+.workflow-growth,
+.workflow-trial {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.40), rgba(235, 230, 216, 0.54)),
+    url("/assets/sucai/05_small_module_card_texture.png");
+}
+
+.workflow-rank {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.42), rgba(235, 230, 216, 0.56)),
+    url("/assets/sucai/08_step_module_texture_03.png");
+}
+
+.status-resource {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.42), rgba(235, 230, 216, 0.56)),
+    url("/assets/sucai/09_resource_treasure_module_texture.png");
+}
+
+.status-boss {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.42), rgba(235, 230, 216, 0.56)),
+    url("/assets/sucai/10_world_boss_module_texture.png");
+}
+
+.status-active {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.44), rgba(235, 230, 216, 0.58)),
+    url("/assets/sucai/02_card_panel_texture_common.png");
+}
+
+.fighters-view .fighter-card .hero-card {
+  background-image:
+    linear-gradient(rgba(248, 245, 235, 0.38), rgba(235, 230, 216, 0.52)),
+    url("/assets/sucai/01_main_view_background.png");
+}
+
+.workflow-card:hover,
+.status-card:hover,
+.fighters-view .fighter-card:hover .hero-card {
+  background-blend-mode: normal, multiply;
+  filter: brightness(1.02);
+}
+
+.stage-versus button:hover,
+.battle-controls button:first-child:hover {
+  color: #fffaf0;
+  background-image:
+    linear-gradient(180deg, rgba(74, 24, 20, 0.16), rgba(42, 13, 10, 0.20)),
+    url("/assets/material/11_buttons/black_brush_button.png");
+  border-color: rgba(165, 41, 28, 0.32);
+  box-shadow: 0 0 18px rgba(165, 41, 28, 0.34);
+}
+
+button:disabled {
+  opacity: 0.68;
 }

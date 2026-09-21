@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { PveView } from './pve/PveView';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = '';
 
 type Stats = {
   hp: number;
@@ -42,6 +43,8 @@ type Item = {
   price: number;
   quantity?: number;
   category: string;
+  description?: string;
+  energy_restore?: number;
 };
 
 type LeaderboardEntry = {
@@ -52,35 +55,6 @@ type LeaderboardEntry = {
   win_rate: number;
 };
 
-type BattleEvent = {
-  type: string;
-  time: number;
-  actor?: 'a' | 'b';
-  target?: 'a' | 'b';
-  amount?: number;
-  hpBefore?: number;
-  hpAfter?: number;
-  maxHp?: number;
-  crit?: boolean;
-  status?: string;
-  winner?: string | null;
-  message?: string;
-  final?: {
-    a: { hp: number; maxHp: number };
-    b: { hp: number; maxHp: number };
-  };
-};
-
-type BattleResult = {
-  attacker: Fighter;
-  defender: Fighter;
-  winner: string | null;
-  state: Record<string, number | string | null>;
-  events: BattleEvent[];
-  logs: string[];
-  displayLogs: string[];
-  rating: Record<string, { name: string; before: number; after: number; delta: number }>;
-};
 
 type GameState = {
   session: { userId: string; groupId: string; maxFighters: number };
@@ -91,10 +65,16 @@ type GameState = {
   shop: Item[];
   leaderboard: LeaderboardEntry[];
   worldBoss: any;
+  pveSummary: {
+    profile: { energy: number; maximum_energy: number };
+    nextStageId: string;
+    hasRequiredRoster: boolean;
+    chapterStars: Record<string, number>;
+  };
   needsFirstFighter: boolean;
 };
 
-type View = 'jianghu' | 'fighters' | 'battle' | 'shop' | 'leaderboard' | 'boss';
+type View = 'jianghu' | 'fighters' | 'pve' | 'shop' | 'leaderboard' | 'boss';
 
 const itemLabels: Record<string, string> = {
   star_exp_pill_s: '小星尘丹',
@@ -103,16 +83,9 @@ const itemLabels: Record<string, string> = {
   martial_token_basic: '洗髓符',
   martial_token_type: '换宗令',
   martial_token_choice: '天机残卷',
+  energy_pill: '行气丹',
 };
 
-const statusLabels: Record<string, string> = {
-  bleeding: '流血',
-  stunned: '眩晕',
-  slowed: '迟缓',
-  weakened: '虚弱',
-  disarmed: '缴械',
-  armor_broken: '破甲',
-};
 
 // 与 render_profile.get_stat_color + text_resources.stat_comment 严格对齐：
 // 白(0) / 绿(1) / 蓝(2) / 紫(3) / 橙(4)
@@ -134,6 +107,15 @@ const STAT_TIER_LABELS: Record<keyof Stats, string[]> = {
   eva: ['\u6b65\u6cd5\u751f\u758f', '\u820d\u907f\u5c31\u6321', '\u8f6c\u570e\u81ea\u5982', '\u95ea\u8f6c\u817e\u632a', '\u98d8\u6e3a\u96be\u6d4b', '\u7fe9\u82e5\u60ca\u9e3f'],
 };
 
+const STAT_ICON_CLASS: Record<keyof Stats, string> = {
+  hp: 'hp-gourd',
+  atk: 'atk-sword',
+  def: 'def-shield',
+  spd: 'spd-runner',
+  crt: 'crit-burst',
+  eva: 'eva-cloud',
+};
+
 function statTier(key: keyof Stats, value: number): number {
   const t = STAT_TIER_THRESHOLDS[key];
   if (!t) return 0;
@@ -147,6 +129,24 @@ function statTierLabel(key: keyof Stats, value: number): string {
   const list = STAT_TIER_LABELS[key];
   if (!list) return '';
   return list[statTier(key, value)] || '';
+}
+
+function stableIndex(text: string, modulo: number): number {
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  }
+  return modulo > 0 ? hash % modulo : 0;
+}
+
+function lowStarAvatarUrl(fighter: Fighter): string {
+  const index = stableIndex(fighter.name || 'fighter', 7) + 1;
+  return `/assets/character-avatars/avatar_${String(index).padStart(2, '0')}.png`;
+}
+
+function highStarAvatarUrl(fighter: Fighter): string {
+  const index = stableIndex(`${fighter.name}:high`, 8) + 1;
+  return `/assets/character-avatars/high-star/high_avatar_${String(index).padStart(2, '0')}.png`;
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -185,25 +185,12 @@ export function App() {
   const [newName, setNewName] = useState('');
   const [replaceMode, setReplaceMode] = useState(false);
   const [notice, setNotice] = useState('');
-  const [battle, setBattle] = useState<BattleResult | null>(null);
-  const [eventIndex, setEventIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
   const [choiceOptions, setChoiceOptions] = useState<any | null>(null);
 
   useEffect(() => {
     refresh();
   }, []);
 
-  useEffect(() => {
-    if (!battle || !playing) return;
-    if (eventIndex >= battle.events.length - 1) {
-      setPlaying(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setEventIndex((current) => current + 1), 680 / speed);
-    return () => window.clearTimeout(timer);
-  }, [battle, eventIndex, playing, speed]);
 
   // 提示自动消失
   useEffect(() => {
@@ -217,21 +204,6 @@ export function App() {
     return game.fighters.find((fighter) => fighter.name === selectedName) || game.activeFighter || game.fighters[0] || null;
   }, [game, selectedName]);
 
-  const currentEvent = battle?.events[eventIndex];
-  const battleHp = useMemo(() => {
-    if (!battle) return null;
-    let a = battle.attacker.stats.hp;
-    let b = battle.defender.stats.hp;
-    for (const event of battle.events.slice(0, eventIndex + 1)) {
-      if (event.type === 'damage' && event.target === 'a' && typeof event.hpAfter === 'number') a = event.hpAfter;
-      if (event.type === 'damage' && event.target === 'b' && typeof event.hpAfter === 'number') b = event.hpAfter;
-      if (event.type === 'battle_end' && event.final) {
-        a = event.final.a.hp;
-        b = event.final.b.hp;
-      }
-    }
-    return { a, b };
-  }, [battle, eventIndex]);
 
   async function refresh() {
     const state = await api<GameState>('/api/session/bootstrap');
@@ -276,23 +248,6 @@ export function App() {
     }
   }
 
-  async function startBattle() {
-    const result = await mutate<BattleResult>(
-      () =>
-        api('/api/battles/duel', {
-          method: 'POST',
-          body: JSON.stringify({ attackerName: selected?.name || undefined }),
-        }),
-      '战斗已结算，正在播放',
-    );
-    if (result) {
-      setBattle(result as BattleResult);
-      setEventIndex(0);
-      setPlaying(true);
-      setView('battle');
-    }
-  }
-
   if (!game) {
     return <div className="loading">正在铺开江湖卷轴...</div>;
   }
@@ -308,7 +263,7 @@ export function App() {
           {[
             ['jianghu', '总览'],
             ['fighters', '人物'],
-            ['battle', '对战'],
+            ['pve', '江湖历练'],
             ['shop', '背包'],
             ['leaderboard', '排行'],
             ['boss', '世界BOSS'],
@@ -324,7 +279,7 @@ export function App() {
         </div>
       </header>
 
-      <main className="game-grid">
+      <main className={`game-grid${view === 'pve' ? ' battle-focused' : ''}`}>
         <aside className="side-panel">
           <h2>角色信息</h2>
           {game.activeFighter ? <HeroCard fighter={game.activeFighter} compact /> : <p>尚无出战角色</p>}
@@ -340,17 +295,7 @@ export function App() {
               newName={newName}
               setNewName={setNewName}
               createFighter={() => createFighter()}
-              startBattle={startBattle}
               setView={setView}
-              battle={battle}
-              currentEvent={currentEvent}
-              battleHp={battleHp}
-              eventIndex={eventIndex}
-              setEventIndex={setEventIndex}
-              playing={playing}
-              setPlaying={setPlaying}
-              speed={speed}
-              setSpeed={setSpeed}
             />
           )}
           {view === 'fighters' && (
@@ -410,21 +355,20 @@ export function App() {
               }}
             />
           )}
-          {view === 'battle' && (
-            <BattleView
-              battle={battle}
-              currentEvent={currentEvent}
-              hp={battleHp}
-              eventIndex={eventIndex}
-              setEventIndex={setEventIndex}
-              playing={playing}
-              setPlaying={setPlaying}
-              speed={speed}
-              setSpeed={setSpeed}
-              startBattle={startBattle}
+          {view === 'pve' && <PveView
+            fighters={game.fighters}
+            request={api}
+            onRefreshGame={refresh}
+            onNotice={setNotice}
+            openFighters={() => setView('fighters')}
+          />}
+          {view === 'shop' && (
+            <ShopView
+              game={game}
+              buy={(id, quantity) => mutate(() => api('/api/shop/buy', { method: 'POST', body: JSON.stringify({ itemId: id, quantity }) }), '购买成功')}
+              useItem={(id) => mutate(() => api('/api/items/use', { method: 'POST', body: JSON.stringify({ itemId: id }) }), '历练体力已恢复')}
             />
           )}
-          {view === 'shop' && <ShopView game={game} buy={(id, quantity) => mutate(() => api('/api/shop/buy', { method: 'POST', body: JSON.stringify({ itemId: id, quantity }) }), '购买成功')} />}
           {view === 'leaderboard' && <LeaderboardView entries={game.leaderboard} />}
           {view === 'boss' && <BossView boss={game.worldBoss} />}
           </div>
@@ -480,13 +424,20 @@ function FighterPortrait({ fighter, size = 'normal' }: { fighter: Fighter; size?
   const [failed, setFailed] = useState(false);
   const rating = fighter.starRating || 0;
   const breakthrough = fighter.breakthroughStage || 0;
-  const hasCard = (rating >= 5 || breakthrough > 0) && !failed;
-  const cardUrl = hasCard && fighter.cardUrl ? `${API_BASE}${fighter.cardUrl}` : '';
   const tierClass = rating >= 6 || breakthrough > 0 ? 'tier-6' : rating >= 5 ? 'tier-5' : rating >= 4 ? 'tier-4' : 'tier-3';
-  if (cardUrl) {
+  if ((rating >= 5 || breakthrough > 0) && !failed) {
     return (
-      <div className={`portrait portrait-card ${tierClass} size-${size}`}>
-        <img src={cardUrl} alt={`${fighter.name} card`} onError={() => setFailed(true)} />
+      <div className={`portrait portrait-avatar portrait-avatar-high ${tierClass} size-${size}`}>
+        <img src={highStarAvatarUrl(fighter)} alt={`${fighter.name} avatar`} onError={() => setFailed(true)} />
+        <span className="ink-seal">{rating >= 6 || breakthrough > 0 ? '绝' : '传'}</span>
+      </div>
+    );
+  }
+  if (rating < 5 && breakthrough <= 0) {
+    return (
+      <div className={`portrait portrait-avatar ${tierClass} size-${size}`}>
+        <img src={lowStarAvatarUrl(fighter)} alt={`${fighter.name} avatar`} />
+        <span className="ink-seal">{rating >= 4 ? '上' : '中'}</span>
       </div>
     );
   }
@@ -520,7 +471,8 @@ function StatBars({ stats }: { stats: Stats }) {
         const pct = hpPercent(value, max);
         const tierLabel = statTierLabel(key, value);
         return (
-          <div className={`stat-row tier-${tier}`} key={key} title={`${label} ${isPercent ? value.toFixed(1) + '%' : value.toFixed(0)} · ${tierLabel}`}>
+          <div className={`stat-row tier-${tier} stat-${STAT_ICON_CLASS[key]}`} key={key} title={`${label} ${isPercent ? value.toFixed(1) + '%' : value.toFixed(0)} · ${tierLabel}`}>
+            <span className="stat-icon" aria-hidden="true" />
             <span className="stat-label">{label}</span>
             <div className="stat-track"><i style={{ width: pct }} /></div>
             <b className="stat-value">{isPercent ? value.toFixed(1) + '%' : value.toFixed(0)}</b>
@@ -538,6 +490,7 @@ function DailyPanel({ game }: { game: GameState }) {
       <h3>日常</h3>
       <p>角色仓库 {game.fighters.length}/{game.session.maxFighters}</p>
       <p>背包物品 {game.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</p>
+      <p>历练体力 {game.pveSummary.profile.energy}/{game.pveSummary.profile.maximum_energy}</p>
       <p>世界BOSS {activeBoss ? `${activeBoss.phase2_current_hp}/${activeBoss.phase2_max_hp}` : '未开启'}</p>
     </div>
   );
@@ -548,17 +501,7 @@ function JianghuView({
   newName,
   setNewName,
   createFighter,
-  startBattle,
   setView,
-  battle,
-  currentEvent,
-  battleHp,
-  eventIndex,
-  setEventIndex,
-  playing,
-  setPlaying,
-  speed,
-  setSpeed,
 }: any) {
   const active = game.activeFighter;
   const boss = game.worldBoss?.activity;
@@ -571,41 +514,28 @@ function JianghuView({
             <h1>创建你的第一名角色</h1>
             <CreateBox newName={newName} setNewName={setNewName} createFighter={createFighter} />
           </div>
-        ) : battle ? (
-          <BattleView
-            battle={battle}
-            currentEvent={currentEvent}
-            hp={battleHp}
-            eventIndex={eventIndex}
-            setEventIndex={setEventIndex}
-            playing={playing}
-            setPlaying={setPlaying}
-            speed={speed}
-            setSpeed={setSpeed}
-            startBattle={startBattle}
-          />
         ) : (
-          <StageReady active={active} startBattle={startBattle} setView={setView} />
+          <StageReady active={active} openPve={() => setView('pve')} setView={setView} />
         )}
       </section>
 
       <section className="workflow-grid">
-        <button className="workflow-card" onClick={() => setView('fighters')}>
+        <button className="workflow-card workflow-roster" onClick={() => setView('fighters')}>
           <span>01</span>
           <h3>角色仓库</h3>
           <p>当前 {game.fighters.length}/{game.session.maxFighters} 名角色，可创建、替换并设置出战。</p>
         </button>
-        <button className="workflow-card" onClick={() => setView('fighters')}>
+        <button className="workflow-card workflow-growth" onClick={() => setView('fighters')}>
           <span>02</span>
           <h3>培养养成</h3>
           <p>使用升星丹、突破丹和武学洗练道具，全部走现有道具体系。</p>
         </button>
-        <button className="workflow-card" onClick={startBattle}>
+        <button className="workflow-card workflow-trial" onClick={() => setView('pve')}>
           <span>03</span>
-          <h3>1v1 试炼</h3>
-          <p>调用现有战斗引擎结算，再用血条、伤害飘字和战报回放。</p>
+          <h3>江湖历练</h3>
+          <p>三人接力挑战十八个固定关卡，争取满星通关并领取章节宝箱。</p>
         </button>
-        <button className="workflow-card" onClick={() => setView('leaderboard')}>
+        <button className="workflow-card workflow-rank" onClick={() => setView('leaderboard')}>
           <span>04</span>
           <h3>排行榜</h3>
           <p>{game.leaderboard.length ? `已有 ${game.leaderboard.length} 条排行记录。` : '完成一场战斗后进入排行。'}</p>
@@ -613,7 +543,7 @@ function JianghuView({
       </section>
 
       <section className="status-grid">
-        <div className="status-card">
+        <div className="status-card status-active">
           <h3>当前出战</h3>
           {active ? (
             <>
@@ -624,12 +554,13 @@ function JianghuView({
             <p>暂无出战角色。</p>
           )}
         </div>
-        <div className="status-card">
+        <div className="status-card status-resource">
           <h3>资源</h3>
           <p>积分 {game.wallet.points}</p>
+          <p>历练体力 {game.pveSummary.profile.energy}/{game.pveSummary.profile.maximum_energy}</p>
           <p>背包物品 {game.items.reduce((sum: number, item: Item) => sum + Number(item.quantity || 0), 0)}</p>
         </div>
-        <div className="status-card">
+        <div className="status-card status-boss">
           <h3>世界BOSS</h3>
           {boss ? (
             <>
@@ -645,7 +576,7 @@ function JianghuView({
   );
 }
 
-function StageReady({ active, startBattle, setView }: { active: Fighter | null; startBattle: () => void; setView: (view: View) => void }) {
+function StageReady({ active, openPve, setView }: { active: Fighter | null; openPve: () => void; setView: (view: View) => void }) {
   return (
     <div className="stage-ready">
       <div className="stage-ink-bg" />
@@ -659,16 +590,16 @@ function StageReady({ active, startBattle, setView }: { active: Fighter | null; 
         <p>{active ? `${active.martialArt.name} / ${active.neigong.name}` : '请先创建角色'}</p>
       </div>
       <div className="stage-versus">
-        <span>VS</span>
-        <button onClick={startBattle} disabled={!active}>开始试炼</button>
+        <span>行</span>
+        <button onClick={openPve} disabled={!active}>进入历练</button>
       </div>
       <div className="stage-fighter right ghost">
         <div className="portrait portrait-ink tier-3 size-large">
           <div className="ink-scroll"><span className="ink-char">影</span><span className="ink-sub">试炼</span></div>
           <span className="ink-seal">影</span>
         </div>
-        <h3>试炼影身</h3>
-        <p>按当前角色生成的试炼对手</p>
+        <h3>江湖舆图</h3>
+        <p>青石镇、黑水寨与天机楼</p>
       </div>
       <div className="stage-footer">
         <button onClick={() => setView('fighters')}>角色仓库</button>
@@ -754,7 +685,8 @@ function DetailPanel({ fighter }: { fighter: Fighter }) {
           const comment = statTierLabel(key, value);
           const valText = isPercent ? `${value.toFixed(1)}%` : value.toFixed(0);
           return (
-            <div className={`tier-chip tier-${tier}`} key={key} title={`${label} ${valText} · ${comment}`}>
+            <div className={`tier-chip tier-${tier} stat-${STAT_ICON_CLASS[key]}`} key={key} title={`${label} ${valText} · ${comment}`}>
+              <span className="chip-icon" aria-hidden="true" />
               <span className="chip-label">{label}</span>
               <span className="chip-value">{valText}</span>
               <span className="chip-comment">{comment}</span>
@@ -766,89 +698,17 @@ function DetailPanel({ fighter }: { fighter: Fighter }) {
   );
 }
 
-function BattleView({ battle, currentEvent, hp, eventIndex, setEventIndex, playing, setPlaying, speed, setSpeed, startBattle }: any) {
-  if (!battle) {
-    return (
-      <div className="empty-battle">
-        <h2>战斗剧场</h2>
-        <p>选择当前出战角色后，可以直接开始一场试炼。</p>
-        <button onClick={startBattle}>开始试炼</button>
-      </div>
-    );
-  }
-  const aHp = hp?.a ?? battle.attacker.stats.hp;
-  const bHp = hp?.b ?? battle.defender.stats.hp;
-  return (
-    <div className="battle-view">
-      <div className="battle-status">
-        <span>{eventIndex >= battle.events.length - 1 ? '战斗已结束，正在回放' : '战斗回放中'}</span>
-        <button title="战斗仍由现有引擎结算，这里只负责可视化回放。">?</button>
-      </div>
-      <div className="arena">
-        <Combatant side="left" fighter={battle.attacker} hp={aHp} active={currentEvent?.actor === 'a'} hit={currentEvent?.target === 'a' && currentEvent?.type === 'damage'} />
-        <div className="clash-mark">{currentEvent?.type === 'damage' ? `-${currentEvent.amount}` : currentEvent?.type === 'dodge' ? '闪' : '战'}</div>
-        <Combatant side="right" fighter={battle.defender} hp={bHp} active={currentEvent?.actor === 'b'} hit={currentEvent?.target === 'b' && currentEvent?.type === 'damage'} />
-        <DamageLayer event={currentEvent} eventIndex={eventIndex} />
-      </div>
-      <div className="battle-controls">
-        <button onClick={() => setPlaying(!playing)}>{playing ? '暂停' : '播放'}</button>
-        <button onClick={() => setEventIndex(0)}>重播</button>
-        <button onClick={() => setEventIndex(battle.events.length - 1)}>跳过</button>
-        <button onClick={() => setSpeed(speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1)}>倍速 {speed}x</button>
-      </div>
-      <div className="battle-log">
-        <h3>战报</h3>
-        {visibleBattleLogs(battle, eventIndex).map((line: string, index: number) => (
-          <p key={`${index}-${line}`}>{line}</p>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function visibleBattleLogs(battle: BattleResult, eventIndex: number): string[] {
-  const logs = battle.displayLogs?.length ? battle.displayLogs : battle.logs;
-  if (!logs.length) return [];
-  const progress = battle.events.length <= 1 ? 1 : eventIndex / (battle.events.length - 1);
-  const visibleCount = Math.max(1, Math.ceil(logs.length * progress));
-  return logs.slice(0, visibleCount);
-}
-
-function Combatant({ side, fighter, hp, active, hit }: { side: string; fighter: Fighter; hp: number; active: boolean; hit: boolean }) {
-  return (
-    <div className={`combatant ${side} ${active ? 'active' : ''} ${hit ? 'hit' : ''}`}>
-      <div className="hp-line"><i style={{ width: hpPercent(hp, fighter.stats.hp) }} /></div>
-      <FighterPortrait fighter={fighter} size="arena" />
-      <h3>{fighter.name}</h3>
-      <p>{hp}/{fighter.stats.hp}</p>
-    </div>
-  );
-}
-
-function DamageLayer({ event, eventIndex }: { event?: BattleEvent; eventIndex: number }) {
-  if (!event) return null;
-  const isDamage = event.type === 'damage' && typeof event.amount === 'number';
-  const isDodge = event.type === 'dodge';
-  if (!isDamage && !isDodge) return null;
-  const side = event.target === 'a' ? 'left' : 'right';
-  const style: CSSProperties = side === 'left' ? { left: '25%' } : { left: '75%' };
-  let cls = 'damage-pop';
-  let text = '';
-  if (isDamage) {
-    cls += event.crit ? ' crit' : '';
-    text = event.crit ? `暴击 -${event.amount}` : `-${event.amount}`;
-  } else {
-    cls += ' dodge';
-    text = '闪';
-  }
-  return (
-    <div className="damage-layer">
-      <div key={`${eventIndex}-${event.type}-${event.target}`} className={cls} style={style}>{text}</div>
-    </div>
-  );
-}
-
-function ShopView({ game, buy }: { game: GameState; buy: (id: string, quantity: number) => void }) {
+function ShopView({
+  game,
+  buy,
+  useItem,
+}: {
+  game: GameState;
+  buy: (id: string, quantity: number) => void;
+  useItem: (id: string) => void;
+}) {
+  const energyIsFull = game.pveSummary.profile.energy >= game.pveSummary.profile.maximum_energy;
   return (
     <div className="shop-view">
       <section>
@@ -856,6 +716,10 @@ function ShopView({ game, buy }: { game: GameState; buy: (id: string, quantity: 
         <div className="shop-grid">
           {game.shop.map((item) => (
             <div className="shop-card" key={item.item_id}>
+              <span className="item-help" tabIndex={0} aria-label={`用途: ${item.description || '暂无说明'}`}>
+                !
+                <span className="item-tooltip" role="tooltip">{item.description || '暂无说明'}</span>
+              </span>
               <h3>{displayItem(item)}</h3>
               <p>价格 {item.price}</p>
               <button onClick={() => buy(item.item_id, 1)}>购买</button>
@@ -866,7 +730,16 @@ function ShopView({ game, buy }: { game: GameState; buy: (id: string, quantity: 
       <section>
         <h2>背包</h2>
         <div className="bag-list">
-          {game.items.length ? game.items.map((item) => <p key={item.item_id}>{displayItem(item)} x{item.quantity}</p>) : <p>背包空空。</p>}
+          {game.items.length ? game.items.map((item) => (
+            <div className="bag-item" key={item.item_id}>
+              <span>{displayItem(item)} x{item.quantity}</span>
+              {item.category === 'energy' && (
+                <button disabled={energyIsFull} onClick={() => useItem(item.item_id)}>
+                  {energyIsFull ? '体力已满' : '使用'}
+                </button>
+              )}
+            </div>
+          )) : <p>背包空空。</p>}
         </div>
       </section>
     </div>

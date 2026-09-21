@@ -6,6 +6,7 @@ import hashlib
 import random
 import shutil
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
@@ -46,12 +47,51 @@ INITIAL_SIX_STAR_CHANCE = 0.003
 INNATE_SIX_STAR_POOL = 510
 SIGNIN_POINTS = 50
 ITEM_CATALOG = {
-    "star_exp_pill_s": {"name": "小星尘丹", "price": 45, "star_exp": 50, "category": "growth"},
-    "star_exp_pill_m": {"name": "中星尘丹", "price": 90, "star_exp": 120, "category": "growth"},
-    "breakthrough_pill": {"name": "破境丹", "price": 900, "category": "breakthrough"},
-    "martial_token_basic": {"name": "洗髓符", "price": 220, "category": "martial_basic"},
-    "martial_token_type": {"name": "换宗令", "price": 420, "category": "martial_type"},
-    "martial_token_choice": {"name": "天机残卷", "price": 500, "category": "martial_choice"},
+    "star_exp_pill_s": {
+        "name": "小星尘丹",
+        "price": 45,
+        "star_exp": 50,
+        "category": "growth",
+        "description": "用于角色培养, 增加 50 点星尘经验",
+    },
+    "star_exp_pill_m": {
+        "name": "中星尘丹",
+        "price": 90,
+        "star_exp": 120,
+        "category": "growth",
+        "description": "用于角色培养, 增加 120 点星尘经验",
+    },
+    "breakthrough_pill": {
+        "name": "破境丹",
+        "price": 900,
+        "category": "breakthrough",
+        "description": "五星角色突破至六星时消耗",
+    },
+    "martial_token_basic": {
+        "name": "洗髓符",
+        "price": 220,
+        "category": "martial_basic",
+        "description": "用于随机更换角色武学",
+    },
+    "martial_token_type": {
+        "name": "换宗令",
+        "price": 420,
+        "category": "martial_type",
+        "description": "用于随机更换角色内功或轻功",
+    },
+    "martial_token_choice": {
+        "name": "天机残卷",
+        "price": 500,
+        "category": "martial_choice",
+        "description": "生成三个武学候选并选择其中一个",
+    },
+    "energy_pill": {
+        "name": "行气丹",
+        "price": 80,
+        "energy_restore": 30,
+        "category": "energy",
+        "description": "使用后恢复 30 点历练体力, 最高恢复至 100",
+    },
 }
 ITEM_NAME_TO_ID = {data["name"]: item_id for item_id, data in ITEM_CATALOG.items()}
 BATTLE_POINT_REWARDS = {
@@ -244,6 +284,7 @@ class FighterRepository:
                     "price": int(data.get("price", 0)),
                     "quantity": int(row["quantity"]),
                     "category": str(data.get("category", "unknown")),
+                    "description": str(data.get("description", "")),
                 }
             )
         return items
@@ -294,6 +335,395 @@ class FighterRepository:
             "bag_quantity": bag_count,
             "points": points,
             "cost": total_cost,
+        }
+
+    def _ensure_pve_profile(self, connection: sqlite3.Connection, user_id: str, maximum_energy: int, now: int) -> sqlite3.Row:
+        connection.execute(
+            """
+            INSERT INTO pve_profiles (user_id, energy, energy_updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO NOTHING
+            """,
+            (user_id, int(maximum_energy), int(now)),
+        )
+        row = connection.execute(
+            """
+            SELECT user_id, energy, energy_updated_at, team_slot1, team_slot2, team_slot3
+            FROM pve_profiles
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("PVE profile row missing")
+        return row
+
+    def _refresh_pve_energy(
+        self,
+        connection: sqlite3.Connection,
+        row: sqlite3.Row,
+        maximum_energy: int,
+        recovery_seconds: int,
+        now: int,
+    ) -> sqlite3.Row:
+        energy = min(int(maximum_energy), max(0, int(row["energy"])))
+        updated_at = min(int(now), int(row["energy_updated_at"]))
+        if energy >= int(maximum_energy):
+            next_energy = int(maximum_energy)
+            next_updated_at = int(now)
+        else:
+            recovered = max(0, int(now) - updated_at) // max(1, int(recovery_seconds))
+            next_energy = min(int(maximum_energy), energy + recovered)
+            next_updated_at = updated_at + recovered * max(1, int(recovery_seconds))
+            if next_energy >= int(maximum_energy):
+                next_updated_at = int(now)
+        if next_energy != int(row["energy"]) or next_updated_at != int(row["energy_updated_at"]):
+            connection.execute(
+                "UPDATE pve_profiles SET energy = ?, energy_updated_at = ? WHERE user_id = ?",
+                (next_energy, next_updated_at, str(row["user_id"])),
+            )
+        refreshed = connection.execute(
+            """
+            SELECT user_id, energy, energy_updated_at, team_slot1, team_slot2, team_slot3
+            FROM pve_profiles
+            WHERE user_id = ?
+            """,
+            (str(row["user_id"]),),
+        ).fetchone()
+        if refreshed is None:
+            raise RuntimeError("PVE profile refresh failed")
+        return refreshed
+
+    def _pve_profile_payload(
+        self,
+        row: sqlite3.Row,
+        maximum_energy: int,
+        recovery_seconds: int,
+        now: int,
+    ) -> dict[str, Any]:
+        energy = int(row["energy"])
+        updated_at = int(row["energy_updated_at"])
+        next_recovery_at = None
+        if energy < int(maximum_energy):
+            next_recovery_at = updated_at + max(1, int(recovery_seconds))
+        slots = [row["team_slot1"], row["team_slot2"], row["team_slot3"]]
+        return {
+            "user_id": str(row["user_id"]),
+            "energy": energy,
+            "maximum_energy": int(maximum_energy),
+            "recovery_seconds": int(recovery_seconds),
+            "energy_updated_at": updated_at,
+            "next_recovery_at": next_recovery_at,
+            "server_time": int(now),
+            "team_slots": [int(slot) for slot in slots if slot is not None],
+        }
+
+    def get_pve_profile(
+        self,
+        user_id: str,
+        maximum_energy: int = 100,
+        recovery_seconds: int = 360,
+        now: int | None = None,
+    ) -> dict[str, Any]:
+        timestamp = int(time.time()) if now is None else int(now)
+        with self._connect() as connection:
+            row = self._ensure_pve_profile(connection, user_id, maximum_energy, timestamp)
+            row = self._refresh_pve_energy(connection, row, maximum_energy, recovery_seconds, timestamp)
+            connection.commit()
+        return self._pve_profile_payload(row, maximum_energy, recovery_seconds, timestamp)
+
+    def use_pve_energy_item(
+        self,
+        user_id: str,
+        item_key: str,
+        maximum_energy: int = 100,
+        recovery_seconds: int = 360,
+        now: int | None = None,
+    ) -> dict[str, Any]:
+        item_id, data = self.get_item_catalog_entry(item_key)
+        restore_amount = int(data.get("energy_restore", 0))
+        if restore_amount <= 0:
+            raise ValueError("该道具不能恢复历练体力")
+        timestamp = int(time.time()) if now is None else int(now)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            profile = self._ensure_pve_profile(connection, user_id, maximum_energy, timestamp)
+            profile = self._refresh_pve_energy(
+                connection,
+                profile,
+                maximum_energy,
+                recovery_seconds,
+                timestamp,
+            )
+            current_energy = int(profile["energy"])
+            if current_energy >= int(maximum_energy):
+                raise ValueError("历练体力已满")
+            item_row = connection.execute(
+                "SELECT quantity FROM user_items WHERE user_id = ? AND item_id = ?",
+                (user_id, item_id),
+            ).fetchone()
+            if item_row is None or int(item_row["quantity"]) <= 0:
+                raise ValueError("背包道具数量不足")
+            restored = min(restore_amount, int(maximum_energy) - current_energy)
+            next_energy = current_energy + restored
+            next_updated_at = timestamp if next_energy >= int(maximum_energy) else int(profile["energy_updated_at"])
+            remaining = self._change_item_quantity(connection, user_id, item_id, -1)
+            connection.execute(
+                "UPDATE pve_profiles SET energy = ?, energy_updated_at = ? WHERE user_id = ?",
+                (next_energy, next_updated_at, user_id),
+            )
+            profile = connection.execute(
+                """
+                SELECT user_id, energy, energy_updated_at, team_slot1, team_slot2, team_slot3
+                FROM pve_profiles WHERE user_id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+            connection.commit()
+        if profile is None:
+            raise RuntimeError("PVE energy item update failed")
+        return {
+            "item_id": item_id,
+            "item_name": str(data["name"]),
+            "restored": restored,
+            "remaining": remaining,
+            "profile": self._pve_profile_payload(profile, maximum_energy, recovery_seconds, timestamp),
+        }
+
+    def set_pve_team(
+        self,
+        user_id: str,
+        slots: list[int] | tuple[int, int, int],
+        maximum_energy: int = 100,
+        recovery_seconds: int = 360,
+        now: int | None = None,
+    ) -> dict[str, Any]:
+        normalized = [int(slot) for slot in slots]
+        if len(normalized) != 3 or len(set(normalized)) != 3:
+            raise ValueError("PVE 出战队伍必须选择三个不重复的角色槽位")
+        if any(slot < 1 or slot > MAX_FIGHTERS_PER_USER for slot in normalized):
+            raise ValueError(f"角色槽位只能在 1 到 {MAX_FIGHTERS_PER_USER} 之间")
+        timestamp = int(time.time()) if now is None else int(now)
+        with self._connect() as connection:
+            placeholders = ",".join("?" for _ in normalized)
+            rows = connection.execute(
+                f"SELECT slot_index FROM user_fighters WHERE user_id = ? AND slot_index IN ({placeholders})",
+                (user_id, *normalized),
+            ).fetchall()
+            if {int(row["slot_index"]) for row in rows} != set(normalized):
+                raise ValueError("所选槽位中存在空位")
+            row = self._ensure_pve_profile(connection, user_id, maximum_energy, timestamp)
+            row = self._refresh_pve_energy(connection, row, maximum_energy, recovery_seconds, timestamp)
+            connection.execute(
+                """
+                UPDATE pve_profiles
+                SET team_slot1 = ?, team_slot2 = ?, team_slot3 = ?
+                WHERE user_id = ?
+                """,
+                (normalized[0], normalized[1], normalized[2], user_id),
+            )
+            connection.commit()
+            row = connection.execute(
+                """
+                SELECT user_id, energy, energy_updated_at, team_slot1, team_slot2, team_slot3
+                FROM pve_profiles WHERE user_id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("PVE team update failed")
+        return self._pve_profile_payload(row, maximum_energy, recovery_seconds, timestamp)
+
+    def get_pve_stage_progress(self, user_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT stage_id, best_stars, clear_count, first_cleared_at, last_cleared_at
+                FROM pve_stage_progress
+                WHERE user_id = ?
+                ORDER BY stage_id ASC
+                """,
+                (user_id,),
+            ).fetchall()
+        return [
+            {
+                "stage_id": str(row["stage_id"]),
+                "best_stars": int(row["best_stars"]),
+                "clear_count": int(row["clear_count"]),
+                "first_cleared_at": None if row["first_cleared_at"] is None else int(row["first_cleared_at"]),
+                "last_cleared_at": None if row["last_cleared_at"] is None else int(row["last_cleared_at"]),
+            }
+            for row in rows
+        ]
+
+    def get_pve_claimed_rewards(self, user_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT chapter_id, star_threshold, claimed_at
+                FROM pve_chapter_rewards
+                WHERE user_id = ?
+                ORDER BY chapter_id ASC, star_threshold ASC
+                """,
+                (user_id,),
+            ).fetchall()
+        return [
+            {
+                "chapter_id": str(row["chapter_id"]),
+                "star_threshold": int(row["star_threshold"]),
+                "claimed_at": int(row["claimed_at"]),
+            }
+            for row in rows
+        ]
+
+    def _grant_pve_reward(
+        self,
+        connection: sqlite3.Connection,
+        user_id: str,
+        reward: dict[str, Any],
+    ) -> dict[str, Any]:
+        points = max(0, int(reward.get("points", 0)))
+        wallet = self._ensure_wallet_row(connection, user_id)
+        wallet_points = int(wallet["points"]) + points
+        connection.execute("UPDATE user_wallets SET points = ? WHERE user_id = ?", (wallet_points, user_id))
+        granted_items: list[dict[str, Any]] = []
+        for item in reward.get("items", []):
+            item_id = str(item.get("item_id") or "")
+            quantity = int(item.get("quantity", 0))
+            if not item_id or quantity <= 0:
+                continue
+            if item_id not in ITEM_CATALOG:
+                raise ValueError(f"未知的 PVE 奖励道具: {item_id}")
+            bag_quantity = self._change_item_quantity(connection, user_id, item_id, quantity)
+            granted_items.append({
+                "item_id": item_id,
+                "name": str(ITEM_CATALOG[item_id]["name"]),
+                "quantity": quantity,
+                "bag_quantity": bag_quantity,
+            })
+        return {"points": points, "wallet_points": wallet_points, "items": granted_items}
+
+    def settle_pve_attempt(
+        self,
+        user_id: str,
+        stage_id: str,
+        energy_cost: int,
+        victory: bool,
+        stars: int,
+        first_clear_reward: dict[str, Any],
+        repeat_reward: dict[str, Any],
+        maximum_energy: int = 100,
+        recovery_seconds: int = 360,
+        now: int | None = None,
+    ) -> dict[str, Any]:
+        timestamp = int(time.time()) if now is None else int(now)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            profile = self._ensure_pve_profile(connection, user_id, maximum_energy, timestamp)
+            profile = self._refresh_pve_energy(connection, profile, maximum_energy, recovery_seconds, timestamp)
+            if int(profile["energy"]) < int(energy_cost):
+                raise ValueError("体力不足")
+            connection.execute(
+                "UPDATE pve_profiles SET energy = energy - ? WHERE user_id = ?",
+                (int(energy_cost), user_id),
+            )
+            progress = connection.execute(
+                """
+                SELECT best_stars, clear_count, first_cleared_at
+                FROM pve_stage_progress
+                WHERE user_id = ? AND stage_id = ?
+                """,
+                (user_id, stage_id),
+            ).fetchone()
+            was_cleared = progress is not None and int(progress["clear_count"]) > 0
+            reward_payload = {"points": 0, "wallet_points": int(self._ensure_wallet_row(connection, user_id)["points"]), "items": []}
+            best_stars = 0 if progress is None else int(progress["best_stars"])
+            clear_count = 0 if progress is None else int(progress["clear_count"])
+            first_clear = bool(victory and not was_cleared)
+            if victory:
+                best_stars = max(best_stars, max(1, min(3, int(stars))))
+                clear_count += 1
+                first_cleared_at = timestamp if progress is None or progress["first_cleared_at"] is None else int(progress["first_cleared_at"])
+                connection.execute(
+                    """
+                    INSERT INTO pve_stage_progress (
+                        user_id, stage_id, best_stars, clear_count, first_cleared_at, last_cleared_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(user_id, stage_id) DO UPDATE SET
+                        best_stars = MAX(pve_stage_progress.best_stars, excluded.best_stars),
+                        clear_count = pve_stage_progress.clear_count + 1,
+                        first_cleared_at = COALESCE(pve_stage_progress.first_cleared_at, excluded.first_cleared_at),
+                        last_cleared_at = excluded.last_cleared_at
+                    """,
+                    (user_id, stage_id, best_stars, 1, first_cleared_at, timestamp),
+                )
+                reward_payload = self._grant_pve_reward(
+                    connection,
+                    user_id,
+                    first_clear_reward if first_clear else repeat_reward,
+                )
+            profile = connection.execute(
+                """
+                SELECT user_id, energy, energy_updated_at, team_slot1, team_slot2, team_slot3
+                FROM pve_profiles WHERE user_id = ?
+                """,
+                (user_id,),
+            ).fetchone()
+            connection.commit()
+        if profile is None:
+            raise RuntimeError("PVE settlement profile missing")
+        return {
+            "first_clear": first_clear,
+            "best_stars": best_stars,
+            "clear_count": clear_count,
+            "reward": reward_payload,
+            "profile": self._pve_profile_payload(profile, maximum_energy, recovery_seconds, timestamp),
+        }
+
+    def claim_pve_chapter_reward(
+        self,
+        user_id: str,
+        chapter_id: str,
+        stage_ids: list[str],
+        star_threshold: int,
+        reward: dict[str, Any],
+        now: int | None = None,
+    ) -> dict[str, Any]:
+        timestamp = int(time.time()) if now is None else int(now)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            placeholders = ",".join("?" for _ in stage_ids)
+            row = connection.execute(
+                f"SELECT COALESCE(SUM(best_stars), 0) AS stars FROM pve_stage_progress WHERE user_id = ? AND stage_id IN ({placeholders})",
+                (user_id, *stage_ids),
+            ).fetchone()
+            total_stars = 0 if row is None else int(row["stars"])
+            if total_stars < int(star_threshold):
+                raise ValueError(f"章节星数不足，需要 {int(star_threshold)} 星")
+            existing = connection.execute(
+                """
+                SELECT 1 FROM pve_chapter_rewards
+                WHERE user_id = ? AND chapter_id = ? AND star_threshold = ?
+                """,
+                (user_id, chapter_id, int(star_threshold)),
+            ).fetchone()
+            if existing is not None:
+                raise ValueError("该章节宝箱已经领取")
+            reward_payload = self._grant_pve_reward(connection, user_id, reward)
+            connection.execute(
+                """
+                INSERT INTO pve_chapter_rewards (user_id, chapter_id, star_threshold, claimed_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, chapter_id, int(star_threshold), timestamp),
+            )
+            connection.commit()
+        return {
+            "chapter_id": chapter_id,
+            "star_threshold": int(star_threshold),
+            "chapter_stars": total_stars,
+            "claimed_at": timestamp,
+            "reward": reward_payload,
         }
 
     def _init_db(self) -> None:
@@ -498,6 +928,42 @@ class FighterRepository:
                     payload TEXT NOT NULL DEFAULT '{}',
                     settled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (boss_id, group_id)
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pve_profiles (
+                    user_id TEXT PRIMARY KEY,
+                    energy INTEGER NOT NULL DEFAULT 100,
+                    energy_updated_at INTEGER NOT NULL,
+                    team_slot1 INTEGER DEFAULT NULL,
+                    team_slot2 INTEGER DEFAULT NULL,
+                    team_slot3 INTEGER DEFAULT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pve_stage_progress (
+                    user_id TEXT NOT NULL,
+                    stage_id TEXT NOT NULL,
+                    best_stars INTEGER NOT NULL DEFAULT 0,
+                    clear_count INTEGER NOT NULL DEFAULT 0,
+                    first_cleared_at INTEGER DEFAULT NULL,
+                    last_cleared_at INTEGER DEFAULT NULL,
+                    PRIMARY KEY (user_id, stage_id)
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pve_chapter_rewards (
+                    user_id TEXT NOT NULL,
+                    chapter_id TEXT NOT NULL,
+                    star_threshold INTEGER NOT NULL,
+                    claimed_at INTEGER NOT NULL,
+                    PRIMARY KEY (user_id, chapter_id, star_threshold)
                 )
                 """
             )

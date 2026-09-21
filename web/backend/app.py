@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from database import MAX_FIGHTERS_PER_USER, FighterRepository  # noqa: E402
 from engine import CombatEngine  # noqa: E402
+from pve import PveService  # noqa: E402
 from text_resources import compact_battle_logs  # noqa: E402
 
 DEFAULT_USER_ID = "web-local-user"
@@ -35,6 +36,7 @@ app.add_middleware(
 
 repo = FighterRepository()
 engine = CombatEngine()
+pve = PveService(repo, engine)
 
 
 class CreateFighterRequest(BaseModel):
@@ -49,6 +51,10 @@ class ActiveFighterRequest(BaseModel):
 class BuyItemRequest(BaseModel):
     itemId: str
     quantity: int = 1
+
+
+class UseItemRequest(BaseModel):
+    itemId: str
 
 
 class FeedRequest(BaseModel):
@@ -69,6 +75,10 @@ class ChoiceRequest(BaseModel):
 class DuelRequest(BaseModel):
     attackerName: str | None = None
     defenderName: str | None = None
+
+
+class PveTeamRequest(BaseModel):
+    slots: list[int]
 
 
 def _fighter_payload(fighter: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -106,6 +116,7 @@ def _state_payload() -> dict[str, Any]:
     fighters = repo.get_user_fighters(DEFAULT_USER_ID)
     active = repo.get_active_fighter(DEFAULT_USER_ID)
     active_name = active["name"] if active else None
+    pve_state = pve.get_state(DEFAULT_USER_ID)
     return {
         "session": {
             "userId": DEFAULT_USER_ID,
@@ -119,6 +130,12 @@ def _state_payload() -> dict[str, Any]:
         "shop": repo.get_shop_items(),
         "leaderboard": repo.get_group_leaderboard(DEFAULT_GROUP_ID, limit=10),
         "worldBoss": _world_boss_payload(),
+        "pveSummary": {
+            "profile": pve_state["profile"],
+            "nextStageId": pve_state["nextStageId"],
+            "hasRequiredRoster": pve_state["hasRequiredRoster"],
+            "chapterStars": {chapter["id"]: chapter["stars"] for chapter in pve_state["chapters"]},
+        },
         "needsFirstFighter": active_name is None,
     }
 
@@ -228,6 +245,20 @@ def buy_item(payload: BuyItemRequest) -> dict[str, Any]:
         raise _api_error(exc)
 
 
+@app.post("/api/items/use")
+def use_item(payload: UseItemRequest) -> dict[str, Any]:
+    try:
+        result = repo.use_pve_energy_item(
+            DEFAULT_USER_ID,
+            payload.itemId,
+            maximum_energy=pve.maximum_energy,
+            recovery_seconds=pve.recovery_seconds,
+        )
+        return {"result": result, "state": _state_payload()}
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
 @app.post("/api/fighters/{name}/feed")
 def feed_fighter(name: str, payload: FeedRequest) -> dict[str, Any]:
     try:
@@ -285,7 +316,6 @@ def duel(payload: DuelRequest) -> dict[str, Any]:
     if defender is None:
         raise HTTPException(status_code=404, detail="未找到对手")
     result = engine.battle_with_events(attacker, defender)
-    rating = repo.record_group_battle(DEFAULT_GROUP_ID, attacker["name"], defender["name"], result["winner"], elo_scale=0.4)
     return {
         "attacker": _fighter_payload(attacker),
         "defender": _fighter_payload(defender),
@@ -294,9 +324,38 @@ def duel(payload: DuelRequest) -> dict[str, Any]:
         "events": result["events"],
         "logs": result["logs"],
         "displayLogs": compact_battle_logs(result["logs"]),
-        "rating": rating,
+        "rating": None,
         "snapshot": _state_payload(),
     }
+
+
+@app.get("/api/pve")
+def pve_state() -> dict[str, Any]:
+    return pve.get_state(DEFAULT_USER_ID)
+
+
+@app.post("/api/pve/team")
+def set_pve_team(payload: PveTeamRequest) -> dict[str, Any]:
+    try:
+        return pve.set_team(DEFAULT_USER_ID, payload.slots)
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
+@app.post("/api/pve/stages/{stage_id}/challenge")
+def challenge_pve_stage(stage_id: str) -> dict[str, Any]:
+    try:
+        return pve.challenge(DEFAULT_USER_ID, stage_id)
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
+@app.post("/api/pve/chapters/{chapter_id}/rewards/{threshold}/claim")
+def claim_pve_chapter_reward(chapter_id: str, threshold: int) -> dict[str, Any]:
+    try:
+        return pve.claim_chapter_reward(DEFAULT_USER_ID, chapter_id, threshold)
+    except ValueError as exc:
+        raise _api_error(exc)
 
 
 @app.get("/api/leaderboards/duel")

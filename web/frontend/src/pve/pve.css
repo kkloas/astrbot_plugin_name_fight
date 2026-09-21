@@ -1,0 +1,105 @@
+.pve-view { display:grid; gap:18px; color:var(--ink,#27231d); }
+.pve-loading { min-height:420px; display:grid; place-items:center; font-size:22px; letter-spacing:4px; }
+.pve-header { display:flex; justify-content:space-between; gap:24px; align-items:center; padding:22px 26px; border:1px solid rgba(78,69,56,.34); background:linear-gradient(90deg,rgba(249,246,235,.94),rgba(230,224,207,.78)),url('/assets/sucai/01_main_view_background.png') center/cover; }
+.pve-header span { color:#8a392e; letter-spacing:4px; }
+.pve-header h2 { margin:5px 0; font-size:30px; letter-spacing:5px; }
+.pve-header p { margin:0; color:#655f54; }
+.pve-energy { min-width:150px; display:grid; grid-template-columns:auto auto; align-items:baseline; justify-content:end; }
+.pve-energy b { font:40px Georgia,serif; color:#8b382d; }
+.pve-energy span { letter-spacing:1px; color:#48443c; }
+.pve-energy small { grid-column:1/-1; text-align:right; color:#756d5f; }
+.pve-chapters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.pve-chapters button { display:grid; gap:3px; text-align:left; padding:14px 18px; border:1px solid rgba(78,69,56,.35); }
+.pve-chapters button.active { border-color:#8b382d; box-shadow:inset 4px 0 #8b382d; }
+.pve-chapters span,.pve-chapters small { color:#756d60; }
+.pve-chapters strong { font-size:18px; letter-spacing:2px; }
+.pve-stage-map { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:9px; padding:20px; border:1px solid rgba(78,69,56,.28); background:rgba(248,245,235,.7); }
+.pve-stage-map button { min-height:104px; display:grid; place-content:center; gap:5px; position:relative; border:1px solid #9b9384; }
+.pve-stage-map button + button::before { content:'›'; position:absolute; left:-10px; top:37px; color:#81796d; }
+.pve-stage-map button.selected { border-color:#8a382c; box-shadow:0 0 0 2px rgba(138,56,44,.16); }
+.pve-stage-map button.elite strong { color:#765327; }
+.pve-stage-map button.boss strong { color:#8a3027; }
+.pve-stage-map button:disabled { filter:grayscale(1); }
+.pve-stage-map button > span { width:25px; height:25px; display:grid; place-items:center; justify-self:center; border-radius:50%; background:#39362f; color:#fff; }
+.pve-stage-map button small { color:#96723c; letter-spacing:1px; }
+.pve-preparation { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr); gap:16px; }
+.pve-stage-detail,.pve-team-builder,.pve-chests { border:1px solid rgba(78,69,56,.3); background:rgba(249,247,238,.82); padding:18px; }
+.pve-stage-title { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
+.pve-stage-title span { padding:3px 8px; background:#35322c; color:#fff; }
+.pve-stage-title h3 { margin:0; font-size:25px; letter-spacing:3px; }
+.pve-stage-title b { margin-left:auto; color:#8b382d; }
+.pve-trait { display:flex; gap:10px; margin:15px 0; padding:11px 14px; border-left:4px solid #826b3e; background:#eee8d8; }
+.pve-trait strong { white-space:nowrap; }
+.pve-enemies { display:grid; gap:8px; }
+.pve-enemies > div { display:grid; grid-template-columns:28px minmax(90px,.7fr) minmax(150px,1fr) auto; gap:9px; align-items:center; padding:10px; border-bottom:1px dashed #a49a89; }
+.pve-enemies > div > span { width:24px; height:24px; display:grid; place-items:center; border-radius:50%; background:#8a382d; color:white; }
+.pve-enemies small,.pve-enemies em { color:#6d665b; font-style:normal; }
+.pve-reward-line { margin:15px 0 0; color:#80532d; }
+.pve-team-heading { display:flex; justify-content:space-between; align-items:center; }
+.pve-team-heading h3 { margin:0 0 12px; font-size:23px; }
+.pve-roster { display:grid; gap:7px; }
+.pve-roster button { display:grid; grid-template-columns:30px 1fr auto; gap:8px; align-items:center; text-align:left; padding:9px 11px; }
+.pve-roster button.chosen { border-color:#8a382d; background-color:rgba(138,56,44,.08); }
+.pve-roster button > span { width:24px; height:24px; display:grid; place-items:center; background:#49443b; color:white; border-radius:50%; }
+.pve-roster button.chosen > span { background:#8a382d; }
+.pve-roster small { color:#6d665b; }
+.pve-order { margin:12px 0; display:grid; gap:5px; }
+.pve-order > div { display:grid; grid-template-columns:24px 1fr 34px 34px; gap:5px; align-items:center; }
+.pve-order > div > b { color:#8a382d; }
+.pve-order button { min-height:30px; padding:2px; }
+.pve-challenge { width:100%; min-height:48px; font-size:18px; letter-spacing:3px; }
+.pve-roster-warning { padding:12px; margin-bottom:10px; background:#f1e3d2; border:1px solid #b99776; }
+.pve-chests { display:grid; grid-template-columns:auto repeat(3,minmax(0,1fr)); gap:10px; align-items:stretch; }
+.pve-chests h3 { margin:0; align-self:center; }
+.pve-chests > div { display:grid; grid-template-columns:auto 1fr; gap:5px 10px; align-items:center; padding:10px; border:1px solid #aaa08f; }
+.pve-chests > div.available { border-color:#9a6331; box-shadow:inset 0 0 18px rgba(164,116,54,.14); }
+.pve-chests > div span { font-size:13px; color:#6b6459; }
+.pve-chests > div button { grid-column:1/-1; }
+.team-replay { position:relative; display:grid; gap:10px; }
+.team-replay-heading { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid #989182; background:#f1eddf; }
+.team-replay-heading div { display:flex; gap:12px; align-items:baseline; }
+.team-replay-heading span { color:#8b382d; }
+.team-rail { display:grid; grid-template-columns:54px repeat(3,minmax(0,1fr)); gap:8px; align-items:stretch; }
+.team-rail > b { align-self:center; text-align:center; letter-spacing:3px; }
+.team-rail > div { display:grid; grid-template-columns:24px 1fr auto; gap:5px 8px; align-items:center; padding:8px; border:1px solid #aaa395; background:rgba(248,245,235,.8); }
+.team-rail > div.active { border-color:#8b382d; box-shadow:inset 3px 0 #8b382d; }
+.team-rail > div.fallen { opacity:.46; filter:grayscale(1); }
+.team-rail > div > span { grid-row:1/3; width:22px; height:22px; display:grid; place-items:center; border-radius:50%; background:#3f3b34; color:#fff; }
+.team-rail i { grid-column:2; display:block; height:5px; background:#c1bbae; }
+.team-rail i em { display:block; height:100%; background:#8b382d; }
+.team-rail small { grid-column:3; grid-row:2; }
+.team-intermission { position:absolute; top:50%; left:50%; z-index:10; width:min(360px,calc(100% - 32px)); min-height:88px; padding:14px 20px; transform:translate(-50%,-50%); display:grid; place-content:center; text-align:center; gap:5px; pointer-events:none; background:rgba(34,31,27,.9); color:#fff8e8; border:1px solid #b38a55; box-shadow:0 8px 24px rgba(24,20,16,.28); }
+.team-intermission strong { font-size:22px; letter-spacing:6px; color:#e1b96e; }
+.team-intermission span { font-size:14px; }
+.pve-summary { min-height:520px; display:grid; place-content:center; justify-items:center; gap:14px; text-align:center; padding:36px; border:1px solid #918878; background:radial-gradient(circle,rgba(255,250,231,.95),rgba(226,218,196,.86)),url('/assets/ink-bg.png') center/cover; }
+.pve-summary-mark { width:90px; height:90px; display:grid; place-items:center; border:5px double #8b382d; border-radius:50%; font-size:48px; color:#8b382d; transform:rotate(-5deg); }
+.pve-summary.defeat .pve-summary-mark { color:#4e514a; border-color:#4e514a; }
+.pve-summary h2 { margin:0; font-size:34px; letter-spacing:7px; }
+.pve-summary > p { margin:0; font-size:18px; }
+.pve-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(150px,1fr)); gap:10px; width:min(720px,100%); }
+.pve-summary-grid > div { display:grid; gap:5px; padding:15px; border:1px solid #a79d8c; background:rgba(250,247,237,.68); }
+.pve-summary-grid span { color:#6d6559; }
+.pve-first-clear { color:#8b382d; font-weight:700; }
+.pve-summary-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+@media (max-width:1000px) {
+  .pve-stage-map { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .pve-stage-map button + button::before { display:none; }
+  .pve-preparation { grid-template-columns:1fr; }
+  .pve-chests { grid-template-columns:1fr; }
+  .pve-chests h3 { margin-bottom:4px; }
+}
+@media (max-width:700px) {
+  .pve-header { align-items:flex-start; padding:16px; }
+  .pve-header h2 { font-size:24px; }
+  .pve-energy { min-width:95px; }
+  .pve-energy b { font-size:30px; }
+  .pve-chapters { grid-template-columns:1fr; }
+  .pve-stage-map { grid-template-columns:repeat(2,minmax(0,1fr)); padding:10px; }
+  .pve-enemies > div { grid-template-columns:26px 1fr; }
+  .pve-enemies small,.pve-enemies em { grid-column:2; }
+  .pve-roster button { grid-template-columns:28px 1fr; }
+  .pve-roster small { grid-column:2; }
+  .team-rail { grid-template-columns:1fr; }
+  .team-rail > b { text-align:left; }
+  .pve-summary-grid { grid-template-columns:1fr; }
+}

@@ -1,0 +1,278 @@
+{
+  "energy": {
+    "maximum": 100,
+    "recovery_seconds": 360
+  },
+  "repeat_rewards": {
+    "normal": {
+      "points": 5,
+      "drops": [
+        {"item_id": "star_exp_pill_s", "quantity": 1, "chance": 0.15}
+      ]
+    },
+    "elite": {
+      "points": 8,
+      "drop_table": [
+        {"item_id": null, "quantity": 0, "weight": 75},
+        {"item_id": "star_exp_pill_s", "quantity": 1, "weight": 20},
+        {"item_id": "star_exp_pill_m", "quantity": 1, "weight": 5}
+      ]
+    },
+    "boss": {
+      "points": 12,
+      "drop_table": [
+        {"item_id": null, "quantity": 0, "weight": 80},
+        {"item_id": "star_exp_pill_m", "quantity": 1, "weight": 15},
+        {"item_id": "martial_token_basic", "quantity": 1, "weight": 5}
+      ]
+    }
+  },
+  "chapters": [
+    {
+      "id": "chapter_1",
+      "name": "青石镇风波",
+      "description": "一箱失踪的镖银，将青石镇里潜藏的恶意尽数牵出。",
+      "chests": [
+        {"stars": 6, "points": 50, "items": []},
+        {"stars": 12, "points": 0, "items": [{"item_id": "star_exp_pill_s", "quantity": 2}]},
+        {"stars": 18, "points": 0, "items": [{"item_id": "martial_token_basic", "quantity": 1}]}
+      ],
+      "stages": [
+        {
+          "id": "1-1",
+          "name": "集市寻衅",
+          "kind": "normal",
+          "recommended_stars": 1.5,
+          "energy_cost": 10,
+          "stat_scale": 1.25,
+          "trait": {"id": "open_ground", "name": "平地交锋", "description": "双方均无额外加成。"},
+          "first_clear": {"points": 20, "items": []},
+          "enemies": [
+            {"name": "泼皮阿六", "stats": {"hp": 315, "atk": 55, "def": 43, "spd": 42, "crt": 10, "eva": 12}, "martial_art_id": "palm_crushing_wave", "neigong_id": "evergreen_breath", "qinggong_id": "earth_root"},
+            {"name": "短棍胡三", "stats": {"hp": 330, "atk": 58, "def": 45, "spd": 45, "crt": 11, "eva": 13}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "cloud_step"},
+            {"name": "市霸罗横", "stats": {"hp": 360, "atk": 63, "def": 49, "spd": 44, "crt": 13, "eva": 12}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "earth_root"}
+          ]
+        },
+        {
+          "id": "1-2",
+          "name": "夜巷伏击",
+          "kind": "normal",
+          "recommended_stars": 1.8,
+          "energy_cost": 10,
+          "stat_scale": 1.17,
+          "trait": {"id": "ambush", "name": "暗巷伏击", "description": "敌方速度提高 8%。", "enemy": {"stat_multipliers": {"spd": 1.08}}},
+          "first_clear": {"points": 20, "items": []},
+          "enemies": [
+            {"name": "蒙面探子", "stats": {"hp": 325, "atk": 58, "def": 44, "spd": 50, "crt": 12, "eva": 16}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
+            {"name": "翻墙客", "stats": {"hp": 340, "atk": 61, "def": 46, "spd": 52, "crt": 13, "eva": 17}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "golden_wind_record", "qinggong_id": "cloud_step"},
+            {"name": "夜枭沈七", "stats": {"hp": 370, "atk": 66, "def": 50, "spd": 55, "crt": 15, "eva": 18}, "martial_art_id": "sword_falling_plum", "neigong_id": "blood_moon_skill", "qinggong_id": "shadow_drift"}
+          ]
+        },
+        {
+          "id": "1-3",
+          "name": "失镖疑踪",
+          "kind": "normal",
+          "recommended_stars": 2.0,
+          "energy_cost": 10,
+          "stat_scale": 1.11,
+          "trait": {"id": "escort_guard", "name": "镖阵相护", "description": "我方防御提高 8%。", "player": {"stat_multipliers": {"def": 1.08}}},
+          "first_clear": {"points": 20, "items": []},
+          "enemies": [
+            {"name": "假镖师赵平", "stats": {"hp": 350, "atk": 64, "def": 52, "spd": 49, "crt": 13, "eva": 14}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "夺银客马九", "stats": {"hp": 365, "atk": 68, "def": 51, "spd": 53, "crt": 14, "eva": 15}, "martial_art_id": "short_panguanbi", "neigong_id": "hunyuan_qigong", "qinggong_id": "cloud_step"},
+            {"name": "叛徒周安", "stats": {"hp": 390, "atk": 72, "def": 56, "spd": 54, "crt": 16, "eva": 16}, "martial_art_id": "sword_huashan", "neigong_id": "golden_wind_record", "qinggong_id": "cloud_step"}
+          ]
+        },
+        {
+          "id": "1-4",
+          "name": "破庙追凶",
+          "kind": "normal",
+          "recommended_stars": 2.3,
+          "energy_cost": 10,
+          "stat_scale": 1.071,
+          "trait": {"id": "rainy_night", "name": "雨夜迷踪", "description": "双方闪避提高 5 点。", "player": {"stat_additions": {"eva": 5}}, "enemy": {"stat_additions": {"eva": 5}}},
+          "first_clear": {"points": 20, "items": []},
+          "enemies": [
+            {"name": "守门恶僧", "stats": {"hp": 390, "atk": 70, "def": 61, "spd": 49, "crt": 13, "eva": 13}, "martial_art_id": "palm_crushing_wave", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "飞瓦贼", "stats": {"hp": 365, "atk": 73, "def": 54, "spd": 61, "crt": 16, "eva": 20}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
+            {"name": "血手韩魁", "stats": {"hp": 410, "atk": 78, "def": 60, "spd": 56, "crt": 18, "eva": 16}, "martial_art_id": "blade_chengyun", "neigong_id": "blood_moon_skill", "qinggong_id": "cloud_step"}
+          ]
+        },
+        {
+          "id": "1-5",
+          "name": "黑风三煞",
+          "kind": "elite",
+          "recommended_stars": 2.7,
+          "energy_cost": 15,
+          "stat_scale": 0.99,
+          "trait": {"id": "fierce_bandits", "name": "三煞凶威", "description": "敌方攻击提高 8%。", "enemy": {"stat_multipliers": {"atk": 1.08}}},
+          "first_clear": {"points": 50, "items": [{"item_id": "star_exp_pill_s", "quantity": 1}]},
+          "enemies": [
+            {"name": "黑风刀煞", "stats": {"hp": 420, "atk": 80, "def": 62, "spd": 58, "crt": 18, "eva": 17}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "黑风影煞", "stats": {"hp": 390, "atk": 78, "def": 57, "spd": 68, "crt": 19, "eva": 23}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "golden_wind_record", "qinggong_id": "shadow_drift"},
+            {"name": "黑风铁煞", "stats": {"hp": 455, "atk": 82, "def": 70, "spd": 55, "crt": 16, "eva": 15}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"}
+          ]
+        },
+        {
+          "id": "1-6",
+          "name": "断碑堂主",
+          "kind": "boss",
+          "recommended_stars": 3.0,
+          "energy_cost": 20,
+          "stat_scale": 1.0,
+          "trait": {"id": "boss_guard", "name": "堂主压阵", "description": "敌方防御提高 10%。", "enemy": {"stat_multipliers": {"def": 1.10}}},
+          "first_clear": {"points": 100, "items": [{"item_id": "star_exp_pill_s", "quantity": 1}]},
+          "enemies": [
+            {"name": "断碑左使", "stats": {"hp": 430, "atk": 81, "def": 66, "spd": 61, "crt": 18, "eva": 17}, "martial_art_id": "short_panguanbi", "neigong_id": "biyun_xinfa", "qinggong_id": "cloud_step"},
+            {"name": "断碑右使", "stats": {"hp": 450, "atk": 84, "def": 68, "spd": 60, "crt": 19, "eva": 18}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "shadow_drift"},
+            {"name": "断碑堂主石镇岳", "stats": {"hp": 540, "atk": 92, "def": 78, "spd": 63, "crt": 21, "eva": 18}, "martial_art_id": "palm_crushing_wave", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_2",
+      "name": "黑水寨围剿",
+      "description": "镖银流入黑水深处，山寨中的毒阵与铁索正等着追兵。",
+      "chests": [
+        {"stars": 6, "points": 80, "items": []},
+        {"stars": 12, "points": 0, "items": [{"item_id": "star_exp_pill_s", "quantity": 1}, {"item_id": "star_exp_pill_m", "quantity": 1}]},
+        {"stars": 18, "points": 0, "items": [{"item_id": "martial_token_type", "quantity": 1}]}
+      ],
+      "stages": [
+        {
+          "id": "2-1", "name": "山门哨卡", "kind": "normal", "recommended_stars": 3.0, "energy_cost": 10, "stat_scale": 0.95,
+          "trait": {"id": "fortified_gate", "name": "山门据守", "description": "敌方防御提高 10%。", "enemy": {"stat_multipliers": {"def": 1.10}}},
+          "first_clear": {"points": 25, "items": []},
+          "enemies": [
+            {"name": "黑水哨卒甲", "stats": {"hp": 440, "atk": 82, "def": 68, "spd": 58, "crt": 18, "eva": 17}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "黑水哨卒乙", "stats": {"hp": 425, "atk": 85, "def": 64, "spd": 64, "crt": 19, "eva": 19}, "martial_art_id": "sword_huashan", "neigong_id": "hunyuan_qigong", "qinggong_id": "cloud_step"},
+            {"name": "守山头目常威", "stats": {"hp": 480, "atk": 90, "def": 73, "spd": 62, "crt": 20, "eva": 18}, "martial_art_id": "blade_chengyun", "neigong_id": "iron_wall_art", "qinggong_id": "lightning_flash"}
+          ]
+        },
+        {
+          "id": "2-2", "name": "毒雾栈道", "kind": "normal", "recommended_stars": 3.3, "energy_cost": 10, "stat_scale": 0.95,
+          "trait": {"id": "poison_mist", "name": "蚀骨毒雾", "description": "我方胜者每次接力前损失最大气血的 6%。", "between_duels": {"side": "player", "mode": "damage", "ratio": 0.06}},
+          "first_clear": {"points": 25, "items": []},
+          "enemies": [
+            {"name": "放毒童子", "stats": {"hp": 410, "atk": 84, "def": 61, "spd": 68, "crt": 18, "eva": 22}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
+            {"name": "蛇杖婆婆", "stats": {"hp": 465, "atk": 88, "def": 70, "spd": 60, "crt": 18, "eva": 19}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "evergreen_breath", "qinggong_id": "earth_root"},
+            {"name": "毒师温不留", "stats": {"hp": 470, "atk": 94, "def": 67, "spd": 69, "crt": 22, "eva": 22}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "blood_moon_skill", "qinggong_id": "phantom_lotus"}
+          ]
+        },
+        {
+          "id": "2-3", "name": "铁索横江", "kind": "normal", "recommended_stars": 3.6, "energy_cost": 10, "stat_scale": 0.9,
+          "trait": {"id": "narrow_bridge", "name": "铁索险战", "description": "双方攻击提高 10%，防御降低 10%。", "player": {"stat_multipliers": {"atk": 1.10, "def": 0.90}}, "enemy": {"stat_multipliers": {"atk": 1.10, "def": 0.90}}},
+          "first_clear": {"points": 25, "items": []},
+          "enemies": [
+            {"name": "索桥飞贼", "stats": {"hp": 425, "atk": 91, "def": 64, "spd": 72, "crt": 22, "eva": 23}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "golden_wind_record", "qinggong_id": "swan_shadow"},
+            {"name": "断索刀客", "stats": {"hp": 475, "atk": 96, "def": 70, "spd": 66, "crt": 23, "eva": 19}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "横江客梁啸", "stats": {"hp": 500, "atk": 99, "def": 74, "spd": 68, "crt": 24, "eva": 20}, "martial_art_id": "sword_ittoryu", "neigong_id": "blood_moon_skill", "qinggong_id": "cloud_step"}
+          ]
+        },
+        {
+          "id": "2-4", "name": "聚义厅", "kind": "normal", "recommended_stars": 3.9, "energy_cost": 10, "stat_scale": 0.875,
+          "trait": {"id": "captured_medicine", "name": "夺得药囊", "description": "我方胜者每次接力前恢复最大气血的 8%。", "between_duels": {"side": "player", "mode": "heal", "ratio": 0.08}},
+          "first_clear": {"points": 25, "items": []},
+          "enemies": [
+            {"name": "聚义枪客", "stats": {"hp": 490, "atk": 96, "def": 75, "spd": 67, "crt": 21, "eva": 19}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "cloud_step"},
+            {"name": "聚义琴师", "stats": {"hp": 450, "atk": 98, "def": 68, "spd": 72, "crt": 24, "eva": 22}, "martial_art_id": "zither_duanzhi", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
+            {"name": "二当家方烈", "stats": {"hp": 525, "atk": 104, "def": 78, "spd": 70, "crt": 25, "eva": 20}, "martial_art_id": "palm_crushing_wave", "neigong_id": "hunyuan_qigong", "qinggong_id": "earth_root"}
+          ]
+        },
+        {
+          "id": "2-5", "name": "黑水三旗", "kind": "elite", "recommended_stars": 4.2, "energy_cost": 15, "stat_scale": 0.837,
+          "trait": {"id": "three_banners", "name": "三旗合势", "description": "敌方攻击提高 5%，速度提高 10%。", "enemy": {"stat_multipliers": {"atk": 1.05, "spd": 1.10}}},
+          "first_clear": {"points": 60, "items": [{"item_id": "star_exp_pill_m", "quantity": 1}]},
+          "enemies": [
+            {"name": "赤旗主严炽", "stats": {"hp": 515, "atk": 106, "def": 76, "spd": 72, "crt": 26, "eva": 21}, "martial_art_id": "blade_chengyun", "neigong_id": "blood_moon_skill", "qinggong_id": "lightning_flash"},
+            {"name": "玄旗主墨川", "stats": {"hp": 540, "atk": 101, "def": 84, "spd": 71, "crt": 23, "eva": 22}, "martial_art_id": "short_panguanbi", "neigong_id": "iron_wall_art", "qinggong_id": "shadow_fragrance"},
+            {"name": "白旗主苏冷", "stats": {"hp": 500, "atk": 109, "def": 75, "spd": 78, "crt": 28, "eva": 24}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "swan_shadow"}
+          ]
+        },
+        {
+          "id": "2-6", "name": "黑水寨主", "kind": "boss", "recommended_stars": 4.5, "energy_cost": 20, "stat_scale": 0.84,
+          "trait": {"id": "blackwater_feast", "name": "黑水血宴", "description": "敌方胜者每次接力前恢复最大气血的 6%。", "between_duels": {"side": "enemy", "mode": "heal", "ratio": 0.06}},
+          "first_clear": {"points": 120, "items": [{"item_id": "martial_token_basic", "quantity": 1}]},
+          "enemies": [
+            {"name": "黑水军师闻鸦", "stats": {"hp": 515, "atk": 108, "def": 79, "spd": 80, "crt": 27, "eva": 25}, "martial_art_id": "zither_duanzhi", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
+            {"name": "镇寨铁卫熊罴", "stats": {"hp": 600, "atk": 105, "def": 96, "spd": 65, "crt": 22, "eva": 17}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "黑水寨主裘沧海", "stats": {"hp": 660, "atk": 118, "def": 94, "spd": 78, "crt": 30, "eva": 24}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "xiantian_qigong", "qinggong_id": "shadow_fragrance"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_3",
+      "name": "天机楼决战",
+      "description": "幕后之人藏身天机楼顶，沿途皆是各擅绝技的死士。",
+      "chests": [
+        {"stars": 6, "points": 120, "items": []},
+        {"stars": 12, "points": 0, "items": [{"item_id": "star_exp_pill_m", "quantity": 2}]},
+        {"stars": 18, "points": 0, "items": [{"item_id": "martial_token_choice", "quantity": 1}]}
+      ],
+      "stages": [
+        {
+          "id": "3-1", "name": "问剑阶", "kind": "normal", "recommended_stars": 4.5, "energy_cost": 10, "stat_scale": 0.78,
+          "trait": {"id": "sword_steps", "name": "步步争先", "description": "敌方速度提高 12%。", "enemy": {"stat_multipliers": {"spd": 1.12}}},
+          "first_clear": {"points": 30, "items": []},
+          "enemies": [
+            {"name": "问剑弟子青锋", "stats": {"hp": 530, "atk": 108, "def": 82, "spd": 79, "crt": 27, "eva": 24}, "martial_art_id": "sword_huashan", "neigong_id": "hunyuan_qigong", "qinggong_id": "cloud_step"},
+            {"name": "问剑弟子霜华", "stats": {"hp": 510, "atk": 111, "def": 78, "spd": 84, "crt": 29, "eva": 26}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "swan_shadow"},
+            {"name": "问剑执事凌越", "stats": {"hp": 570, "atk": 116, "def": 88, "spd": 82, "crt": 30, "eva": 24}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"}
+          ]
+        },
+        {
+          "id": "3-2", "name": "听雨廊", "kind": "normal", "recommended_stars": 4.8, "energy_cost": 10, "stat_scale": 0.78,
+          "trait": {"id": "rain_blades", "name": "雨幕藏锋", "description": "双方暴击提高 8 点。", "player": {"stat_additions": {"crt": 8}}, "enemy": {"stat_additions": {"crt": 8}}},
+          "first_clear": {"points": 30, "items": []},
+          "enemies": [
+            {"name": "听雨琴奴", "stats": {"hp": 520, "atk": 112, "def": 79, "spd": 85, "crt": 29, "eva": 27}, "martial_art_id": "zither_duanzhi", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
+            {"name": "廊下飞针", "stats": {"hp": 505, "atk": 115, "def": 76, "spd": 88, "crt": 31, "eva": 28}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "blood_moon_skill", "qinggong_id": "shadow_drift"},
+            {"name": "听雨使顾寒声", "stats": {"hp": 585, "atk": 121, "def": 89, "spd": 84, "crt": 32, "eva": 25}, "martial_art_id": "short_panguanbi", "neigong_id": "xiantian_qigong", "qinggong_id": "shadow_fragrance"}
+          ]
+        },
+        {
+          "id": "3-3", "name": "无相镜阵", "kind": "normal", "recommended_stars": 5.0, "energy_cost": 10, "stat_scale": 0.75,
+          "trait": {"id": "mirror_mist", "name": "镜影迷踪", "description": "双方闪避提高 8 点。", "player": {"stat_additions": {"eva": 8}}, "enemy": {"stat_additions": {"eva": 8}}},
+          "first_clear": {"points": 30, "items": []},
+          "enemies": [
+            {"name": "镜阵幻身一", "stats": {"hp": 550, "atk": 116, "def": 84, "spd": 87, "crt": 30, "eva": 29}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "golden_wind_record", "qinggong_id": "phantom_lotus"},
+            {"name": "镜阵幻身二", "stats": {"hp": 555, "atk": 118, "def": 85, "spd": 86, "crt": 31, "eva": 30}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
+            {"name": "镜阵守心人", "stats": {"hp": 620, "atk": 123, "def": 94, "spd": 83, "crt": 31, "eva": 27}, "martial_art_id": "palm_crushing_wave", "neigong_id": "evergreen_breath", "qinggong_id": "shadow_fragrance"}
+          ]
+        },
+        {
+          "id": "3-4", "name": "藏兵阁", "kind": "normal", "recommended_stars": 5.2, "energy_cost": 10, "stat_scale": 0.75,
+          "trait": {"id": "weapon_cache", "name": "百兵锋芒", "description": "双方攻击提高 12%。", "player": {"stat_multipliers": {"atk": 1.12}}, "enemy": {"stat_multipliers": {"atk": 1.12}}},
+          "first_clear": {"points": 30, "items": []},
+          "enemies": [
+            {"name": "藏兵刀侍", "stats": {"hp": 585, "atk": 123, "def": 88, "spd": 82, "crt": 32, "eva": 23}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "藏兵枪侍", "stats": {"hp": 610, "atk": 121, "def": 93, "spd": 78, "crt": 29, "eva": 21}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "藏兵剑侍", "stats": {"hp": 590, "atk": 127, "def": 90, "spd": 86, "crt": 34, "eva": 25}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "swan_shadow"}
+          ]
+        },
+        {
+          "id": "3-5", "name": "天机三使", "kind": "elite", "recommended_stars": 5.6, "energy_cost": 15, "stat_scale": 0.718,
+          "trait": {"id": "heavenly_agents", "name": "三使同心", "description": "敌方攻击、防御与速度提高 6%。", "enemy": {"stat_multipliers": {"atk": 1.06, "def": 1.06, "spd": 1.06}}},
+          "first_clear": {"points": 75, "items": [{"item_id": "star_exp_pill_m", "quantity": 1}]},
+          "enemies": [
+            {"name": "天机日使", "stats": {"hp": 620, "atk": 128, "def": 92, "spd": 88, "crt": 34, "eva": 25}, "martial_art_id": "palm_crushing_wave", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "天机月使", "stats": {"hp": 600, "atk": 126, "def": 89, "spd": 91, "crt": 35, "eva": 29}, "martial_art_id": "sword_falling_plum", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
+            {"name": "天机星使", "stats": {"hp": 640, "atk": 130, "def": 96, "spd": 87, "crt": 33, "eva": 26}, "martial_art_id": "zither_duanzhi", "neigong_id": "evergreen_breath", "qinggong_id": "shadow_fragrance"}
+          ]
+        },
+        {
+          "id": "3-6", "name": "天机楼主", "kind": "boss", "recommended_stars": 6.0, "energy_cost": 20, "stat_scale": 0.75,
+          "trait": {"id": "heavenly_cycle", "name": "天机回转", "description": "敌方胜者每次接力前恢复最大气血的 8%。", "between_duels": {"side": "enemy", "mode": "heal", "ratio": 0.08}},
+          "first_clear": {"points": 150, "items": [{"item_id": "martial_token_type", "quantity": 1}]},
+          "enemies": [
+            {"name": "护楼剑尊谢无声", "stats": {"hp": 660, "atk": 132, "def": 99, "spd": 91, "crt": 35, "eva": 27}, "martial_art_id": "sword_huashan", "neigong_id": "xiantian_qigong", "qinggong_id": "swan_shadow"},
+            {"name": "执律长老莫玄机", "stats": {"hp": 700, "atk": 130, "def": 108, "spd": 86, "crt": 32, "eva": 24}, "martial_art_id": "short_panguanbi", "neigong_id": "iron_wall_art", "qinggong_id": "shadow_fragrance"},
+            {"name": "天机楼主姬无算", "stats": {"hp": 820, "atk": 142, "def": 116, "spd": 96, "crt": 38, "eva": 30}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "xiantian_qigong", "qinggong_id": "phantom_lotus"}
+          ]
+        }
+      ]
+    }
+  ]
+}
