@@ -1,0 +1,22 @@
+:root { font-family: "KaiTi", "STKaiti", serif; color: #222722; background: #e4e5df; font-size: 18px; }
+* { box-sizing: border-box; letter-spacing: 0; }
+body { margin: 0; }
+.motion-preview { max-width: 1680px; margin: auto; padding: 24px; }
+.motion-preview header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #8b9085; }
+.motion-preview h1 { font-size: 26px; }
+.motion-preview a { color: #853e32; }
+.preview-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 20px 0; }
+.preview-controls label { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; white-space: nowrap; }
+.preview-controls label:first-child { width: min(440px,100%); }
+.preview-controls label:first-child select { flex: 1; min-width: 0; }
+.preview-controls button, .preview-controls select { font: inherit; background: #f8f8f3; color: #222722; border: 1px solid #777e70; padding: 8px 12px; min-height: 42px; }
+.preview-controls button { cursor: pointer; }
+.preview-controls input { accent-color: #853e32; width: 18px; height: 18px; }
+.preview-stages { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.preview-stages section { min-width: 0; background: #f4f4ee; border-bottom: 1px solid #8b9085; }
+.preview-stages h2 { font-size: 20px; margin: 0; padding: 16px; border-bottom: 1px solid #c5c8be; }
+.preview-stages canvas { display: block; width: 100%; aspect-ratio: 1000 / 430; }
+.preview-timeline { display: flex; align-items: center; gap: 16px; margin-top: 24px; }
+.preview-timeline input { flex: 1; min-width: 0; accent-color: #853e32; }
+.preview-timeline output { width: 100px; text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) { .preview-stages { grid-template-columns: 1fr; } .motion-preview { padding: 14px; } }

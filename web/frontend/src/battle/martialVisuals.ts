@@ -1,10 +1,11 @@
 import type { BattleEvent, ReplayFighter } from './replay';
+import { profileFor, themeColors } from './moveProfiles';
 
 export type Weapon = 'sword' | 'katana' | 'blade' | 'spear' | 'brush' | 'unarmed' | 'needles' | 'zither';
 export type Motion = 'thrust' | 'slash' | 'rise' | 'cleave' | 'sweep' | 'flurry' | 'leap' | 'draw' | 'palm' | 'kick' | 'throw' | 'pluck';
 export type Trail = 'edge' | 'point' | 'wave' | 'dust' | 'needles' | 'sound' | 'vortex' | 'mist';
 export type Pattern = 'direct' | 'cross' | 'wheel' | 'fall' | 'fan' | 'rain' | 'spiral' | 'focus' | 'crescendo';
-export type Technique = { motion: Motion; trail: Trail; weight: number; flourish?: 'plum' | 'cloud' | 'crimson' | 'phantom'; feint?: boolean; pattern?: Pattern };
+export type Technique = { motion: Motion; trail: Trail; weight: number; flourish?: 'plum' | 'cloud' | 'crimson' | 'phantom'; feint?: boolean; pattern?: Pattern; color?: string };
 const v = (motion: Motion, trail: Trail, weight = 1, flourish?: Technique['flourish']): Technique => ({ motion, trail, weight, flourish });
 
 // Explicit per-art keys avoid confusing the two different "白虹贯日" entries.
@@ -90,9 +91,22 @@ const patterns: Record<string, Record<string, Pattern>> = {
   zither_duanzhi: {'拨弦':'direct','裂帛':'cross','魔音入脑':'spiral','乱心':'wheel','摄魂':'focus','断肠':'fall','十面埋伏':'fan','绝技·广陵绝响':'crescendo'},
 };
 
+// Original move/pattern mapping from checkpoint f39413d, before profile overrides.
+export function legacyTechniqueFor(event: BattleEvent | undefined, fighter: ReplayFighter): Technique {
+  const known=techniques[event?.martialArtId || fighter.martialArt.id || '']?.[event?.move || ''];
+  if(known) return {...known,pattern:patterns[event?.martialArtId || fighter.martialArt.id || '']?.[event?.move || ''] || 'direct'};
+  return techniqueFor(event,fighter);
+}
+
 export function techniqueFor(event: BattleEvent | undefined, fighter: ReplayFighter): Technique {
   const known = techniques[event?.martialArtId || fighter.martialArt.id || '']?.[event?.move || ''];
-  if (known) return {...known,pattern:patterns[event?.martialArtId || fighter.martialArt.id || '']?.[event?.move || ''] || 'direct'};
+  if (known) {
+    const profile=profileFor(event);
+    const aliases:Record<string,Motion>={cross:'slash',spin:'sweep',shock:'palm',hook:'slash',coil:'slash',fan:'throw',needle:'throw',rain:'throw',strum:'pluck',crescendo:'pluck'};
+    return {...known,motion:profile?(aliases[profile.style]||profile.style as Motion):known.motion,
+      color:profile?themeColors[profile.theme]:undefined,
+      pattern:patterns[event?.martialArtId || fighter.martialArt.id || '']?.[event?.move || ''] || 'direct'};
+  }
   const type = event?.weaponType || fighter.martialArt.type;
   if (type === 'palm') return v('palm','wave');
   if (type === 'leg') return v('kick','wave');

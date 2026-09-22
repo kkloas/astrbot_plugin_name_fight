@@ -3,7 +3,7 @@ import type { Technique, Weapon } from './martialVisuals';
 
 type Point=[number,number];
 type Impact=ReturnType<typeof impactFor>;
-const ink=(t:Technique)=>t.flourish==='crimson'?'#873a30':t.flourish==='phantom'?'#3c5558':'#303d38';
+const ink=(t:Technique)=>t.color || (t.flourish==='crimson'?'#873a30':t.flourish==='phantom'?'#3c5558':'#303d38');
 
 function stroke(ctx:CanvasRenderingContext2D, a:Point,b:Point,color:string,width:number) {
   ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
@@ -176,6 +176,65 @@ export function drawImpact(ctx:CanvasRenderingContext2D,x:number,y:number,dir:nu
     ctx.strokeStyle='rgba(56,63,51,.4)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.ellipse(0,324-y,25+burst*95,4+burst*10,0,0,Math.PI*2);ctx.stroke();
     for(let i=0;i<6;i++) stroke(ctx,[(i-3)*12,324-y],[(i-3)*(15+burst*13),324-y-burst*(6+i%3*7)],color,1);
+  }
+  ctx.restore();
+}
+
+// Cosmetic accents only. The caller supplies the real contact outcome; a snowy
+// strike does not imply freezing, and a missed thrust cannot spawn a hit burst.
+export function drawSampleAccent(ctx:CanvasRenderingContext2D,kind:'sword'|'spear'|'kick',
+  tip:Point,target:Point,dir:number,age:number,impact:Impact) {
+  if(age < -150 || age > 460) return;
+  const charge=ease((age+150)/150),fade=1-ease(Math.max(0,age)/460);
+  const snow=kind==='sword',power=1+impact.force*.5;
+  const length=(kind==='spear'?180:kind==='sword'?145:75)*charge;
+  ctx.save();ctx.translate(...tip);ctx.scale(dir,1);
+  ctx.globalAlpha=fade*.7;
+  ctx.fillStyle=snow?'rgba(116,196,224,.48)':'rgba(71,91,84,.3)';
+  ctx.beginPath();ctx.moveTo(16*charge,0);
+  ctx.bezierCurveTo(-length*.25,-13*power,-length*.65,-8*power,-length,1);
+  ctx.bezierCurveTo(-length*.55,11*power,-length*.2,7*power,16*charge,0);ctx.fill();
+  ctx.shadowColor=snow?'#b8edff':'#e4eadc';ctx.shadowBlur=snow?10:3;
+  stroke(ctx,[-length*.8,1],[14*charge,0],snow?'#f1fcff':'#f0f0df',2.5*power);
+  ctx.shadowBlur=0;
+  if(kind!=='sword') {
+    for(let i=0;i<3;i++) {
+      ctx.globalAlpha=fade*(.38-i*.08);
+      ctx.beginPath();ctx.strokeStyle='#70867d';ctx.lineWidth=2-i*.4;
+      ctx.ellipse(-i*14,0,8+i*4,(18+i*9)*charge,0,-1.15,1.15);ctx.stroke();
+    }
+  }
+  if(snow) {
+    for(let i=0;i<24;i++) {
+      const seed=(i*.61803398875)%1;
+      const drift=Math.max(0,age)*(.018+(i%4)*.009);
+      const x=-length*seed+drift*(i%2?1:-1);
+      const y=Math.sin(i*2.399)*(12+seed*30)+Math.sin(age/130+i)*8+drift*.45;
+      const radius=2.2+(i%4)*1.1;
+      ctx.globalAlpha=fade*(.4+(i%3)*.2)*charge;
+      ctx.strokeStyle=i%3?'#eefbff':'#70b7d0';ctx.fillStyle='#eefbff';ctx.lineWidth=1;
+      if(i%3===0) {
+        ctx.save();ctx.translate(x,y);ctx.rotate(i+age/650);
+        for(let ray=0;ray<3;ray++) {
+          const a=ray*Math.PI/3;
+          stroke(ctx,[-Math.cos(a)*radius,-Math.sin(a)*radius],[Math.cos(a)*radius,Math.sin(a)*radius],i%2?'#effcff':'#70b7d0',1);
+        }
+        ctx.restore();
+      } else {ctx.beginPath();ctx.arc(x,y,radius*.5,0,Math.PI*2);ctx.fill();}
+    }
+  }
+  ctx.restore();
+  if(!impact.hit || age<0) return;
+  const burst=ease(age/200),hitFade=1-ease(age/400);
+  ctx.save();ctx.translate(...target);ctx.scale(dir,1);ctx.globalAlpha=hitFade*.65;
+  ctx.strokeStyle=snow?'#98d9ec':'#72877d';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(5+burst*16,0,8+burst*18,(16+burst*35)*power,0,-1.25,1.25);ctx.stroke();
+  for(let i=0;i<(snow?18:9);i++) {
+    const a=(i*.61803398875%1)*Math.PI*2,r=(10+burst*(35+i%5*9))*power;
+    const x=Math.cos(a)*r,y=Math.sin(a)*r*.7+age*age*.00015;
+    const size=(snow?2.5:1.5)+i%3;
+    ctx.fillStyle=snow?(i%3?'#e8faff':'#7ebfd4'):'#657b70';
+    ctx.beginPath();ctx.moveTo(x,y-size);ctx.lineTo(x+size*.55,y);ctx.lineTo(x,y+size);ctx.lineTo(x-size*.55,y);ctx.closePath();ctx.fill();
   }
   ctx.restore();
 }

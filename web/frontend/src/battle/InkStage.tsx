@@ -1,13 +1,21 @@
 import { useEffect, useRef } from 'react';
 import { stateAt, statusLabels, type BattleEvent, type ReplayBattle, type Side } from './replay';
-import { techniqueFor, weaponFor, type Weapon, type Technique } from './martialVisuals';
+import { techniqueFor, legacyTechniqueFor, weaponFor, type Weapon, type Technique } from './martialVisuals';
 import { drawWeapon } from './inkWeapons';
 import { drawAura, drawTrigger, drawFootwork } from './inkEffects';
-import { drawTechnique, drawImpact, drawPreparation } from './inkStrikes';
+import { drawTechnique, drawImpact, drawPreparation, drawSampleAccent } from './inkStrikes';
 import { contactTime, impactFor, plantedFoot } from './choreography';
+import { sampleMove } from './sampleMotion';
+import { moveMotion } from './moveMotion';
+import { profileFor, themeColors } from './moveProfiles';
+import { drawMoveTheme } from './moveEffects';
+import { constrainRig } from './rig';
+import { swordSequenceFor } from './swordSequences';
+import { drawSwordSequenceEffects } from './swordEffects';
+import { motionVariantFor, type MotionMode } from './motionVariants';
 
 type Point = [number, number];
-type Pose = { points: Point[]; sword: number; lean: number };
+type Pose = { points: Point[]; sword: number; lean: number; shoulders?: [Point,Point] };
 // Head, neck, waist, rear elbow/hand, sword elbow/hand, rear knee/foot, front knee/foot.
 const poses: Record<string, Pose> = {
   idle: { points: [[0,-137],[0,-116],[-7,-65],[-28,-95],[-19,-71],[24,-101],[39,-89],[-24,-34],[-39,0],[20,-34],[39,0]], sword: -.45, lean: 0 },
@@ -51,8 +59,12 @@ const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const smooth = (x: number) => { const v = clamp(x); return v * v * (3 - 2 * v); };
 function blend(a: Pose, b: Pose, t: number): Pose {
   const f = clamp(t);
+  const shoulders=a.shoulders || b.shoulders ? [0,1].map(i=>{
+    const start=a.shoulders?.[i] || a.points[1],end=b.shoulders?.[i] || b.points[1];
+    return [start[0]+(end[0]-start[0])*f,start[1]+(end[1]-start[1])*f] as Point;
+  }) as [Point,Point] : undefined;
   return { points: a.points.map((p, i) => [p[0] + (b.points[i][0] - p[0]) * f, p[1] + (b.points[i][1] - p[1]) * f]),
-    sword: a.sword + (b.sword - a.sword) * f, lean: a.lean + (b.lean - a.lean) * f };
+    sword: a.sword + (b.sword - a.sword) * f, lean: a.lean + (b.lean - a.lean) * f, shoulders };
 }
 
 function stepping(pose: Pose, progress: number, distance: number, backwards=false): Pose {
@@ -93,17 +105,15 @@ function fighter(ctx: CanvasRenderingContext2D, x: number, side: Side, pose: Pos
   ctx.translate(x, 324+lift); ctx.scale(dir, 1); ctx.rotate(pose.lean);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   // Rear limbs stay narrow. A tapered torso and sash give the simple figure weight.
-  stroke(ctx, [p[1],p[3],p[4]], 7, ink);
+  stroke(ctx, [pose.shoulders?.[0] || p[1],p[3],p[4]], 7, ink);
   stroke(ctx, [p[2],p[7],p[8]], 10, ink);
   stroke(ctx, [p[2],p[9],p[10]], 12, ink);
-  stroke(ctx, [[p[8][0]-6,p[8][1]],[p[8][0]+10,p[8][1]]], 6, ink);
-  stroke(ctx, [[p[10][0]-5,p[10][1]],[p[10][0]+14,p[10][1]]], 6, ink);
   ctx.fillStyle = ink; ctx.beginPath();
   ctx.moveTo(p[1][0]-8,p[1][1]-1); ctx.lineTo(p[1][0]+10,p[1][1]+2);
   ctx.lineTo(p[2][0]+12,p[2][1]+10); ctx.lineTo(p[2][0]+26,p[2][1]+28);
   ctx.lineTo(p[2][0]-6,p[2][1]+15); ctx.lineTo(p[2][0]-29,p[2][1]+30);
   ctx.lineTo(p[2][0]-10,p[2][1]-2); ctx.closePath(); ctx.fill();
-  stroke(ctx, [p[1],p[5],p[6]], 9, ink);
+  stroke(ctx, [pose.shoulders?.[1] || p[1],p[5],p[6]], 9, ink);
   ctx.beginPath(); ctx.ellipse(p[0][0],p[0][1],11,15,.08,0,Math.PI*2); ctx.fill();
   // A short headband and trailing sash, no face or portrait-specific features.
   const flutter = Math.sin(time / 190) * 5;
@@ -123,7 +133,8 @@ function fighter(ctx: CanvasRenderingContext2D, x: number, side: Side, pose: Pos
 }
 
 function motionPoses(technique: Technique, weapon: Weapon, type?: string) {
-  const idle=weapon==='zither'?poses.pluckIdle:weapon==='unarmed'?poses.palmIdle:poses.idle;
+  const resting=weapon==='zither'?poses.pluckIdle:weapon==='unarmed'?poses.palmIdle:poses.idle;
+  const idle={...resting,points:resting.points.map((p,i)=>[p[0],p[1]-(i<=6?17:0)] as Point)};
   let gather=poses.gather;
   let strike=poses.strike;
   switch(technique.motion) {
@@ -153,7 +164,7 @@ function motionPoses(technique: Technique, weapon: Weapon, type?: string) {
   return {idle,gather,strike};
 }
 
-function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, turn?: BattleEvent) {
+export function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, turn?: BattleEvent, mode:MotionMode='mixed') {
   const dir = side === 'a' ? 1 : -1;
   const actor=side==='a'?battle.attacker:battle.defender;
   const weapon=weaponFor(actor);
@@ -163,6 +174,7 @@ function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, t
   const travel = ranged?0:width * .53 - reach;
   let x = home;
   let lift=0;
+  let opacity=1,blink=0;
   const state=stateAt(battle,time);
   const hp = state.hp[side];
   const victory=battle.events.find(e=>e.type==='victory_start' && e.time<=time);
@@ -170,7 +182,8 @@ function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, t
   const local = turn ? time - turn.time : -1;
   const events = turn ? battle.events.filter(e => e.action === turn.action) : [];
   const attack = events.find(e => e.type === 'attack');
-  const technique=techniqueFor(attack,actor);
+  const variant=motionVariantFor(battle,attack,mode);
+  const technique=(variant==='legacy'?legacyTechniqueFor:techniqueFor)(attack,actor);
   const motion=motionPoses(technique,weapon,actor.martialArt.type);
   let pose = blend(motion.idle, motion.gather, .05 + Math.sin(time/530)*.025);
   const outcome = events.find(e => e.type === 'dodge' || (e.type === 'damage' && e.cause === 'strike'));
@@ -229,6 +242,14 @@ function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, t
           pose=sequence([[1190,motion.strike],[1290,poses.bound],[1500,poses.low],[1630,motion.idle]],t);
         } else pose=blend(motion.strike,motion.idle,retreat);
       }
+      // The preceding choreography is the retained f39413d animation path.
+      const moveFrame=variant==='current' && attack && moveMotion(attack,t,travel,weapon,outcome?.type==='dodge');
+      if(moveFrame) {
+        const frame=moveFrame;
+        const transition=smooth(t/140)*(1-smooth((t-1620)/120));
+        x=home+dir*frame.x;pose=blend(motion.idle,frame.pose,transition);lift=frame.lift;
+        opacity=frame.opacity;blink=frame.blink;
+      }
     } else if (outcome) {
       const age=time-outcome.time;
       if (outcome.type === 'dodge' && age > -120 && age < 630) {
@@ -255,6 +276,7 @@ function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, t
     pose=blend(motion.idle,skip.reason==='disarmed'?poses.pickup:poses.hit,Math.sin(Math.PI*clamp(skipAge/1520))*.85);
   }
   if (hp <= 0) {
+    opacity=1;blink=0;
     const death = battle.events.filter(e => e.target===side && e.hpAfter===0 && e.time<=time).pop();
     pose = blend(poses.hit,poses.fallen,smooth((time-(death?.time||time))/560));
     const deathTurn = battle.events.find(e => e.type==='turn_start' && e.action===death?.action);
@@ -266,6 +288,7 @@ function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, t
     }
     if(death?.cause==='strike') x-=dir*(18+impact.force*40)*smooth((time-death.time)/240);
   } else if(victory) {
+    opacity=1;blink=0;
     const variant=(victory.victoryVariant || 0)%3;
     const kind=victory.victoryKind || 'standard';
     const won=victory.actor===side;
@@ -293,31 +316,30 @@ function poseAt(battle: ReplayBattle, side: Side, time: number, width: number, t
     pose=weapon==='zither'?poses.pluckIdle:poses.salute; x=home;
   }
   const sheathed=victorySheathed || (weapon==='katana' && technique.motion==='draw' && attack?.actor===side && local>=0 && local<830);
-  return { x, pose, lift, weapon:state.weaponsReady[side]?weapon:'unarmed' as Weapon, technique, armed:state.weaponsReady[side], sheathed };
+  pose=constrainRig(pose);
+  return { x, pose, lift, opacity, blink, weapon:state.weaponsReady[side]?weapon:'unarmed' as Weapon, technique, armed:state.weaponsReady[side], sheathed, variant };
 }
 
-function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number, width: number, reducedMotion: boolean) {
+function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number, width: number, reducedMotion: boolean, effects: boolean, mode:MotionMode) {
   ctx.clearRect(0,0,width,430);
   const state=stateAt(battle,time);
-  const frames={a:poseAt(battle,'a',time,width,state.turn),b:poseAt(battle,'b',time,width,state.turn)};
+  const frameAt=(side:Side,at:number,turn?:BattleEvent)=>poseAt(battle,side,at,width,turn,mode);
+  const frames={a:frameAt('a',time,state.turn),b:frameAt('b',time,state.turn)};
   const turn=state.turn;
   const attack=turn && battle.events.find(e=>e.action===turn.action && e.type==='attack');
   const striker=attack?.actor==='a'?battle.attacker:battle.defender;
-  const technique=techniqueFor(attack,striker);
+  const variant=motionVariantFor(battle,attack,mode);
+  const technique=(variant==='legacy'?legacyTechniqueFor:techniqueFor)(attack,striker);
   const outcome=attack && battle.events.find(e=>e.action===attack.action && (e.cause==='strike'||e.type==='dodge'));
   const victim=attack?.actor==='a'?battle.defender:battle.attacker;
   const force=impactFor(outcome,victim.stats.hp,technique);
   const impactAge=outcome?time-outcome.time:-1;
   ctx.save();
-  if(force.cinematic && impactAge>-160 && impactAge<480) {
+  if(effects && force.cinematic && impactAge>-160 && impactAge<480) {
     const focus=impactAge<0?smooth((impactAge+160)/160):1-smooth((impactAge-80)/400);
     ctx.fillStyle=`rgba(32,39,35,${focus*.17})`;ctx.fillRect(0,0,width,430);
-    if(!reducedMotion) {
-      const zoom=1+focus*.035;
-      ctx.translate(width/2,255);ctx.scale(zoom,zoom);ctx.translate(-width/2,-255);
-    }
   }
-  if(!reducedMotion && force.heavy && impactAge>=0 && impactAge<220) {
+  if(effects && !reducedMotion && force.heavy && impactAge>=0 && impactAge<220) {
     const shake=(1-impactAge/220)*force.force*5;
     ctx.translate(Math.sin(impactAge*.09)*shake,Math.cos(impactAge*.13)*shake*.4);
   }
@@ -329,26 +351,37 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
     const actor=side==='a'?battle.attacker:battle.defender;
     const {x,pose,weapon,lift}=frame;
     const dir=side==='a'?1:-1;
-    ctx.fillStyle='rgba(30,35,29,.13)';ctx.beginPath();ctx.ellipse(x,330,52+lift*.3,6,0,0,Math.PI*2);ctx.fill();
-    if(state.hp[side]>0) drawAura(ctx,x,324+lift,state.states[side],time);
+    ctx.fillStyle=`rgba(30,35,29,${.13*frame.opacity})`;ctx.beginPath();ctx.ellipse(x,330,52+lift*.3,6,0,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.globalAlpha=frame.opacity;
+    if(effects && state.hp[side]>0) drawAura(ctx,x,324+lift,state.states[side],time);
     const local=turn?time-turn.time:-1;
-    if(attack?.actor===side) drawPreparation(ctx,technique,x,dir,local,['needles','zither'].includes(weapon));
+    if(effects && attack?.actor===side) drawPreparation(ctx,technique,x,dir,local,['needles','zither'].includes(weapon));
+    ctx.restore();
     const dodging=battle.events.find(e=>e.type==='dodge' && e.target===side && time>=e.time-100 && time<e.time+550);
     const moving=attack?.actor===side && ((local>430 && local<960)||(local>1210 && local<1660)) && !['needles','zither'].includes(weapon);
-    if(moving || dodging) {
+    if(effects && (moving || dodging)) {
       const qinggong=actor.qinggong?.id;
       const shadows=qinggong==='earth_root'?0:qinggong==='shadow_drift'||qinggong==='shadow_fragrance'?4:2;
       for(let i=shadows;i>0;i--) {
-        const past=poseAt(battle,side,Math.max(0,time-i*35),width,turn);
-        fighter(ctx,past.x,side,past.pose,time-i*35,past.weapon,.18/i,past.lift,past.sheathed);
+        const past=frameAt(side,Math.max(0,time-i*35),turn);
+        fighter(ctx,past.x,side,past.pose,time-i*35,past.weapon,.18/i*past.opacity,past.lift,past.sheathed);
       }
       const trace=Array.from({length:4},(_,i)=>{
-        const past=poseAt(battle,side,Math.max(turn?.time || 0,time-i*60),width,turn);
+        const past=frameAt(side,Math.max(turn?.time || 0,time-i*60),turn);
         return {x:past.x,y:324+past.lift};
       });
-      drawFootwork(ctx,qinggong,x,dir,.85,time,trace);
+      if(frame.opacity>.1) drawFootwork(ctx,qinggong,x,dir,.85*frame.opacity,time,trace);
     }
-    fighter(ctx,x,side,pose,time,weapon,1,lift,frame.sheathed);
+    if(effects && !reducedMotion && frame.blink>.01) {
+      ctx.save();ctx.globalAlpha=frame.blink*.45;
+      for(let i=0;i<9;i++) {
+        const spread=12+(1-frame.opacity)*26;
+        const px=x+Math.sin(i*2.4)*spread,py=247+lift+Math.cos(i*2.4)*spread*.8;
+        stroke(ctx,[[px-dir*12,py+8],[px+dir*8,py-10]],1+i%3,'#495750');
+      }
+      ctx.restore();
+    }
+    fighter(ctx,x,side,pose,time,weapon,frame.opacity,lift,frame.sheathed);
     if(!frame.armed && weaponFor(actor)!=='unarmed') {
       const disarm=battle.events.filter(e=>e.type==='status_apply' && e.status==='disarmed' && e.target===side && e.time<=time).pop();
       const age=time-(disarm?.time||0);
@@ -358,7 +391,7 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
       drawWeapon(ctx,weaponFor(actor),'#52574c',time);ctx.restore();
     }
   }
-  if(attack?.actor) {
+  if(effects && attack?.actor) {
     const side=attack.actor;
     const actor=side==='a'?battle.attacker:battle.defender;
     const dir=side==='a'?1:-1;
@@ -371,10 +404,47 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
     // the dodging fighter and looking like a successful hit.
     const targetX=outcome?.type==='dodge'?width*(side==='a'?.765:.235):frames[targetSide].x;
     const age=contactTime(time-attack.time,(outcome?.time || attack.time+400)-attack.time,force.hold);
-    const emission=outcome && time>outcome.time?poseAt(battle,side,outcome.time,width,turn):frame;
-    drawTechnique(ctx,techniqueFor(attack,actor),weaponFor(actor),
-      [emission.x+dir*60,236+emission.lift],[targetX,y],dir,age,force.force);
-    drawImpact(ctx,targetX,y,dir,impactAge,force,attack.action||0);
+    const emission=outcome && time>outcome.time?frameAt(side,outcome.time,turn):frame;
+    const sample=variant==='current'?sampleMove(attack):undefined;
+    const profile=variant==='current'?profileFor(attack):undefined,weapon=weaponFor(actor);
+    const ranged=weapon==='needles'||weapon==='zither';
+    const foot=attack.weaponType==='leg';
+    const tipReach=({sword:99,katana:112,blade:107,spear:140,brush:45,unarmed:0,needles:0,zither:0})[weapon];
+    const tipAt=(source:typeof frame):Point=>{
+      const joint=source.pose.points[foot?10:6];
+      return [source.x+dir*(joint[0]+Math.cos(source.pose.sword)*tipReach),324+source.lift+joint[1]+Math.sin(source.pose.sword)*tipReach];
+    };
+    if(variant==='current' && turn && swordSequenceFor(attack)) {
+      const local=contactTime(time-turn.time,(outcome?.time || turn.time+950)-turn.time,force.hold);
+      drawSwordSequenceEffects(ctx,attack,local,t=>tipAt(frameAt(side,turn.time+t,turn)),dir,force);
+    }
+    if(profile && turn && time-turn.time>650 && impactAge<570) {
+      // Sample the same poses as the figure, so trails follow the actual tip.
+      const trace=Array.from({length:13},(_,i)=>{
+        const at=Math.max(turn.time+650,time-(12-i)*14);
+        const past=frameAt(side,at,turn);
+        return {point:tipAt(past),opacity:past.opacity};
+      });
+      ctx.save();
+      for(let i=1;i<trace.length;i++) {
+        ctx.globalAlpha=(i/trace.length)*.65*(1-clamp((impactAge-80)/280))*Math.min(trace[i-1].opacity,trace[i].opacity);
+        stroke(ctx,[trace[i-1].point,trace[i].point],(weapon==='spear'?8:ranged?2:6)*(i/trace.length),themeColors[profile.theme]);
+        stroke(ctx,[trace[i-1].point,trace[i].point],1,'#f4f7ee');
+      }
+      ctx.restore();
+      // Leave the burst at contact while the figure recovers, rather than
+      // dragging the snow cloud back to the attacker's home position.
+      const source=impactAge>0?emission:frame;
+      const tip=tipAt(source);
+      const contactTarget:Point=[outcome?.type==='dodge'?targetX:frameAt(targetSide,outcome?.time || time,turn).x,y];
+      if(sample) drawSampleAccent(ctx,sample,tip,contactTarget,dir,impactAge,force);
+      else drawMoveTheme(ctx,profile,tip,contactTarget,dir,impactAge,force);
+      if(ranged) drawTechnique(ctx,techniqueFor(attack,actor),weapon,tip,contactTarget,dir,age,force.force);
+    } else if(!profile) {
+      drawTechnique(ctx,technique,weaponFor(actor),
+        [emission.x+dir*60,236+emission.lift],[targetX,y],dir,age,force.force);
+    }
+    if(!profile || sample==='kick' || sample==='spear') drawImpact(ctx,targetX,y,dir,impactAge,force,attack.action||0);
   }
   for(const event of battle.events) {
     const age=time-event.time;
@@ -382,19 +452,19 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
     const side=event.target || event.actor;
     if(!side) continue;
     const eventTurn=battle.events.find(e=>e.type==='turn_start' && e.action===event.action);
-    const x=poseAt(battle,side,event.time,width,eventTurn).x;
+    const x=frameAt(side,event.time,eventTurn).x;
     const otherSide=event.fromSide || (event.actor!==side?event.actor:side==='a'?'b':'a');
-    const otherX=otherSide?poseAt(battle,otherSide,event.time,width,eventTurn).x:x;
+    const otherX=otherSide?frameAt(otherSide,event.time,eventTurn).x:x;
     // Reflection originates at the defender, while the HP event targets the attacker.
     const liveX=frames[side].x;
     const liveOtherX=otherSide?frames[otherSide].x:otherX;
-    drawTrigger(ctx,event,event.cause==='thorns'?liveOtherX:liveX,event.cause==='thorns'?liveX:liveOtherX,age);
+    if(effects) drawTrigger(ctx,event,event.cause==='thorns'?liveOtherX:liveX,event.cause==='thorns'?liveX:liveOtherX,age);
     if(age>850) continue;
     if(!['damage','heal','dodge','status_apply','turn_skip'].includes(event.type)) continue;
     if(event.type==='turn_skip' && event.reason==='fallen') continue;
     const phase=age/850;
     ctx.save();ctx.globalAlpha=Math.min(1,(850-age)/200);
-    if(event.type==='damage' && event.cause!=='strike' && age<360) {
+    if(effects && event.type==='damage' && event.cause!=='strike' && age<360) {
       ctx.fillStyle=event.crit?'#863b2d':'#353c32';
       for(let i=0;i<9;i++) {
         const angle=i*2.399+(event.action||0);
@@ -417,9 +487,9 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
   ctx.restore();
 }
 
-export function InkStage({ battle, time }: { battle: ReplayBattle; time: number }) {
+export function InkStage({ battle, time, effects = true, motionMode='mixed' }: { battle: ReplayBattle; time: number; effects?: boolean; motionMode?:MotionMode }) {
   const canvas=useRef<HTMLCanvasElement>(null);
-  const latest=useRef({battle,time}); latest.current={battle,time};
+  const latest=useRef({battle,time,effects,motionMode}); latest.current={battle,time,effects,motionMode};
   const paint=() => {
     const element=canvas.current;
     if(!element) return;
@@ -431,14 +501,17 @@ export function InkStage({ battle, time }: { battle: ReplayBattle; time: number 
     const h=Math.round(w*430/logicalWidth);
     if(element.width!==w || element.height!==h) {element.width=w;element.height=h;}
     const ctx=element.getContext('2d');
-    if(ctx) {ctx.setTransform(w/logicalWidth,0,0,h/430,0,0);draw(ctx,latest.current.battle,latest.current.time,logicalWidth,window.matchMedia('(prefers-reduced-motion: reduce)').matches);}
+    if(ctx) {ctx.setTransform(w/logicalWidth,0,0,h/430,0,0);draw(ctx,latest.current.battle,latest.current.time,logicalWidth,window.matchMedia('(prefers-reduced-motion: reduce)').matches,latest.current.effects,latest.current.motionMode);}
   };
-  useEffect(paint,[battle,time]);
+  useEffect(paint,[battle,time,effects,motionMode]);
   useEffect(()=>{
     const observer=new ResizeObserver(paint);
     if(canvas.current) observer.observe(canvas.current);
     return ()=>observer.disconnect();
   },[]);
+  const turn=stateAt(battle,time).turn;
+  const attack=turn && battle.events.find(e=>e.type==='attack' && e.action===turn.action);
   return <canvas ref={canvas} className="ink-duel-canvas" role="img" aria-label="水墨武学交手动画"
+    data-motion-variant={motionVariantFor(battle,attack,motionMode)}
     data-weapon-a={weaponFor(battle.attacker)} data-weapon-b={weaponFor(battle.defender)} />;
 }
