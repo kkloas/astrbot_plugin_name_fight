@@ -1,7 +1,9 @@
 # Ink Battle Replay
 
-Procedural ink figures remain independent of character portraits. All 11 configured
-martial arts and 70 moves have explicit visual mappings in `martialVisuals.ts`.
+Procedural ink figures remain independent of character portraits. All 13 configured
+martial arts and 86 moves have explicit visual mappings in `martialVisuals.ts`.
+The two new arts have sixteen authored motion scores and staged effects. All arts
+use the approved curved figure renderer; see [NEW_MARTIAL_REVIEW.md](./NEW_MARTIAL_REVIEW.md).
 Weapon silhouettes cover swords, katana, blades, spears, judge pens, unarmed combat,
 needles and zither. Palm and leg styles have different unarmed actions. Audio is not implemented.
 
@@ -104,7 +106,7 @@ effects. Each action chooses a complete branch, including historical afterimages
 Shared fixed-bone rendering, raised idle posture, removed foot marks and removed
 camera zoom remain in both branches; this is not a repository rollback.
 
-`/motion-preview.html` is a standalone, offline-data comparison of all 70 moves.
+`/motion-preview.html` is a standalone, offline-data comparison of all 86 moves.
 The original sword thrust, returning spear and airborne kick remain the first
 three choices. Both panels share one clock; the left
 disables effects, while the right uses the game's effects. No API is called.

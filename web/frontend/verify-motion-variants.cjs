@@ -51,7 +51,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
     assert(metrics.differentFrames>150,'Old and new poses genuinely differ');
     assert(metrics.boneError<1e-7,'Both variants preserve fixed bones');
     assert.equal(metrics.oldMapping,'rise');assert.equal(metrics.newMapping,'thrust');
-    const options=await page.getByLabel('招式',{exact:true}).locator('option').evaluateAll(os=>os.map(o=>({value:o.value,name:o.textContent})));
+    const options=await page.getByLabel('招式',{exact:true}).locator('option').evaluateAll(os=>os.filter(o=>!/丹羽剑法|惊潮刀法/.test(o.textContent)).map(o=>({value:o.value,name:o.textContent})));
     const seek=async t=>{await page.getByRole('slider',{name:'动作进度'}).fill(String(t));await page.waitForTimeout(25);};
     const shots=[];
     let distinct=0;

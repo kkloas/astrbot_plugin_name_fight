@@ -4,6 +4,7 @@ import { profileFor, type MoveProfile } from './moveProfiles';
 import type { BattleEvent } from './replay';
 import type { Weapon } from './martialVisuals';
 import { swordSequence } from './swordSequences';
+import { newMartialMotion } from './newMartialMotion';
 
 type Point=[number,number];
 type Beat={front:Point;rear:Point;angle:number;tilt:number};
@@ -71,6 +72,8 @@ function score(p:MoveProfile,t:number):Beat {
 }
 
 export function moveMotion(event:BattleEvent,t:number,travel:number,weapon:Weapon,missed=false) {
+  const candidate=newMartialMotion(event,t,travel);
+  if(candidate) return candidate;
   const sword=swordSequence(event,t,travel,missed);
   if(sword) return sword;
   const named=sampleMove(event);

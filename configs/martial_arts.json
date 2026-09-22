@@ -1416,5 +1416,142 @@
         ]
       }
     ]
+  },
+  {
+    "id": "sword_danyu",
+    "name": "丹羽剑法",
+    "type": "sword",
+    "description": "剑势如丹羽舒卷, 以腾跃回旋衔接长刺, 轻进轻退而不失锋芒.",
+    "combat_summary": "轻灵中速的剑法, 以多样剑势输出, 回翎拂袖偶能迟滞敌方步法, 不依赖硬控制.",
+    "stat_modifiers": {
+      "atk": 1.07,
+      "spd": 1.08,
+      "crt": 1.05
+    },
+    "moves": [
+      {
+        "name": "羽起青萍",
+        "damage_multiplier": 0.9,
+        "template": "{attacker} 侧身起剑, 一式[{move_name}]由低处挑向 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "穿林一线",
+        "damage_multiplier": 1,
+        "template": "{attacker} 大步送肩, [{move_name}]凝成一线剑光, 直指 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "回翎拂袖",
+        "damage_multiplier": 0.95,
+        "template": "{attacker} 转身反手拂剑, [{move_name}]绕过正面, 掠向 {defender} 的{body_part}.",
+        "effects": [
+          {
+            "type": "slowed",
+            "chance": 0.25,
+            "duration": 2,
+            "spd_multiplier": 0.85
+          }
+        ]
+      },
+      {
+        "name": "掠水惊鸿",
+        "damage_multiplier": 1.05,
+        "template": "{attacker} 低身掠进, 起势如惊鸿点水, [{move_name}]斜斩 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "双燕分波",
+        "damage_multiplier": 1.1,
+        "template": "{attacker} 连换两道剑路, [{move_name}]交错如燕, 锋芒最终落向 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "凌空折羽",
+        "damage_multiplier": 1.15,
+        "template": "{attacker} 跃起转髋, [{move_name}]自高处折落, 斜刺 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "千翎竞发",
+        "damage_multiplier": 1.35,
+        "template": "{attacker} 收放长剑连催三道虚实剑影, [{move_name}]层层逼近, 最后一剑直取 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "丹凤归云",
+        "damage_multiplier": 1.45,
+        "template": "{attacker} 展臂腾空, 剑势蓄而后发, 一式[{move_name}]携朱墨羽影俯冲, 锋指 {defender} 的{body_part}.",
+        "effects": []
+      }
+    ]
+  },
+  {
+    "id": "blade_jingchao",
+    "name": "惊潮刀法",
+    "type": "blade",
+    "description": "以腰胯带刀, 取大潮进退之势, 横斩如断江, 重劈如分海.",
+    "combat_summary": "常速重斩的刀法, 以舒展的刀势稳步输出, 拨浪开礁偶能削弱防御, 不附带硬控制.",
+    "stat_modifiers": {
+      "atk": 1.12,
+      "spd": 1
+    },
+    "moves": [
+      {
+        "name": "横江断流",
+        "damage_multiplier": 1,
+        "template": "{attacker} 跨步转腰, [{move_name}]横贯身前, 刀锋斩向 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "拨浪开礁",
+        "damage_multiplier": 0.9,
+        "template": "{attacker} 反手拨刀接一记短劈, [{move_name}]寻隙而入, 砍向 {defender} 的{body_part}.",
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.25,
+            "duration": 2,
+            "def_multiplier": 0.8
+          }
+        ]
+      },
+      {
+        "name": "逆潮扬锋",
+        "damage_multiplier": 1.05,
+        "template": "{attacker} 沉身蹬地, [{move_name}]随腰胯翻起, 刀锋由下撩向 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "卷沙回刃",
+        "damage_multiplier": 0.95,
+        "template": "{attacker} 转腰拖刀, 忽又回刃反切, 一式[{move_name}]直奔 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "踏浪连环",
+        "damage_multiplier": 1.15,
+        "template": "{attacker} 进步换势, [{move_name}]两道刀影接踵而来, 后一刀压向 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "悬瀑落刃",
+        "damage_multiplier": 1.2,
+        "template": "{attacker} 跃起举刀, [{move_name}]如悬瀑倾落, 重重劈向 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "千涛叠岸",
+        "damage_multiplier": 1.4,
+        "template": "{attacker} 横斩未尽便转身再催一刀, [{move_name}]如叠浪拍岸, 直逼 {defender} 的{body_part}.",
+        "effects": []
+      },
+      {
+        "name": "一线分海",
+        "damage_multiplier": 1.5,
+        "template": "{attacker} 持刀凝势, 随即长跨一步, [{move_name}]将层叠墨浪分向两侧, 刀锋劈向 {defender} 的{body_part}.",
+        "effects": []
+      }
+    ]
   }
 ]

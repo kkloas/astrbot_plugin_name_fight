@@ -16,7 +16,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
       const {moveMotion}=await import('/src/battle/moveMotion.ts');
       const {weaponFor}=await import('/src/battle/martialVisuals.ts');
       const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
-      let boneError=0,gripError=0,jump=0,underground=0,tipUnderground=0,worst=null;
+      let boneError=0,gripError=0,jump=0,underground=0,tipUnderground=0,worst=null,tipWorst=null;
       const coverage=[],signatures=new Set();
       for(const [id,profiles] of Object.entries(moveProfiles)) {
         const art=(Array.isArray(config)?config:config.martial_arts).find(a=>a.id===id);
@@ -34,7 +34,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
               if(weapon==='spear') gripError=Math.max(gripError,distance([p[6][0]-68*Math.cos(frame.pose.sword),p[6][1]-68*Math.sin(frame.pose.sword)],p[4]));
               underground=Math.max(underground,p[8][1]+frame.lift,p[10][1]+frame.lift);
               const length=({sword:99,blade:107,katana:112,spear:140,brush:45})[weapon];
-              if(length) tipUnderground=Math.max(tipUnderground,frame.lift+p[6][1]+Math.sin(frame.pose.sword)*length);
+              if(length) {
+                const tip=weapon==='blade'?[104,-23]:weapon==='katana'?[111,-14]:[length,0];
+                // Figure origin is y=324; the actual ground line is at y=329.
+                const y=frame.lift+p[6][1]+Math.sin(frame.pose.sword)*tip[0]+Math.cos(frame.pose.sword)*tip[1]-5;
+                if(y>tipUnderground){tipUnderground=y;tipWorst={id,name,t};}
+              }
               if(previous) for(let i=0;i<p.length;i++) {
                 const d=distance([frame.x+p[i][0],frame.lift+p[i][1]],[previous.x+previous.pose.points[i][0],previous.lift+previous.pose.points[i][1]]);
                 if(d>jump) {jump=d;worst={id,name,t,joint:i,d};}
@@ -47,19 +52,19 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
         }
       }
       const arts=Array.isArray(config)?config:config.martial_arts;
-      return {boneError,gripError,jump,underground,tipUnderground,worst,coverage,unique:signatures.size,configKeys:arts.flatMap(a=>a.moves.map(m=>`${a.id}/${m.name}`))};
+      return {boneError,gripError,jump,underground,tipUnderground,tipWorst,worst,coverage,unique:signatures.size,configKeys:arts.flatMap(a=>a.moves.map(m=>`${a.id}/${m.name}`))};
     },config);
     console.log(JSON.stringify(metrics));
     assert.deepEqual([...metrics.coverage].sort(),[...metrics.configKeys].sort());
     assert(metrics.boneError<1e-7,'Fixed bone lengths');
     assert(metrics.gripError<.05,'Both spear hands share one shaft');
     assert(metrics.underground<.01,'Feet above ground');
-    assert(metrics.tipUnderground<1,'Weapon tips above ground');
+    assert(metrics.tipUnderground<=0,'Weapon tips above the rendered ground line');
     assert(metrics.jump<16,'Continuous poses at 2ms samples');
     assert(metrics.unique>=60,'Named move motion variants');
     const select=page.getByLabel('招式',{exact:true});
     const options=await select.locator('option').evaluateAll(os=>os.map(o=>({value:o.value,name:o.textContent})));
-    assert.equal(options.length,70);
+    assert.equal(options.length,config.reduce((sum,art)=>sum+art.moves.length,0));
     const seek=async t=>{await page.getByRole('slider',{name:'动作进度'}).fill(String(t));await page.waitForTimeout(35);};
     const frames=[];
     for(const option of options) {

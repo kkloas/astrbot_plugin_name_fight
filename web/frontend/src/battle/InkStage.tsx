@@ -13,6 +13,9 @@ import { constrainRig } from './rig';
 import { swordSequenceFor } from './swordSequences';
 import { drawSwordSequenceEffects } from './swordEffects';
 import { motionVariantFor, type MotionMode } from './motionVariants';
+import { isNewMove, newMoveFor } from './newMartialMotion';
+import { drawCurvedFigure } from './curvedFigure';
+import { drawNewMartialEffects } from './newMartialEffects';
 
 type Point = [number, number];
 type Pose = { points: Point[]; sword: number; lean: number; shoulders?: [Point,Point] };
@@ -97,39 +100,8 @@ function stroke(ctx: CanvasRenderingContext2D, points: Point[], width: number, c
   ctx.moveTo(...points[0]); points.slice(1).forEach(p => ctx.lineTo(...p)); ctx.stroke();
 }
 
-function fighter(ctx: CanvasRenderingContext2D, x: number, side: Side, pose: Pose, time: number, weapon: Weapon, alpha = 1, lift = 0, sheathed = false) {
-  const dir = side === 'a' ? 1 : -1;
-  const ink = side === 'a' ? '#222521' : '#515953';
-  const p = pose.points;
-  ctx.save(); ctx.globalAlpha *= alpha;
-  ctx.translate(x, 324+lift); ctx.scale(dir, 1); ctx.rotate(pose.lean);
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  // Rear limbs stay narrow. A tapered torso and sash give the simple figure weight.
-  stroke(ctx, [pose.shoulders?.[0] || p[1],p[3],p[4]], 7, ink);
-  stroke(ctx, [p[2],p[7],p[8]], 10, ink);
-  stroke(ctx, [p[2],p[9],p[10]], 12, ink);
-  ctx.fillStyle = ink; ctx.beginPath();
-  ctx.moveTo(p[1][0]-8,p[1][1]-1); ctx.lineTo(p[1][0]+10,p[1][1]+2);
-  ctx.lineTo(p[2][0]+12,p[2][1]+10); ctx.lineTo(p[2][0]+26,p[2][1]+28);
-  ctx.lineTo(p[2][0]-6,p[2][1]+15); ctx.lineTo(p[2][0]-29,p[2][1]+30);
-  ctx.lineTo(p[2][0]-10,p[2][1]-2); ctx.closePath(); ctx.fill();
-  stroke(ctx, [pose.shoulders?.[1] || p[1],p[5],p[6]], 9, ink);
-  ctx.beginPath(); ctx.ellipse(p[0][0],p[0][1],11,15,.08,0,Math.PI*2); ctx.fill();
-  // A short headband and trailing sash, no face or portrait-specific features.
-  const flutter = Math.sin(time / 190) * 5;
-  const accent = side === 'a' ? '#87372d' : '#c0b99f';
-  stroke(ctx, [[p[0][0]-10,p[0][1]-4],[p[0][0]+9,p[0][1]-4]],3,accent);
-  stroke(ctx, [[p[0][0]-9,p[0][1]-3],[p[0][0]-30,p[0][1]-7+flutter],[p[0][0]-46,p[0][1]+flutter]],2.5,accent);
-  stroke(ctx, [[p[2][0]-10,p[2][1]],[p[2][0]+10,p[2][1]-1]],4,accent);
-  stroke(ctx, [[p[2][0]-9,p[2][1]], [p[2][0]-35,p[2][1]+5+flutter], [p[2][0]-52,p[2][1]+17+flutter]],4,accent);
-  if(sheathed) {
-    stroke(ctx,[[p[2][0]-70,p[2][1]+12],[p[2][0]+14,p[2][1]-4]],6,ink);
-  } else {
-    const hand: Point = weapon==='zither'?[5,-83]:p[6];
-    ctx.translate(...hand); ctx.rotate(weapon==='zither'?0:pose.sword);
-    drawWeapon(ctx,weapon,ink,time);
-  }
-  ctx.restore();
+function fighter(ctx: CanvasRenderingContext2D, x: number, side: Side, pose: Pose, time: number, weapon: Weapon, alpha = 1, lift = 0, sheathed = false, artId?:string) {
+  drawCurvedFigure(ctx,x,side==='a'?1:-1,pose,time,weapon,alpha,lift,sheathed,artId);
 }
 
 function motionPoses(technique: Technique, weapon: Weapon, type?: string) {
@@ -355,7 +327,7 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
     ctx.save();ctx.globalAlpha=frame.opacity;
     if(effects && state.hp[side]>0) drawAura(ctx,x,324+lift,state.states[side],time);
     const local=turn?time-turn.time:-1;
-    if(effects && attack?.actor===side) drawPreparation(ctx,technique,x,dir,local,['needles','zither'].includes(weapon));
+    if(effects && attack?.actor===side && !isNewMove(attack)) drawPreparation(ctx,technique,x,dir,local,['needles','zither'].includes(weapon));
     ctx.restore();
     const dodging=battle.events.find(e=>e.type==='dodge' && e.target===side && time>=e.time-100 && time<e.time+550);
     const moving=attack?.actor===side && ((local>430 && local<960)||(local>1210 && local<1660)) && !['needles','zither'].includes(weapon);
@@ -364,7 +336,7 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
       const shadows=qinggong==='earth_root'?0:qinggong==='shadow_drift'||qinggong==='shadow_fragrance'?4:2;
       for(let i=shadows;i>0;i--) {
         const past=frameAt(side,Math.max(0,time-i*35),turn);
-        fighter(ctx,past.x,side,past.pose,time-i*35,past.weapon,.18/i*past.opacity,past.lift,past.sheathed);
+        fighter(ctx,past.x,side,past.pose,time-i*35,past.weapon,.18/i*past.opacity,past.lift,past.sheathed,actor.martialArt.id);
       }
       const trace=Array.from({length:4},(_,i)=>{
         const past=frameAt(side,Math.max(turn?.time || 0,time-i*60),turn);
@@ -381,7 +353,7 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
       }
       ctx.restore();
     }
-    fighter(ctx,x,side,pose,time,weapon,frame.opacity,lift,frame.sheathed);
+    fighter(ctx,x,side,pose,time,weapon,frame.opacity,lift,frame.sheathed,actor.martialArt.id);
     if(!frame.armed && weaponFor(actor)!=='unarmed') {
       const disarm=battle.events.filter(e=>e.type==='status_apply' && e.status==='disarmed' && e.target===side && e.time<=time).pop();
       const age=time-(disarm?.time||0);
@@ -418,7 +390,16 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
       const local=contactTime(time-turn.time,(outcome?.time || turn.time+950)-turn.time,force.hold);
       drawSwordSequenceEffects(ctx,attack,local,t=>tipAt(frameAt(side,turn.time+t,turn)),dir,force);
     }
-    if(profile && turn && time-turn.time>650 && impactAge<570) {
+    if(isNewMove(attack) && turn) {
+      const sampleAt=(t:number)=>{
+        const pose=frameAt(side,turn.time+t,turn),hand=pose.pose.points[6],angle=pose.pose.sword;
+        const world=(p:Point):Point=>[pose.x+dir*p[0],324+pose.lift+p[1]];
+        const tip:Point=weapon==='blade'?[104,-23]:[99,0];
+        return {hand:world(hand),tip:world([hand[0]+Math.cos(angle)*tip[0]-Math.sin(angle)*tip[1],hand[1]+Math.sin(angle)*tip[0]+Math.cos(angle)*tip[1]]),root:world([0,0])};
+      };
+      const contactTarget:Point=[frameAt(targetSide,outcome?.time || time,turn).x,y];
+      drawNewMartialEffects(ctx,attack.martialArtId==='sword_danyu',time-turn.time,sampleAt,dir,impactAge,force.hit,force.force,contactTarget,newMoveFor(attack));
+    } else if(profile && turn && time-turn.time>650 && impactAge<570) {
       // Sample the same poses as the figure, so trails follow the actual tip.
       const trace=Array.from({length:13},(_,i)=>{
         const at=Math.max(turn.time+650,time-(12-i)*14);
@@ -444,7 +425,7 @@ function draw(ctx: CanvasRenderingContext2D, battle: ReplayBattle, time: number,
       drawTechnique(ctx,technique,weaponFor(actor),
         [emission.x+dir*60,236+emission.lift],[targetX,y],dir,age,force.force);
     }
-    if(!profile || sample==='kick' || sample==='spear') drawImpact(ctx,targetX,y,dir,impactAge,force,attack.action||0);
+    if(!isNewMove(attack) && (!profile || sample==='kick' || sample==='spear')) drawImpact(ctx,targetX,y,dir,impactAge,force,attack.action||0);
   }
   for(const event of battle.events) {
     const age=time-event.time;

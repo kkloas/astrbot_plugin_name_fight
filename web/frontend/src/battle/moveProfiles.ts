@@ -8,6 +8,19 @@ const p=(style:MoveStyle,theme:MoveTheme,variation=0,anticipation=680,amplitude=
 // Explicit art + move identity, including names shared by different schools.
 // Variation selects an authored trajectory variant, never a combat RNG result.
 export const moveProfiles:Record<string,Record<string,MoveProfile>>={
+  // Rendering metadata; newMartialMotion owns the full sixteen named timelines.
+  sword_danyu:{
+    '羽起青萍':p('rise','vermilion',0,700,.9),'穿林一线':p('thrust','vermilion',0,770),
+    '回翎拂袖':p('spin','vermilion',0,650,.95),'掠水惊鸿':p('rise','vermilion',1,700),
+    '双燕分波':p('flurry','vermilion',1,620),'凌空折羽':p('leap','vermilion',0,660,1.1),
+    '千翎竞发':p('flurry','vermilion',2,580,1.3),'丹凤归云':p('leap','vermilion',0,620,1.45),
+  },
+  blade_jingchao:{
+    '横江断流':p('sweep','ink',0,700),'拨浪开礁':p('cleave','ink',0,760,.9),
+    '逆潮扬锋':p('rise','silver',1,710),'卷沙回刃':p('spin','ink',1,650,.95),
+    '踏浪连环':p('flurry','silver',1,600,1.1),'悬瀑落刃':p('leap','ink',1,700,1.2),
+    '千涛叠岸':p('flurry','ink',0,650,1.4),'一线分海':p('cleave','silver',2,800,1.5),
+  },
   palm_crushing_wave:{'裂潮击':p('palm','jade',0,720),'断岳震':p('shock','ink',1,780,1.25)},
   sword_falling_plum:{'寒枝点雪':p('thrust','snow'),'回风斩':p('spin','petal',0,650)},
   leg_shadow_whirl:{'扫叶势':p('sweep','leaf',0,710),'穿云踢':p('kick','wind',1,680,1.15)},

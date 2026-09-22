@@ -11,6 +11,18 @@ const v = (motion: Motion, trail: Trail, weight = 1, flourish?: Technique['flour
 // Explicit per-art keys avoid confusing the two different "白虹贯日" entries.
 // Visual flourishes never imply that a probabilistic status actually triggered.
 export const techniques: Record<string, Record<string, Technique>> = {
+  sword_danyu: {
+    '羽起青萍':v('rise','edge',.9), '穿林一线':v('thrust','point'),
+    '回翎拂袖':v('slash','edge',.95), '掠水惊鸿':v('rise','edge',1.05),
+    '双燕分波':v('flurry','edge',1.1), '凌空折羽':v('leap','edge',1.15),
+    '千翎竞发':v('flurry','point',1.35), '丹凤归云':v('leap','edge',1.6),
+  },
+  blade_jingchao: {
+    '横江断流':v('sweep','edge'), '拨浪开礁':v('cleave','edge',.9),
+    '逆潮扬锋':v('rise','edge',1.05), '卷沙回刃':v('slash','edge',.95),
+    '踏浪连环':v('flurry','edge',1.15), '悬瀑落刃':v('leap','edge',1.2),
+    '千涛叠岸':v('flurry','wave',1.4), '一线分海':v('cleave','wave',1.7),
+  },
   palm_crushing_wave: {
     '裂潮击': v('palm','wave'), '断岳震': v('cleave','wave',1.4),
   },

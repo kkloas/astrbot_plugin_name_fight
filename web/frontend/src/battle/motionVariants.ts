@@ -1,4 +1,5 @@
 import type { BattleEvent, ReplayBattle } from './replay';
+import { isNewArt } from './newMartialMotion';
 
 export type MotionVariant='legacy'|'current';
 export type MotionMode=MotionVariant|'mixed';
@@ -15,6 +16,7 @@ function hash(text:string,seed=2166136261) {
 // a 50/50 choice without combat RNG calls or frame-dependent random selection.
 // Equal recordings retain their choices even after JSON round trips.
 export function motionVariantFor(battle:ReplayBattle,event?:BattleEvent,mode:MotionMode='mixed'):MotionVariant {
+  if(isNewArt(event?.martialArtId)) return 'current';
   if(mode!=='mixed') return mode;
   if(!event) return 'current';
   let seed=seeds.get(battle);
