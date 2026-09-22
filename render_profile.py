@@ -1,10 +1,16 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import os
 import uuid
 from typing import Any
 from PIL import Image, ImageDraw, ImageFont
+
+AVATAR_BOX = (126, 96, 332, 302)
+try:
+    RESAMPLE_LANCZOS = Image.Resampling.LANCZOS
+except AttributeError:
+    RESAMPLE_LANCZOS = Image.LANCZOS
 
 
 def _find_font(data_dir: str, name: str, fallbacks: list[str]) -> str | None:
@@ -18,23 +24,51 @@ def _find_font(data_dir: str, name: str, fallbacks: list[str]) -> str | None:
     return None
 
 
+def _build_avatar_layer(avatar_path: str, size: int) -> Image.Image | None:
+    if not avatar_path or not os.path.exists(avatar_path):
+        return None
+    avatar = Image.open(avatar_path).convert("RGBA")
+    side = min(avatar.size)
+    left = (avatar.width - side) // 2
+    top = (avatar.height - side) // 2
+    avatar = avatar.crop((left, top, left + side, top + side))
+    avatar = avatar.resize((size, size), RESAMPLE_LANCZOS)
+
+    mask = Image.new("L", (size, size), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.ellipse((0, 0, size - 1, size - 1), fill=255)
+    avatar.putalpha(mask)
+    return avatar
+
+
+def _paste_avatar(img: Image.Image, fighter: dict[str, Any]) -> None:
+    avatar_path = str(fighter.get("avatar_path") or "").strip()
+    if not avatar_path:
+        return
+    left, top, right, bottom = AVATAR_BOX
+    size = min(right - left, bottom - top)
+    avatar = _build_avatar_layer(avatar_path, size)
+    if avatar is None:
+        return
+    img.alpha_composite(avatar, (left, top))
+
+
 def get_stat_color(stat: str, value: float) -> tuple[int, int, int]:
-    """白-绿-蓝-紫-橙 五级属性色彩，严格对齐 stat_comment 文字分级"""
+    """绿/蓝/紫/橙/红五级属性色彩，严格对齐 stat_comment 文字分级"""
     colors = [
-        (255, 255, 255),  # 0: 白 — 最低评语
-        (80, 255, 80),    # 1: 绿 — 第二级
-        (50, 200, 255),   # 2: 蓝 — 第三级
-        (230, 80, 255),   # 3: 紫 — 第四级
-        (255, 160, 0),    # 4: 橙 — 最高评语
+        (80, 255, 80),
+        (50, 200, 255),
+        (230, 80, 255),
+        (255, 160, 0),
+        (255, 70, 70),
     ]
-    # 阈值严格对齐 text_resources.stat_comment
     thresholds = {
-        'hp':  [420, 520, 620, 760],   # 内息连绵 / 根基深厚 / 气血如虹 / 北冥化生
-        'atk': [70,  85,  100, 140],   # 蓄势成劲 / 锋芒毕露 / 所向披靡 / 撼天动地
-        'def': [65,  80,  95,  130],   # 严阵以待 / 守势沉雄 / 不动如山 / 苍山负雪
-        'spd': [45,  58,  72,  110],   # 进退有度 / 身轻如燕 / 追风逐电 / 浮光掠影
-        'crt': [12,  18,  24,  36],    # 偶露峥嵘 / 奇锋暗藏 / 杀机炽盛 / 白虹贯日
-        'eva': [16,  22,  28,  42],    # 转圈自如 / 闪转腾挪 / 飘渺难测 / 翩若惊鸿
+        'hp':  [420, 520, 620, 760],
+        'atk': [70,  85,  100, 140],
+        'def': [65,  80,  95,  130],
+        'spd': [45,  58,  72,  110],
+        'crt': [12,  18,  24,  36],
+        'eva': [16,  22,  28,  42],
     }
     t = thresholds.get(stat)
     if t is None:
@@ -53,14 +87,12 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
     rating = float(fighter.get('star_rating', 0))
     breakthrough = int(fighter.get('breakthrough_stage', 0) or 0)
 
-    # 判定使用哪张模板
     if rating >= 6.0 or breakthrough > 0:
         template_name = "6star_template.jpg"
     elif rating >= 5.0:
         template_name = "5star_template.jpg"
     else:
-        return None  # 4 星及以下不渲染
-
+        return None
     template_path = os.path.join(data_dir, template_name)
     if not os.path.exists(template_path):
         return None
@@ -69,9 +101,9 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
     output_path = os.path.join(data_dir, output_filename)
 
     img = Image.open(template_path).convert("RGBA")
+    _paste_avatar(img, fighter)
     draw = ImageDraw.Draw(img)
 
-    # ---- 字体加载 ----
     title_path = _find_font(data_dir, "STXINGKA.TTF", [
         r"C:\Windows\Fonts\STXINGKA.TTF",
     ])
@@ -82,11 +114,11 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
     try:
         font_title = ImageFont.truetype(title_path, 64) if title_path else ImageFont.load_default()
         font_normal = ImageFont.truetype(normal_path, 32) if normal_path else ImageFont.load_default()
-        font_number = ImageFont.truetype(normal_path, 30) if normal_path else ImageFont.load_default()
+        font_skill = ImageFont.truetype(normal_path, 34) if normal_path else ImageFont.load_default()
+        font_number = ImageFont.truetype(normal_path, 36) if normal_path else ImageFont.load_default()
     except IOError:
-        font_title = font_normal = font_number = ImageFont.load_default()
+        font_title = font_normal = font_skill = font_number = ImageFont.load_default()
 
-    # ---- 提取数据 ----
     fighter_name = str(fighter.get("name", "未知"))
     martial_art = fighter.get("martial_art", {})
     neigong = fighter.get("neigong", {})
@@ -114,7 +146,6 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
     color_name = (245, 235, 210)
     color_skill = (205, 185, 155)
 
-    # ---- 绘制名字（居中） ----
     name_center_x = 550
     name_y = 135
     bbox = draw.textbbox((0, 0), fighter_name, font=font_title)
@@ -125,13 +156,11 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
         stroke_width=2, stroke_fill=(30, 20, 10)
     )
 
-    # ---- 绘制武学/内功/轻功 ----
     skill_x = 450
-    draw.text((skill_x, 385), martial_name, font=font_normal, fill=color_skill)
-    draw.text((skill_x, 475), neigong_name, font=font_normal, fill=color_skill)
-    draw.text((skill_x, 565), qinggong_name, font=font_normal, fill=color_skill)
+    draw.text((skill_x, 385), martial_name, font=font_skill, fill=color_skill, stroke_width=1, stroke_fill=(40, 30, 20))
+    draw.text((skill_x, 475), neigong_name, font=font_skill, fill=color_skill, stroke_width=1, stroke_fill=(40, 30, 20))
+    draw.text((skill_x, 565), qinggong_name, font=font_skill, fill=color_skill, stroke_width=1, stroke_fill=(40, 30, 20))
 
-    # ---- 绘制六项属性面板 ----
     left_center = 330
     right_center = 630
     row1_y = 698
@@ -143,7 +172,7 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
         w = box[2] - box[0]
         draw.text(
             (cx - w / 2, y), text, font=font_number, fill=color,
-            stroke_width=2, stroke_fill=(40, 30, 20),
+            stroke_width=3, stroke_fill=(40, 30, 20),
         )
 
     draw_centered(left_center,  row1_y, hp,  get_stat_color('hp',  hp_val))
@@ -153,7 +182,9 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
     draw_centered(right_center, row2_y, crt, get_stat_color('crt', crt_val))
     draw_centered(right_center, row3_y, eva, get_stat_color('eva', eva_val))
 
-    # ---- 保存 ----
     out_img = img.convert("RGB")
     out_img.save(output_path, quality=95)
     return output_path
+
+
+
