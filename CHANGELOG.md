@@ -1,17 +1,5 @@
 # Changelog
 
-## 1.4.0 - 2026-04-14
-
-### Added
-
-- Added a group-scoped two-phase world boss activity with open, fight, rank, close, and settle commands
-- Added shared phase-2 HP tracking, contribution ranking, daily attempt limits, and kill settlement rewards
-- Added world boss message templates and repository tests covering activity lifecycle and settlement
-
-### Fixed
-
-- Fixed user-facing world boss text and metadata output to avoid mojibake in the released package
-
 ## 1.2.1 - 2026-04-02
 
 ### Changed
