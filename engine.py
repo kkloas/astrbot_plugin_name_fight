@@ -202,14 +202,19 @@ class CombatEngine:
             random.choice(INTRO_TEMPLATES).format(attacker=actor_a["name"], defender=actor_b["name"]),
             self._panel_text(actor_a, actor_b),
         ]
-        logs.extend(self._apply_battle_start_effects(actor_a, actor_b))
-
         if _events is not None:
             replay = {"events": _events, "time": 0, "action": 0}
             for side, actor in (("a", actor_a), ("b", actor_b)):
                 actor["_replay"] = replay
                 actor["_side"] = side
-            self._emit(actor_a, "battle_start", logs=list(logs))
+            self._emit(actor_a, "battle_start", logs=list(logs), fighters={
+                side: {"hp": int(actor["hp"]), "maxHp": int(actor["max_hp"])}
+                for side, actor in (("a", actor_a), ("b", actor_b))
+            })
+        opening_logs = self._apply_battle_start_effects(actor_a, actor_b)
+        logs.extend(opening_logs)
+        if opening_logs:
+            self._emit(actor_a, "opening", logs=opening_logs)
 
         replay_frames: list[dict[str, Any]] = []
         if collect_replay:
@@ -294,6 +299,8 @@ class CombatEngine:
                         attacker,
                         "turn_end",
                         logs=logs[log_start:],
+                        states={"a": deepcopy(actor_a["states"]), "b": deepcopy(actor_b["states"])},
+                        weaponsReady={"a": actor_a["weapon_ready"], "b": actor_b["weapon_ready"]},
                         gauge=current_gauge["gauge"],
                         speeds=current_gauge["speeds"],
                     )
@@ -437,9 +444,11 @@ class CombatEngine:
             )
         )
         if self._resolve_turn_start(attacker, logs):
+            self._emit(attacker, "turn_skip", reason="stunned" if attacker["hp"] > 0 else "fallen")
             return
         if not attacker["weapon_ready"]:
             attacker["weapon_ready"] = True
+            self._emit(attacker, "turn_skip", reason="disarmed")
             logs.append("{name} 兵刃脱手, 只得先稳住架势并拾回武器, 这一回合未能出手。".format(name=attacker["name"]))
             logs.extend(self._resolve_action_end_effects(attacker))
             return
@@ -468,6 +477,12 @@ class CombatEngine:
         tagged_attack_text = self._tagged_attack_text(attack_text, attacker["name"], defender["name"], body_part_text)
         damage_bonus_ratio = self._next_attack_damage_bonus(attacker)
         damage, crit = self._calculate_damage(attacker, defender, move, part_key, damage_bonus_ratio=damage_bonus_ratio)
+        if "_replay" in attacker:
+            attacker["_replay"]["time"] = max(attacker["_replay"]["time"], action_no * 1900 + 950)
+        guard = float(defender["neigong"].get("part_guard", {}).get(part_key, 1.0))
+        if guard != 1.0:
+            self._emit(defender, "guard", target=defender.get("_side"), multiplier=guard,
+                       bodyPartKey=part_key, sourceSkill=self._skill_summary(defender, "neigong"))
         hp_before = int(defender["hp"])
         damage, mitigation_logs = self._apply_damage_defer(defender, damage)
         defender["hp"] = max(0, defender["hp"] - damage)
@@ -485,10 +500,9 @@ class CombatEngine:
         if crit:
             logs.append(self._crit_text(attacker, defender))
         logs.extend(self._consume_next_attack_damage_bonus(attacker, damage_bonus_ratio))
+        self._hp_event(defender, hp_before, "strike", source=attacker, amount=damage,
+                       crit=crit, bodyPart=body_part_text, bodyPartKey=part_key)
         logs.extend(self._resolve_fatal_block(defender))
-        if "_replay" in attacker:
-            attacker["_replay"]["time"] = action_no * 1900 + 950
-            self._hp_event(defender, hp_before, "strike", source=attacker, crit=crit, bodyPart=body_part_text, bodyPartKey=part_key)
         logs.extend(self._resolve_passives_after_hit(attacker, defender, damage, part_key))
         logs.extend(self._apply_move_effects(attacker, defender, move, part_key))
         logs.extend(self._resolve_action_end_effects(attacker))
@@ -544,8 +558,8 @@ class CombatEngine:
                 actor["hp"] = max(0, actor["hp"] - damage)
                 logs.append("{name} \u4f24\u53e3\u8ff8\u88c2, \u6d41\u8840\u53d1\u4f5c, \u635f\u5931 {damage} \u70b9\u6c14\u8840\u3002".format(name=actor["name"], damage=damage))
                 state["duration"] -= 1
+                self._hp_event(actor, hp_before, "bleeding", amount=damage)
                 logs.extend(self._resolve_fatal_block(actor))
-                self._hp_event(actor, hp_before, "bleeding")
                 if actor["hp"] <= 0:
                     return True
             elif state["type"] == "deferred_damage":
@@ -558,8 +572,8 @@ class CombatEngine:
                 state["pending_damage"] = max(0, pending - damage)
                 state["duration"] -= 1
                 logs.append("{name} \u4f53\u5185\u88ab\u538b\u4e0b\u7684\u6697\u52b2\u9aa4\u7136\u53d1\u4f5c, \u635f\u5931 {damage} \u70b9\u6c14\u8840\u3002".format(name=actor["name"], damage=damage))
+                self._hp_event(actor, hp_before, "deferred_damage", amount=damage)
                 logs.extend(self._resolve_fatal_block(actor))
-                self._hp_event(actor, hp_before, "deferred_damage")
                 if actor["hp"] <= 0:
                     return True
             elif state["type"] == "poisoned":
@@ -568,13 +582,15 @@ class CombatEngine:
                 actor["hp"] = max(0, actor["hp"] - damage)
                 logs.append("{name} \u4f53\u5185\u6bd2\u6027\u7ffb\u6d8c, \u635f\u5931 {damage} \u70b9\u771f\u5b9e\u4f24\u5bb3\u3002".format(name=actor["name"], damage=damage))
                 state["duration"] -= 1
+                self._hp_event(actor, hp_before, "poisoned", amount=damage)
                 logs.extend(self._resolve_fatal_block(actor))
-                self._hp_event(actor, hp_before, "poisoned")
                 if actor["hp"] <= 0:
                     return True
 
         logs.extend(self._resolve_turn_start_passives(actor))
+        hp_before = int(actor["hp"])
         healed = self._resolve_regeneration(actor)
+        self._hp_event(actor, hp_before, "regeneration")
         if healed > 0:
             logs.append("{name} \u8fd0\u8f6c\u5185\u606f, \u56de\u6625\u751f\u6548, \u6062\u590d\u4e86 {heal} \u70b9\u6c14\u8840\u3002".format(name=actor["name"], heal=healed))
         return False
@@ -597,12 +613,16 @@ class CombatEngine:
             if passive.get("type") == "vampirism":
                 heal = min(int(damage * passive.get("leech_ratio", 0.0)), attacker["max_hp"] - attacker["hp"])
                 if heal > 0:
+                    hp_before = int(attacker["hp"])
                     attacker["hp"] += heal
+                    self._hp_event(attacker, hp_before, "vampirism", fromSide=defender.get("_side"))
                     logs.append("{name} 借对手伤势反哺自身, 恢复了 {heal} 点气血。".format(name=attacker["name"], heal=heal))
         for passive in defender["neigong"].get("passives", []):
             if passive.get("type") == "thorns":
                 reflect = max(1, int(damage * passive.get("reflect_ratio", 0.0)))
+                hp_before = int(attacker["hp"])
                 attacker["hp"] = max(0, attacker["hp"] - reflect)
+                self._hp_event(attacker, hp_before, passive["type"], source=defender, amount=reflect)
                 logs.append("{name} 护体劲力反震而出, 令 {target} 反受 {damage} 点伤害。".format(name=defender["name"], target=attacker["name"], damage=reflect))
                 logs.extend(self._resolve_fatal_block(attacker))
             elif passive.get("type") == "part_counter":
@@ -610,7 +630,9 @@ class CombatEngine:
                 if part_key not in trigger_parts:
                     continue
                 reflect = max(1, int(damage * passive.get("reflect_ratio", 0.0)))
+                hp_before = int(attacker["hp"])
                 attacker["hp"] = max(0, attacker["hp"] - reflect)
+                self._hp_event(attacker, hp_before, passive["type"], source=defender, amount=reflect)
                 message = self._format_effect_message(passive.get("trigger_msg"), defender)
                 if message:
                     logs.append(message)
@@ -633,7 +655,9 @@ class CombatEngine:
             if used >= limit:
                 continue
             actor["passive_usage"][key] = used + 1
+            hp_before = int(actor["hp"])
             actor["hp"] = max(1, int(passive.get("survive_hp", 1)))
+            self._hp_event(actor, hp_before, "fatal_block")
             message = self._format_effect_message(passive.get("trigger_msg"), actor)
             if message:
                 logs.append(message)
@@ -673,6 +697,8 @@ class CombatEngine:
         else:
             for actor, _index, _effect in starters:
                 actor["ag"] = max(actor["ag"], 100.0)
+        for actor, _index, effect in starters:
+            self._passive_event(actor, effect["type"], "qinggong", gaugeValue=actor["ag"])
         return logs
 
     def _resolve_threshold_effects(self, actor: dict[str, Any]) -> list[str]:
@@ -696,7 +722,9 @@ class CombatEngine:
                 if trigger_msg:
                     logs.append(trigger_msg)
                 if real_heal > 0:
+                    hp_before = int(actor["hp"])
                     actor["hp"] += real_heal
+                    self._hp_event(actor, hp_before, "burst_heal")
                     logs.append("{name} 强行稳住伤势，恢复了 {heal} 点气血。".format(name=actor["name"], heal=real_heal))
             elif passive.get("type") == "crisis_defense":
                 if actor["passive_usage"].get(key):
@@ -707,6 +735,8 @@ class CombatEngine:
                     "duration": 9999,
                     "def_bonus_ratio": float(passive.get("def_bonus_ratio", 0.0)),
                 })
+                self._emit(actor, "status_apply", target=actor.get("_side"), status="crisis_defense",
+                           duration=9999, sourceSkill=self._skill_summary(actor, "neigong"))
                 if trigger_msg:
                     logs.append(trigger_msg)
 
@@ -723,6 +753,7 @@ class CombatEngine:
                 continue
             actor["special_usage"][key] = used + 1
             actor["ag"] = max(actor["ag"], 1000.0)
+            self._passive_event(actor, effect["type"], "qinggong", gaugeValue=actor["ag"])
             message = self._format_effect_message(effect.get("trigger_msg"), actor)
             if message:
                 logs.append(message)
@@ -748,6 +779,8 @@ class CombatEngine:
                     "def_bonus_ratio": float(passive.get("bonus_per_turn", 0.0)) * stacks,
                 },
             )
+            self._emit(actor, "status_apply", target=actor.get("_side"), status="stacking_defense",
+                       duration=9999, stacks=stacks, sourceSkill=self._skill_summary(actor, "neigong"))
             message = self._format_effect_message(passive.get("trigger_msg"), actor)
             if message:
                 logs.append(message)
@@ -766,6 +799,8 @@ class CombatEngine:
                     "damage_bonus_ratio": float(effect.get("damage_bonus_ratio", 0.0)),
                 },
             )
+            self._passive_event(actor, "dodge_damage_boost", "qinggong", status="next_attack_bonus",
+                                speedAfter=self._effective_spd(actor))
             message = self._format_effect_message(effect.get("trigger_msg"), actor)
             if message:
                 logs.append(message)
@@ -791,6 +826,8 @@ class CombatEngine:
                     "spd_bonus_ratio": float(effect.get("bonus_per_stack", 0.0)) * stacks,
                 },
             )
+            self._passive_event(actor, "action_spd_stack", "qinggong", status="action_spd_stack",
+                                speedAfter=self._effective_spd(actor))
             message = self._format_effect_message(effect.get("trigger_msg"), actor)
             if message:
                 logs.append(message)
@@ -816,6 +853,9 @@ class CombatEngine:
                     "pending_damage": deferred,
                 },
             )
+            self._emit(actor, "status_apply", target=actor.get("_side"), status="deferred_damage",
+                       effect="damage_defer", duration=2, amount=deferred,
+                       sourceSkill=self._skill_summary(actor, "neigong"))
             message = self._format_effect_message(passive.get("trigger_msg"), actor)
             if message:
                 logs.append(message)
@@ -852,6 +892,9 @@ class CombatEngine:
             elif effect["type"] == "disarmed":
                 defender["weapon_ready"] = False
             self._upsert_state(defender, state)
+            self._emit(attacker, "status_apply", target=defender.get("_side"), status=state["type"],
+                       duration=state["duration"], speedAfter=self._effective_spd(defender),
+                       sourceSkill=self._skill_summary(attacker, "martial_art"))
             template = STATE_TEXT.get(effect["type"])
             if template:
                 logs.append(template.format(target=defender["name"]))
@@ -992,6 +1035,8 @@ class CombatEngine:
         replay = actor.get("_replay")
         if replay is None:
             return
+        if replay["events"]:
+            replay["time"] = max(replay["time"], replay["events"][-1]["time"] + 40)
         event = {
             "type": kind,
             "time": int(replay["time"]),
@@ -1010,15 +1055,26 @@ class CombatEngine:
         source: dict[str, Any] | None = None,
         **payload: Any,
     ) -> None:
-        self._emit(
-            actor,
-            "damage",
-            target=actor.get("_side"),
-            amount=max(0, int(before) - int(actor["hp"])),
-            hpBefore=int(before),
-            hpAfter=int(actor["hp"]),
-            maxHp=int(actor["max_hp"]),
-            cause=cause,
-            fromSide=source.get("_side") if source else None,
-            **payload,
-        )
+        if before == actor["hp"]:
+            return
+        if cause in {"regeneration", "vampirism", "thorns", "burst_heal", "fatal_block", "part_counter", "deferred_damage"}:
+            payload["sourceSkill"] = self._skill_summary(source or actor, "neigong")
+        details = {
+            "target": actor.get("_side"),
+            "amount": abs(int(before) - int(actor["hp"])),
+            "hpBefore": int(before),
+            "hpAfter": int(actor["hp"]),
+            "maxHp": int(actor["max_hp"]),
+            "cause": cause,
+            "fromSide": source.get("_side") if source else None,
+        }
+        details.update(payload)
+        self._emit(source or actor, "heal" if actor["hp"] > before else "damage", **details)
+
+    def _skill_summary(self, actor: dict[str, Any], category: str) -> dict[str, Any]:
+        skill = actor[category]
+        return {"category": category, "id": skill.get("id"), "name": skill.get("name", "")}
+
+    def _passive_event(self, actor: dict[str, Any], effect: str, category: str, **payload: Any) -> None:
+        self._emit(actor, "passive_trigger", target=actor.get("_side"), effect=effect,
+                   sourceSkill=self._skill_summary(actor, category), **payload)

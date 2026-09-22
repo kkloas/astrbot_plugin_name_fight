@@ -1,6 +1,8 @@
 export const statusLabels = {
     bleeding: '流血', poisoned: '中毒', stunned: '眩晕', slowed: '迟缓',
     weakened: '虚弱', disarmed: '缴械', armor_broken: '破甲', crisis_defense: '护体',
+    deferred_damage: '蓄积暗劲', stacking_defense: '紫霞护体',
+    next_attack_bonus: '蓄势', action_spd_stack: '身法提速',
 };
 export const victoryLabels = { quick: '速战速决', dominant: '从容取胜', standard: '胜负已分', clutch: '险中取胜', judged: '略胜半筹', draw: '不分胜负' };
 export function stateAt(battle, time) {
@@ -10,6 +12,7 @@ export function stateAt(battle, time) {
     };
     const states = { a: [], b: [] };
     const weaponsReady = { a: true, b: true };
+    const stacks = { a: 0, b: 0 };
     const gauge = { a: 0, b: 0 };
     const speeds = { a: battle.attacker.stats.spd || 0, b: battle.defender.stats.spd || 0 };
     let hasGauge = false;
@@ -39,7 +42,9 @@ export function stateAt(battle, time) {
             gauge[event.target] = event.gaugeValue;
         if (event.target && event.speedAfter !== undefined)
             speeds[event.target] = event.speedAfter;
-        if (event.type === 'status_apply' && event.target && event.status) {
+        if (['status_apply', 'passive_trigger'].includes(event.type) && event.target && event.status) {
+            if (event.status === 'stacking_defense')
+                stacks[event.target] = event.stacks || 1;
             if (!states[event.target].includes(event.status))
                 states[event.target].push(event.status);
             if (event.status === 'disarmed')
@@ -60,7 +65,7 @@ export function stateAt(battle, time) {
         }
         logs.push(...(event.logs || []));
     }
-    return { hp, states, weaponsReady, gauge, speeds, hasGauge, logs, turn, ended };
+    return { hp, states, weaponsReady, stacks, gauge, speeds, hasGauge, logs, turn, ended };
 }
 export function initiativeAt(battle, time, state = stateAt(battle, time)) {
     const gauge = { ...state.gauge };

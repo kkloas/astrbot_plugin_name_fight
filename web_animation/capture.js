@@ -55,6 +55,18 @@ window.prepareExport = async () => {
     const background = new Image();
     background.src = new URL('./ink-bg.png', document.baseURI).href;
     await background.decode();
+    // Reserve space for every status combination before caching the background.
+    const stateElements = ['a', 'b'].map(side => text(`states-${side}`));
+    const heights = [0, 0];
+    for (const event of battle.events) {
+        if (!['status_apply', 'passive_trigger', 'turn_end', 'battle_end'].includes(event.type))
+            continue;
+        updateHud(event.time);
+        stateElements.forEach((element, index) => {
+            heights[index] = Math.max(heights[index], element.getBoundingClientRect().height);
+        });
+    }
+    stateElements.forEach((element, index) => { element.style.minHeight = `${heights[index]}px`; });
     renderFrame(0);
     const rect = document.body.getBoundingClientRect();
     exportOrigin = { x: rect.x, y: rect.y };

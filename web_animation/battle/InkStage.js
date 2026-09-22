@@ -389,7 +389,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         ctx.save();
         ctx.globalAlpha = frame.opacity;
         if (effects && state.hp[side] > 0)
-            drawAura(ctx, x, 324 + lift, state.states[side], time);
+            drawAura(ctx, x, 324 + lift, state.states[side], time, state.stacks[side]);
         const local = turn ? time - turn.time : -1;
         if (effects && attack?.actor === side && !isNewMove(attack))
             drawPreparation(ctx, technique, x, dir, local, ['needles', 'zither'].includes(weapon));
@@ -516,11 +516,13 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         // Reflection originates at the defender, while the HP event targets the attacker.
         const liveX = frames[side].x;
         const liveOtherX = otherSide ? frames[otherSide].x : otherX;
-        if (effects)
-            drawTrigger(ctx, event, event.cause === 'thorns' ? liveOtherX : liveX, event.cause === 'thorns' ? liveX : liveOtherX, age);
+        if (effects) {
+            const reflected = ['thorns', 'part_counter'].includes(event.cause);
+            drawTrigger(ctx, event, reflected ? liveOtherX : liveX, reflected ? liveX : liveOtherX, age);
+        }
         if (age > 850)
             continue;
-        if (!['damage', 'heal', 'dodge', 'status_apply', 'turn_skip'].includes(event.type))
+        if (!['damage', 'heal', 'dodge', 'status_apply', 'turn_skip', 'passive_trigger', 'guard'].includes(event.type))
             continue;
         if (event.type === 'turn_skip' && event.reason === 'fallen')
             continue;
@@ -537,12 +539,18 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
                 ctx.fill();
             }
         }
-        const text = event.type === 'damage' ? `${event.crit ? '暴击 ' : event.cause === 'thorns' ? '反震 ' : event.cause === 'bleeding' ? '流血 ' : event.cause === 'poisoned' ? '毒伤 ' : ''}-${event.amount}` :
-            event.type === 'heal' ? `+${event.amount}` : event.type === 'dodge' ? '闪' :
+        const text = event.type === 'damage' ? `${event.crit ? '暴击 ' : ['thorns', 'part_counter'].includes(event.cause) ? '反震 ' : event.cause === 'deferred_damage' ? '暗劲 ' : event.cause === 'bleeding' ? '流血 ' : event.cause === 'poisoned' ? '毒伤 ' : ''}-${event.amount}` :
+            event.type === 'heal' ? (event.cause === 'fatal_block' ? '神照护心' : `+${event.amount}`) : event.type === 'dodge' ? '闪' :
+                event.type === 'guard' ? ((event.multiplier || 1) > 1 ? '罩门受创' : `${event.sourceSkill?.name || '真气'}护体`) :
+                event.type === 'passive_trigger' ? (event.sourceSkill?.name || '身法触发') :
                 event.type === 'turn_skip' ? (event.reason === 'disarmed' ? (weaponFor(side === 'a' ? battle.attacker : battle.defender) === 'unarmed' ? '重整架势' : '拾回兵刃') : '气机受阻') :
-                    statusLabels[event.status || ''] || '运功';
-        const lane = battle.events.filter(e => e.action === event.action && e.type === event.type && e.target === event.target && e.time < event.time).length;
-        const labelY = event.type === 'status_apply' || event.type === 'turn_skip' ? 353 + Math.min(lane, 1) * 21 : 145 - (event.type === 'heal' ? 25 : 0) - Math.min(lane, 1) * 23;
+                    event.status === 'stacking_defense' ? `紫霞护体 ${event.stacks || 1}层` : statusLabels[event.status || ''] || '运功';
+        const bottomTypes = ['status_apply', 'turn_skip', 'passive_trigger', 'guard'];
+        const bottomLabel = bottomTypes.includes(event.type);
+        const lane = battle.events.filter(e => e.action === event.action && e.time < event.time && (bottomLabel
+            ? bottomTypes.includes(e.type) && (e.target || e.actor) === side && event.time - e.time < 850 && !(e.type === 'turn_skip' && e.reason === 'fallen')
+            : e.type === event.type && e.target === event.target)).length;
+        const labelY = bottomLabel ? 340 + Math.min(lane, 3) * 25 : 145 - (event.type === 'heal' ? 25 : 0) - Math.min(lane, 1) * 23;
         const major = event === outcome && force.heavy;
         ctx.font = `${major ? 'bold 34' : event.crit ? 'bold 29' : '24'}px "STKaiti", "KaiTi", serif`;
         ctx.textAlign = 'center';

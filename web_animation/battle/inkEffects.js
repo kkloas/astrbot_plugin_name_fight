@@ -14,7 +14,7 @@ function line(ctx, a, b, color, width = 1) {
     ctx.lineTo(...b);
     ctx.stroke();
 }
-export function drawAura(ctx, x, y, states, time) {
+export function drawAura(ctx, x, y, states, time, stacks = 1) {
     ctx.save();
     ctx.globalAlpha = .5;
     ctx.lineCap = 'round';
@@ -30,6 +30,20 @@ export function drawAura(ctx, x, y, states, time) {
         ctx.beginPath();
         ctx.ellipse(x, y - 3, 48, 8, 0, 0, Math.PI * 2);
         ctx.stroke();
+    }
+    if (states.includes('stacking_defense')) {
+        const layers = Math.max(1, Math.min(5, stacks));
+        for (let i = 0; i < layers; i++) {
+            const phase = time / 1300 + i * 1.25;
+            arc(ctx, x, y - 76, 36 + i * 6, phase, phase + 2.8, '#795387', 1.8);
+        }
+        ellipse(ctx, x, y - 2, 34 + layers * 5, 7, '#906b9a', 1.5);
+    }
+    if (states.includes('deferred_damage')) {
+        for (let i = 0; i < 3; i++) {
+            const phase = time / 700 + i * 2.094;
+            arc(ctx, x, y - 72, 19 + i * 7, phase, phase + 1.9, '#a45942', 2);
+        }
     }
     if (states.includes('stunned')) {
         ctx.strokeStyle = '#65583e';
@@ -120,7 +134,74 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     ctx.save();
     ctx.globalAlpha = fade * .85;
     ctx.lineCap = 'round';
-    if (event.type === 'heal' && effect === 'vampirism') {
+    if (effect === 'fatal_block') {
+        const color = '#b38a38';
+        for (let i = 0; i < 3; i++) {
+            ellipse(ctx, x, 248, 18 + open * 31 + i * 9, 30 + open * 45 + i * 9, color, 2.4 - i * .5);
+        }
+        ctx.fillStyle = 'rgba(233,204,115,.25)';
+        ctx.beginPath();
+        ctx.ellipse(x, 246, 16 + open * 13, 24 + open * 26, 0, 0, Math.PI * 2);
+        ctx.fill();
+        for (let i = 0; i < 12; i++) {
+            const angle = i * Math.PI / 6;
+            const radius = 24 + open * 45;
+            line(ctx, [x + Math.cos(angle) * radius, 247 + Math.sin(angle) * radius],
+                [x + Math.cos(angle) * (radius + 10), 247 + Math.sin(angle) * (radius + 10)], color, 2);
+        }
+        lotus(ctx, x, 324, 1.3 + open, open);
+    }
+    else if (event.type === 'guard' && id === 'jinzhong_zhao') {
+        const vulnerable = (event.multiplier || 1) > 1;
+        const color = vulnerable ? '#aa4436' : '#9b813e';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x - 48, 311);
+        ctx.quadraticCurveTo(x - 36, 276, x - 36, 228);
+        ctx.quadraticCurveTo(x - 34, 190, x, 186);
+        ctx.quadraticCurveTo(x + 34, 190, x + 36, 228);
+        ctx.quadraticCurveTo(x + 36, 276, x + 48, 311);
+        ctx.stroke();
+        ellipse(ctx, x, 311, 48, 9, color, 2.5);
+        if (vulnerable) {
+            line(ctx, [x - 15, 245], [x + 6, 258], color, 4);
+            line(ctx, [x + 6, 258], [x - 7, 274], color, 4);
+            ellipse(ctx, x, 260, 12 + open * 16, 10 + open * 12, color, 2);
+        } else {
+            for (let i = 0; i < 3; i++)
+                ellipse(ctx, x, 316 + i * 3, 49 + open * (12 + i * 11), 9 + i * 3, color, 1.3);
+        }
+    }
+    else if (effect === 'damage_defer' || effect === 'deferred_damage') {
+        const release = effect === 'deferred_damage';
+        const color = release ? '#a13c36' : '#a46642';
+        for (let i = 0; i < 9; i++) {
+            const phase = clamp((age - i * 18) / 650);
+            const radius = release ? 15 + phase * 65 : 65 - phase * 46;
+            const angle = i * 2.399 + phase * 3;
+            arc(ctx, x, 257, radius, angle, angle + .8, color, 2.7);
+        }
+        ellipse(ctx, x, 257, 24 + open * 9, 35 + open * 13, color, 2);
+    }
+    else if (effect === 'stacking_defense') {
+        const layers = Math.max(1, Math.min(5, event.stacks || 1));
+        for (let i = 0; i < layers; i++)
+            cloud(ctx, x, 310 - i * 23 - p * 12, 25 + open * (25 + i * 4), '#85588f', open);
+        ellipse(ctx, x, 324, 30 + open * 44, 8, '#936ea0', 2);
+    }
+    else if (effect === 'part_counter') {
+        const color = '#526f80';
+        for (let i = 0; i < 2; i++)
+            arc(ctx, x, 253, 32 + i * 10, p * 7 + i * Math.PI, p * 7 + i * Math.PI + 2.5, color, 2.5);
+        for (let i = 0; i < 4; i++) {
+            const phase = clamp((age - i * 65) / 620);
+            const px = x + (otherX - x) * phase;
+            const py = 253 - Math.sin(phase * Math.PI) * (24 + i * 10);
+            ellipse(ctx, px, py, 5 + phase * 8, 3 + phase * 4, color, 2);
+        }
+    }
+    else if (event.type === 'heal' && effect === 'vampirism') {
         const golden = id === 'golden_wind_record';
         const color = '#8a3d41';
         for (let i = 0; i < 19; i++) {
