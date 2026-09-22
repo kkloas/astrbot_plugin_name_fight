@@ -1,3 +1,5 @@
+import { serpentTime, serpentReplayTime } from './serpentMotion.js';
+import { phoenixTime, phoenixReplayTime } from './phoenixMotion.js';
 import { stateAt, statusLabels } from './replay.js';
 import { techniqueFor, legacyTechniqueFor, weaponFor } from './martialVisuals.js';
 import { drawWeapon } from './inkWeapons.js';
@@ -16,6 +18,9 @@ import { isNewMove, newMoveFor } from './newMartialMotion.js';
 import { drawCurvedFigure } from './curvedFigure.js';
 import { drawNewMartialEffects } from './newMartialEffects.js';
 import { expandedMoveFor, drawExpandedEffects } from './expandedArts.js';
+import { names as qinNames, qinPose, qinFX, qinTime } from './qinMotion.js';
+import { holyTime, holyReplayTime, holySample } from './holyMotion.js';
+import { heavyTime, heavyReplayTime, heavyHold, heavyShake } from './heavyMotion.js';
 // Head, neck, waist, rear elbow/hand, sword elbow/hand, rear knee/foot, front knee/foot.
 const poses = {
     idle: { points: [[0, -137], [0, -116], [-7, -65], [-28, -95], [-19, -71], [24, -101], [39, -89], [-24, -34], [-39, 0], [20, -34], [39, 0]], sword: -.45, lean: 0 },
@@ -99,7 +104,7 @@ function stroke(ctx, points, width, color) {
     ctx.stroke();
 }
 function fighter(ctx, x, side, pose, time, weapon, alpha = 1, lift = 0, sheathed = false, artId) {
-    drawCurvedFigure(ctx, x, side === 'a' ? 1 : -1, pose, time, weapon, alpha, lift, sheathed, artId);
+    drawCurvedFigure(ctx, x, (side === 'a' ? 1 : -1) * (pose.facing || 1), pose, time, weapon, alpha, lift, sheathed, artId);
 }
 function motionPoses(technique, weapon, type) {
     const resting = weapon === 'zither' ? poses.pluckIdle : weapon === 'unarmed' ? poses.palmIdle : poses.idle;
@@ -192,9 +197,10 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed') {
     const outcome = events.find(e => e.type === 'dodge' || (e.type === 'damage' && e.cause === 'strike'));
     const victim = turn?.actor === 'a' ? battle.defender : battle.attacker;
     const impact = impactFor(outcome, victim.stats.hp, technique);
+    if (attack?.martialArtId === 'sword_xuantie' && impact.hit) impact.hold = heavyHold(attack.move);
     const contact = outcome && turn ? outcome.time - turn.time : 950;
     const actionTime = contactTime(local, contact, impact.hold);
-    if (turn && attack && local >= 0 && local < 1740) {
+    if (turn && attack && local >= 0 && local < (attack.martialArtId === 'whip_baimang' ? contact + 730 : attack.martialArtId === 'staff_bainiaochaofeng' && attack.move === '绝技·百鸟朝凤' ? contact + 760 : 1740)) {
         if (turn.actor === side) {
             const t = actionTime;
             const stepProgress = clamp((t - 380) / 460);
@@ -255,12 +261,24 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed') {
                     pose = blend(motion.strike, motion.idle, retreat);
             }
             // The preceding choreography is the retained f39413d animation path.
-            const moveFrame = variant === 'current' && attack && moveMotion(attack, t, travel, weapon, outcome?.type === 'dodge');
+            const authoredTime = attack.martialArtId === 'short_shenghuoling' ? holyTime(t, contact) :
+                attack.martialArtId === 'sword_xuantie' ? heavyTime(t, contact) : attack.martialArtId === 'staff_bainiaochaofeng' ? phoenixTime(t, contact, attack.move) : attack.martialArtId === 'whip_baimang' ? serpentTime(t, contact) : t;
+            const moveFrame = variant === 'current' && attack && moveMotion(attack, authoredTime, travel, weapon, outcome?.type === 'dodge');
             if (moveFrame) {
                 const frame = moveFrame;
-                const transition = smooth(t / 140) * (1 - smooth((t - 1620) / 120));
+                const transition = (attack.martialArtId === 'staff_bainiaochaofeng' || attack.martialArtId === 'whip_baimang') ? smooth(authoredTime / 140) : smooth(t / 140) * (1 - smooth((t - 1620) / 120));
                 x = home + dir * frame.x;
                 pose = blend(motion.idle, frame.pose, transition);
+                if (attack.martialArtId === 'whip_baimang') {
+                    const other = side === 'a' ? 'b' : 'a';
+                    const defenderFrame = poseAt(battle, other, time, width, turn, mode);
+                    const shift = (defenderFrame.x - width * (other === 'a' ? .235 : .765)) * dir;
+                    pose.whip = frame.pose.whip.map((p, j, arr) => [p[0] + shift * smooth(j / (arr.length - 1)), p[1]]);
+                }
+                if (attack.martialArtId === 'short_shenghuoling') {
+                    pose.facing = frame.pose.facing;
+                    pose.roll = frame.pose.roll;
+                }
                 lift = frame.lift;
                 opacity = frame.opacity;
                 blink = frame.blink;
@@ -292,6 +310,10 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed') {
                     pose = blend(pose, stepping(motion.idle, clamp((held - 200) / 430), 32, true), .35 * (1 - f));
             }
         }
+    }
+    if (actor.martialArt.id === 'zither_duanzhi' && state.weaponsReady[side] && turn?.actor === side && attack && local >= 0 && local < 1740) {
+        const index = qinNames.indexOf(attack.move);
+        if (index >= 0) pose = qinPose(pose, index, qinTime(actionTime, contact));
     }
     const skip = turn ? battle.events.find(e => e.type === 'turn_skip' && e.action === turn.action && e.actor === side && e.time <= time) : undefined;
     const skipAge = skip ? time - skip.time : -1;
@@ -364,6 +386,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
     const outcome = attack && battle.events.find(e => e.action === attack.action && (e.cause === 'strike' || e.type === 'dodge'));
     const victim = attack?.actor === 'a' ? battle.defender : battle.attacker;
     const force = impactFor(outcome, victim.stats.hp, technique);
+    if (attack?.martialArtId === 'sword_xuantie' && force.hit) force.hold = heavyHold(attack.move);
     const impactAge = outcome ? time - outcome.time : -1;
     ctx.save();
     if (effects && force.cinematic && impactAge > -160 && impactAge < 480) {
@@ -371,7 +394,9 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         ctx.fillStyle = `rgba(32,39,35,${focus * .17})`;
         ctx.fillRect(0, 0, width, 430);
     }
-    if (effects && !reducedMotion && force.heavy && impactAge >= 0 && impactAge < 220) {
+    if (effects && !reducedMotion && attack?.martialArtId === 'sword_xuantie' && force.hit)
+        ctx.translate(...heavyShake(attack.move, impactAge));
+    if (effects && !reducedMotion && attack?.martialArtId !== 'sword_xuantie' && force.heavy && impactAge >= 0 && impactAge < 220) {
         const shake = (1 - impactAge / 220) * force.force * 5;
         ctx.translate(Math.sin(impactAge * .09) * shake, Math.cos(impactAge * .13) * shake * .4);
     }
@@ -385,18 +410,18 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         const dir = side === 'a' ? 1 : -1;
         ctx.fillStyle = `rgba(30,35,29,${.13 * frame.opacity})`;
         ctx.beginPath();
-        ctx.ellipse(x, 330, 52 + lift * .3, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, 330, Math.max(3, 52 + lift * .3), 6, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.save();
         ctx.globalAlpha = frame.opacity;
         if (effects && state.hp[side] > 0)
             drawAura(ctx, x, 324 + lift, state.states[side], time, state.stacks[side]);
         const local = turn ? time - turn.time : -1;
-        if (effects && attack?.actor === side && !isNewMove(attack) && !expandedMoveFor(attack))
+        if (effects && actor.martialArt.id !== 'zither_duanzhi' && attack?.actor === side && !isNewMove(attack) && !expandedMoveFor(attack))
             drawPreparation(ctx, technique, x, dir, local, ['needles', 'zither'].includes(weapon));
         ctx.restore();
         const dodging = battle.events.find(e => e.type === 'dodge' && e.target === side && time >= e.time - 100 && time < e.time + 550);
-        const moving = attack?.actor === side && ((local > 430 && local < 960) || (local > 1210 && local < 1660)) && !['needles', 'zither'].includes(weapon);
+        const moving = !['short_shenghuoling', 'sword_xuantie'].includes(attack?.martialArtId) && attack?.actor === side && ((local > 430 && local < 960) || (local > 1210 && local < 1660)) && !['needles', 'zither'].includes(weapon);
         if (effects && (moving || dodging)) {
             const qinggong = actor.qinggong?.id;
             const shadows = qinggong === 'earth_root' ? 0 : qinggong === 'shadow_drift' || qinggong === 'shadow_fragrance' ? 4 : 2;
@@ -461,13 +486,29 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
             const local = contactTime(time - turn.time, (outcome?.time || turn.time + 950) - turn.time, force.hold);
             drawSwordSequenceEffects(ctx, attack, local, t => tipAt(frameAt(side, turn.time + t, turn)), dir, force);
         }
-        if (expandedMoveFor(attack) && turn) {
+        if (attack.martialArtId === 'zither_duanzhi' && turn) {
+            const index = qinNames.indexOf(attack.move);
+            const contact = (outcome?.time || turn.time + 950) - turn.time;
+            const destination = outcome?.type === 'dodge' ? targetX : frameAt(targetSide, outcome?.time || time, turn).x;
+            if (index >= 0 && frame.armed)
+                qinFX(ctx, index, qinTime(time - turn.time, contact), frame.x + dir * 40, destination, force.hit);
+        }
+        else if (expandedMoveFor(attack) && turn) {
+            const holy = attack.martialArtId === 'short_shenghuoling';
+            const heavy = attack.martialArtId === 'sword_xuantie';
+            const phoenix = attack.martialArtId === 'staff_bainiaochaofeng';
+            const serpent = attack.martialArtId === 'whip_baimang';
+            const contact = (outcome?.time ?? turn.time + 950) - turn.time;
             const sampleAt = t => {
-                const pose = frameAt(side, turn.time + t, turn);
-                return { tip: tipAt(pose), root: [pose.x, 324 + pose.lift] };
+                const pose = frameAt(side, turn.time + (holy ? holyReplayTime(t, contact) : heavy ? heavyReplayTime(t, contact) : phoenix ? phoenixReplayTime(t, contact, attack.move) : serpent ? serpentReplayTime(t, contact) : t), turn);
+                if (holy) return holySample(pose, dir);
+                if (heavy) return { tip: tipAt(pose), hand: [pose.x + dir * pose.pose.points[6][0], 324 + pose.lift + pose.pose.points[6][1]],
+                    root: [pose.x, 324 + pose.lift], frame: pose };
+                return { tip: tipAt(pose), root: [pose.x, 324 + pose.lift], frame: pose };
             };
-            drawExpandedEffects(ctx, attack, time - turn.time, sampleAt,
-                [frameAt(targetSide, outcome?.time || time, turn).x, y], dir, impactAge, force.hit);
+            if ((!holy && !heavy && !phoenix && !serpent) || frame.armed)
+                drawExpandedEffects(ctx, attack, holy ? holyTime(time - turn.time, contact) : heavy ? heavyTime(time - turn.time, contact) : phoenix ? phoenixTime(time - turn.time, contact, attack.move) : serpent ? serpentTime(time - turn.time, contact) : time - turn.time, sampleAt,
+                    [(holy || heavy || phoenix) && outcome?.type === 'dodge' ? targetX : frameAt(targetSide, outcome?.time || time, turn).x, y], dir, impactAge, force.hit);
         }
         else if (isNewMove(attack) && turn) {
             const sampleAt = (t) => {
@@ -508,7 +549,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         else if (!profile) {
             drawTechnique(ctx, technique, weaponFor(actor), [emission.x + dir * 60, 236 + emission.lift], [targetX, y], dir, age, force.force);
         }
-        if (!isNewMove(attack) && !expandedMoveFor(attack) && (!profile || sample === 'kick' || sample === 'spear'))
+        if (attack.martialArtId !== 'zither_duanzhi' && !isNewMove(attack) && !expandedMoveFor(attack) && (!profile || sample === 'kick' || sample === 'spear'))
             drawImpact(ctx, targetX, y, dir, impactAge, force, attack.action || 0);
     }
     for (const event of battle.events) {

@@ -1,3 +1,4 @@
+import { drawSerpentWhip } from './serpentMotion.js';
 import { drawWeapon } from './inkWeapons.js';
 // The fixed-length IK rig remains authoritative. Only the painted contour bends.
 // Near full extension the joint is pulled toward the chord to avoid rubber limbs.
@@ -21,6 +22,11 @@ export function drawCurvedFigure(ctx, x, dir, pose, time, weapon, alpha, lift, s
     ctx.translate(x, 324 + lift);
     ctx.scale(dir, 1);
     ctx.rotate(pose.lean);
+    if (pose.roll) {
+        ctx.translate(...p[2]);
+        ctx.rotate(pose.roll);
+        ctx.translate(-p[2][0], -p[2][1]);
+    }
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     limb(ctx, s[0], p[3], p[4], 4.2, ink);
@@ -68,10 +74,11 @@ export function drawCurvedFigure(ctx, x, dir, pose, time, weapon, alpha, lift, s
             ctx.save(); ctx.translate(...p[4]); ctx.rotate(-pose.sword - .8);
             drawWeapon(ctx, weapon, ink, time); ctx.restore();
         }
+        if (weapon === 'whip' && pose.whip) drawSerpentWhip(ctx, pose.whip);
         const hand = weapon === 'zither' ? [5, -83] : p[6];
         ctx.translate(...hand);
         ctx.rotate(weapon === 'zither' ? 0 : pose.sword);
-        drawWeapon(ctx, weapon, ink, time);
+        if (weapon !== 'whip' || !pose.whip) drawWeapon(ctx, weapon, ink, time);
     }
     ctx.restore();
 }

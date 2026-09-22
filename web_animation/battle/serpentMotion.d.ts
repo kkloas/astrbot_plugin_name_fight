@@ -1,0 +1,12 @@
+import type { BattleEvent } from './replay';
+import type { RigPose } from './sampleMotion';
+type Point = [number, number];
+type Frame = { x: number; lift: number; opacity: number; blink: number; pose: RigPose };
+type Sample = { tip: Point; hand: Point; root: Point; frame: Frame };
+export const names: string[];
+export const notes: string[];
+export function serpentMotion(event: BattleEvent, time: number, travel: number): Frame | undefined;
+export function serpentEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => Sample, target: Point, dir: number, impactAge: number, hit: boolean): void;
+export function serpentTime(local: number, contact?: number): number;
+export function serpentReplayTime(local: number, contact?: number): number;
+export function drawSerpentWhip(ctx: CanvasRenderingContext2D, points: Point[]): void;

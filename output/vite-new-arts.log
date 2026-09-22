@@ -1,0 +1,45 @@
+
+  VITE v5.4.21  ready in 294 ms
+
+  ➜  Local:   http://127.0.0.1:5175/
+  ➜  press h + enter to show help
+17:33:23 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/InkStage.tsx
+17:42:26 [vite] hmr update /src/battle/MotionPreview.tsx
+17:53:52 [vite] hmr update /src/battle/InkStage.tsx
+17:53:54 [vite] hmr update /src/battle/InkStage.tsx
+17:53:54 [vite] hmr invalidate /src/battle/InkStage.tsx Could not Fast Refresh ("poseAt" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:53:54 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/BattleView.tsx
+17:53:54 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:53:54 [vite] page reload src/battle/MotionPreview.tsx
+17:58:33 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/InkStage.tsx
+17:58:34 [vite] hmr update /src/battle/InkStage.tsx
+17:58:34 [vite] hmr invalidate /src/battle/InkStage.tsx Could not Fast Refresh ("poseAt" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:58:34 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/BattleView.tsx
+17:58:34 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:58:34 [vite] page reload src/battle/MotionPreview.tsx
+17:58:36 [vite] hmr update /src/battle/MotionPreview.tsx
+17:58:36 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:58:36 [vite] page reload src/battle/MotionPreview.tsx
+18:00:02 [vite] hmr update /src/battle/InkStage.tsx
+18:00:02 [vite] hmr invalidate /src/battle/InkStage.tsx Could not Fast Refresh ("poseAt" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:00:02 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/BattleView.tsx
+18:00:02 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:00:02 [vite] page reload src/battle/MotionPreview.tsx
+18:00:04 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/InkStage.tsx, /src/battle/BattleView.tsx
+18:00:04 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:00:04 [vite] page reload src/battle/MotionPreview.tsx
+18:00:04 [vite] hmr invalidate /src/battle/InkStage.tsx Could not Fast Refresh ("poseAt" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:00:04 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/BattleView.tsx
+18:01:24 [vite] hmr update /src/battle/MotionPreview.tsx
+18:01:24 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:01:24 [vite] page reload src/battle/MotionPreview.tsx
+18:04:44 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/InkStage.tsx
+18:04:44 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:04:44 [vite] page reload src/battle/MotionPreview.tsx
+18:04:44 [vite] hmr invalidate /src/battle/InkStage.tsx Could not Fast Refresh ("poseAt" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:04:44 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/BattleView.tsx
+18:06:39 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/InkStage.tsx
+18:06:39 [vite] hmr invalidate /src/battle/MotionPreview.tsx Could not Fast Refresh ("true" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:06:39 [vite] page reload src/battle/MotionPreview.tsx
+18:06:39 [vite] hmr invalidate /src/battle/InkStage.tsx Could not Fast Refresh ("poseAt" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:06:39 [vite] hmr update /src/battle/MotionPreview.tsx, /src/battle/BattleView.tsx

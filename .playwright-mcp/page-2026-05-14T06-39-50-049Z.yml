@@ -1,0 +1,134 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 江湖行
+      - generic [ref=e7]: 名战
+    - navigation [ref=e8]:
+      - button "总览" [ref=e9] [cursor=pointer]
+      - button "人物" [ref=e10] [cursor=pointer]
+      - button "对战" [ref=e11] [cursor=pointer]
+      - button "背包" [ref=e12] [cursor=pointer]
+      - button "排行" [ref=e13] [cursor=pointer]
+      - button "世界BOSS" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - generic [ref=e16]: 积分 50
+      - button "签到" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - complementary [ref=e19]:
+      - heading "角色信息" [level=2] [ref=e20]
+      - generic [ref=e21]:
+        - img "满钵钵i card" [ref=e23]
+        - generic [ref=e24]:
+          - heading "满钵钵i" [level=3] [ref=e25]
+          - paragraph [ref=e26]:
+            - generic [ref=e27]: ★★★★★
+            - generic [ref=e28]: 5.0星
+          - paragraph [ref=e29]: 暴雨梨花针
+          - generic [ref=e30]:
+            - generic "气血 471 · 根基深厚" [ref=e31]:
+              - generic [ref=e33]: 气血
+              - generic [ref=e35]: "471"
+            - generic "攻击 103 · 锋芒毕露" [ref=e36]:
+              - generic [ref=e38]: 攻击
+              - generic [ref=e40]: "103"
+            - generic "防御 62 · 轻甲薄阵" [ref=e41]:
+              - generic [ref=e43]: 防御
+              - generic [ref=e45]: "62"
+            - generic "速度 72 · 身轻如燕" [ref=e46]:
+              - generic [ref=e48]: 速度
+              - generic [ref=e50]: "72"
+            - generic "暴击 8.6% · 锋芒未显" [ref=e51]:
+              - generic [ref=e53]: 暴击
+              - generic [ref=e55]: 8.6%
+            - generic "闪避 36.4% · 飘渺难测" [ref=e56]:
+              - generic [ref=e58]: 闪避
+              - generic [ref=e60]: 36.4%
+      - generic [ref=e61]:
+        - heading "日常" [level=3] [ref=e62]
+        - paragraph [ref=e63]: 角色仓库 5/5
+        - paragraph [ref=e64]: 背包物品 0
+        - paragraph [ref=e65]: 世界BOSS 未开启
+    - generic [ref=e68]:
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - img "满钵钵i card" [ref=e73]
+          - heading "满钵钵i" [level=3] [ref=e74]
+          - paragraph [ref=e75]: 暴雨梨花针 / 血月心经
+        - generic [ref=e76]:
+          - generic [ref=e77]: VS
+          - button "开始试炼" [ref=e78] [cursor=pointer]
+        - generic [ref=e79]:
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]: 影
+              - generic [ref=e83]: 试炼
+            - generic [ref=e84]: 影
+          - heading "试炼影身" [level=3] [ref=e85]
+          - paragraph [ref=e86]: 按当前角色生成的试炼对手
+        - generic [ref=e87]:
+          - button "角色仓库" [ref=e88] [cursor=pointer]
+          - button "培养道具" [ref=e89] [cursor=pointer]
+          - button "排行榜" [ref=e90] [cursor=pointer]
+      - generic [ref=e91]:
+        - button "01 角色仓库 当前 5/5 名角色，可创建、替换并设置出战。" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]: "01"
+          - heading "角色仓库" [level=3] [ref=e94]
+          - paragraph [ref=e95]: 当前 5/5 名角色，可创建、替换并设置出战。
+        - button "02 培养养成 使用升星丹、突破丹和武学洗练道具，全部走现有道具体系。" [ref=e96] [cursor=pointer]:
+          - generic [ref=e97]: "02"
+          - heading "培养养成" [level=3] [ref=e98]
+          - paragraph [ref=e99]: 使用升星丹、突破丹和武学洗练道具，全部走现有道具体系。
+        - button "03 1v1 试炼 调用现有战斗引擎结算，再用血条、伤害飘字和战报回放。" [ref=e100] [cursor=pointer]:
+          - generic [ref=e101]: "03"
+          - heading "1v1 试炼" [level=3] [ref=e102]
+          - paragraph [ref=e103]: 调用现有战斗引擎结算，再用血条、伤害飘字和战报回放。
+        - button "04 排行榜 已有 5 条排行记录。" [ref=e104] [cursor=pointer]:
+          - generic [ref=e105]: "04"
+          - heading "排行榜" [level=3] [ref=e106]
+          - paragraph [ref=e107]: 已有 5 条排行记录。
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - heading "当前出战" [level=3] [ref=e110]
+          - paragraph [ref=e111]: 满钵钵i | 暴雨梨花针
+          - paragraph [ref=e112]: 气血 471 / 攻击 103 / 防御 62
+        - generic [ref=e113]:
+          - heading "资源" [level=3] [ref=e114]
+          - paragraph [ref=e115]: 积分 50
+          - paragraph [ref=e116]: 背包物品 0
+        - generic [ref=e117]:
+          - heading "世界BOSS" [level=3] [ref=e118]
+          - paragraph [ref=e119]: 未开启。
+    - complementary [ref=e120]:
+      - heading "江湖册" [level=2] [ref=e121]
+      - generic [ref=e122]:
+        - heading "满钵钵i" [level=3] [ref=e123]
+        - paragraph [ref=e124]: 战绩 0/0
+        - paragraph [ref=e125]: 资质 5.0 星
+        - paragraph [ref=e126]: 武学 暴雨梨花针
+        - paragraph [ref=e127]: 内功 血月心经
+        - paragraph [ref=e128]: 轻功 沉岳步
+        - generic [ref=e129]:
+          - generic "气血 471 · 根基深厚" [ref=e130]:
+            - generic [ref=e132]: 气血
+            - generic [ref=e133]: "471"
+            - generic [ref=e134]: 根基深厚
+          - generic "攻击 103 · 锋芒毕露" [ref=e135]:
+            - generic [ref=e137]: 攻击
+            - generic [ref=e138]: "103"
+            - generic [ref=e139]: 锋芒毕露
+          - generic "防御 62 · 轻甲薄阵" [ref=e140]:
+            - generic [ref=e142]: 防御
+            - generic [ref=e143]: "62"
+            - generic [ref=e144]: 轻甲薄阵
+          - generic "速度 72 · 身轻如燕" [ref=e145]:
+            - generic [ref=e147]: 速度
+            - generic [ref=e148]: "72"
+            - generic [ref=e149]: 身轻如燕
+          - generic "暴击 8.6% · 锋芒未显" [ref=e150]:
+            - generic [ref=e152]: 暴击
+            - generic [ref=e153]: 8.6%
+            - generic [ref=e154]: 锋芒未显
+          - generic "闪避 36.4% · 飘渺难测" [ref=e155]:
+            - generic [ref=e157]: 闪避
+            - generic [ref=e158]: 36.4%
+            - generic [ref=e159]: 飘渺难测

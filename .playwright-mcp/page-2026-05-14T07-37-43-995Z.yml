@@ -1,0 +1,142 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 江湖行
+      - generic [ref=e7]: 名战
+    - navigation [ref=e8]:
+      - button "总览" [ref=e9] [cursor=pointer]
+      - button "人物" [ref=e10] [cursor=pointer]
+      - button "对战" [ref=e11] [cursor=pointer]
+      - button "背包" [ref=e12] [cursor=pointer]
+      - button "排行" [ref=e13] [cursor=pointer]
+      - button "世界BOSS" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - generic [ref=e16]: 积分 100
+      - button "签到" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - complementary [ref=e19]:
+      - heading "角色信息" [level=2] [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]:
+            - generic [ref=e24]: 曼
+            - generic [ref=e25]: 乘云
+          - generic [ref=e26]: 上
+        - generic [ref=e27]:
+          - heading "曼波波" [level=3] [ref=e28]
+          - paragraph [ref=e29]:
+            - generic [ref=e30]: ★★★★☆
+            - generic [ref=e31]: 4.5星
+          - paragraph [ref=e32]: 乘云刀法
+          - generic [ref=e33]:
+            - generic "气血 412 · 本元稍欠" [ref=e34]:
+              - generic [ref=e36]: 气血
+              - generic [ref=e39]: "412"
+            - generic "攻击 121 · 所向披靡" [ref=e40]:
+              - generic [ref=e42]: 攻击
+              - generic [ref=e45]: "121"
+            - generic "防御 78 · 严阵以待" [ref=e46]:
+              - generic [ref=e48]: 防御
+              - generic [ref=e51]: "78"
+            - generic "速度 63 · 进退有度" [ref=e52]:
+              - generic [ref=e54]: 速度
+              - generic [ref=e57]: "63"
+            - generic "暴击 23.2% · 偶露峥嵘" [ref=e58]:
+              - generic [ref=e60]: 暴击
+              - generic [ref=e63]: 23.2%
+            - generic "闪避 42.3% · 翩若惊鸿" [ref=e64]:
+              - generic [ref=e66]: 闪避
+              - generic [ref=e69]: 42.3%
+      - generic [ref=e70]:
+        - heading "日常" [level=3] [ref=e71]
+        - paragraph [ref=e72]: 角色仓库 5/5
+        - paragraph [ref=e73]: 背包物品 0
+        - paragraph [ref=e74]: 世界BOSS 未开启
+    - generic [ref=e77]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e82]:
+              - generic [ref=e83]: 曼
+              - generic [ref=e84]: 乘云
+            - generic [ref=e85]: 上
+          - heading "曼波波" [level=3] [ref=e86]
+          - paragraph [ref=e87]: 乘云刀法 / 长青诀
+        - generic [ref=e88]:
+          - generic [ref=e89]: VS
+          - button "开始试炼" [ref=e90] [cursor=pointer]
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - generic [ref=e94]: 影
+              - generic [ref=e95]: 试炼
+            - generic [ref=e96]: 影
+          - heading "试炼影身" [level=3] [ref=e97]
+          - paragraph [ref=e98]: 按当前角色生成的试炼对手
+        - generic [ref=e99]:
+          - button "角色仓库" [ref=e100] [cursor=pointer]
+          - button "培养道具" [ref=e101] [cursor=pointer]
+          - button "排行榜" [ref=e102] [cursor=pointer]
+      - generic [ref=e103]:
+        - button "01 角色仓库 当前 5/5 名角色，可创建、替换并设置出战。" [ref=e104] [cursor=pointer]:
+          - generic [ref=e105]: "01"
+          - heading "角色仓库" [level=3] [ref=e106]
+          - paragraph [ref=e107]: 当前 5/5 名角色，可创建、替换并设置出战。
+        - button "02 培养养成 使用升星丹、突破丹和武学洗练道具，全部走现有道具体系。" [ref=e108] [cursor=pointer]:
+          - generic [ref=e109]: "02"
+          - heading "培养养成" [level=3] [ref=e110]
+          - paragraph [ref=e111]: 使用升星丹、突破丹和武学洗练道具，全部走现有道具体系。
+        - button "03 1v1 试炼 调用现有战斗引擎结算，再用血条、伤害飘字和战报回放。" [ref=e112] [cursor=pointer]:
+          - generic [ref=e113]: "03"
+          - heading "1v1 试炼" [level=3] [ref=e114]
+          - paragraph [ref=e115]: 调用现有战斗引擎结算，再用血条、伤害飘字和战报回放。
+        - button "04 排行榜 已有 7 条排行记录。" [ref=e116] [cursor=pointer]:
+          - generic [ref=e117]: "04"
+          - heading "排行榜" [level=3] [ref=e118]
+          - paragraph [ref=e119]: 已有 7 条排行记录。
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - heading "当前出战" [level=3] [ref=e122]
+          - paragraph [ref=e123]: 曼波波 | 乘云刀法
+          - paragraph [ref=e124]: 气血 412 / 攻击 121 / 防御 78
+        - generic [ref=e125]:
+          - heading "资源" [level=3] [ref=e126]
+          - paragraph [ref=e127]: 积分 100
+          - paragraph [ref=e128]: 背包物品 0
+        - generic [ref=e129]:
+          - heading "世界BOSS" [level=3] [ref=e130]
+          - paragraph [ref=e131]: 未开启。
+    - complementary [ref=e132]:
+      - heading "江湖册" [level=2] [ref=e133]
+      - generic [ref=e134]:
+        - heading "曼波波" [level=3] [ref=e135]
+        - paragraph [ref=e136]: 战绩 2/2
+        - paragraph [ref=e137]: 资质 4.5 星
+        - paragraph [ref=e138]: 武学 乘云刀法
+        - paragraph [ref=e139]: 内功 长青诀
+        - paragraph [ref=e140]: 轻功 青莲身法
+        - generic [ref=e141]:
+          - generic "气血 412 · 本元稍欠" [ref=e142]:
+            - generic [ref=e144]: 气血
+            - generic [ref=e145]: "412"
+            - generic [ref=e146]: 本元稍欠
+          - generic "攻击 121 · 所向披靡" [ref=e147]:
+            - generic [ref=e149]: 攻击
+            - generic [ref=e150]: "121"
+            - generic [ref=e151]: 所向披靡
+          - generic "防御 78 · 严阵以待" [ref=e152]:
+            - generic [ref=e154]: 防御
+            - generic [ref=e155]: "78"
+            - generic [ref=e156]: 严阵以待
+          - generic "速度 63 · 进退有度" [ref=e157]:
+            - generic [ref=e159]: 速度
+            - generic [ref=e160]: "63"
+            - generic [ref=e161]: 进退有度
+          - generic "暴击 23.2% · 偶露峥嵘" [ref=e162]:
+            - generic [ref=e164]: 暴击
+            - generic [ref=e165]: 23.2%
+            - generic [ref=e166]: 偶露峥嵘
+          - generic "闪避 42.3% · 翩若惊鸿" [ref=e167]:
+            - generic [ref=e169]: 闪避
+            - generic [ref=e170]: 42.3%
+            - generic [ref=e171]: 翩若惊鸿

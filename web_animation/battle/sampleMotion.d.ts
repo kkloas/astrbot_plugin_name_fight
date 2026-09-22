@@ -5,6 +5,9 @@ export type RigPose = {
     sword: number;
     lean: number;
     shoulders?: [Point, Point];
+    facing?: number;
+    roll?: number;
+    whip?: [number, number][];
 };
 export type SampleMove = 'sword' | 'spear' | 'kick';
 export declare const rigLengths: {

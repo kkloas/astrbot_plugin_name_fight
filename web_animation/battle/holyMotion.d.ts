@@ -1,0 +1,13 @@
+import type { BattleEvent } from './replay';
+import type { RigPose } from './sampleMotion';
+type Point = [number, number];
+type Frame = { x: number; lift: number; opacity: number; blink: number; pose: RigPose };
+type Sample = { tip: Point; rearTip: Point; root: Point; frame: Frame };
+export const names: string[];
+export const notes: string[];
+export function holyMotion(event: BattleEvent, time: number, travel: number): Frame | undefined;
+export function holyEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => Sample, target: Point, dir: number, impactAge: number, hit: boolean): void;
+export function holyTime(local: number, contact?: number): number;
+export function holyReplayTime(local: number, contact?: number): number;
+export function holySample(frame: Frame, dir: number): Sample;
+export function drawCalligraphicFeather(ctx: CanvasRenderingContext2D, x: number, y: number, length: number, angle: number, curvature: number, coreColor: string, accentColor: string, alpha?: number): void;

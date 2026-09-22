@@ -31,8 +31,8 @@ export function drawWeapon(ctx, weapon, ink, time) {
         line(-23, 0, 5, 0, 7, '#484440');
         line(2, -13, 2, 13, 5);
         ctx.fillStyle = '#3d454b'; ctx.strokeStyle = '#83939c'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(6, -10); ctx.lineTo(99, -12); ctx.lineTo(110, 0);
-        ctx.lineTo(99, 12); ctx.lineTo(6, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(6, -10); ctx.lineTo(105, -12); ctx.lineTo(110, -7); ctx.lineTo(110, 7);
+        ctx.lineTo(105, 12); ctx.lineTo(6, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
         line(13, 0, 99, 0, 1, '#737c83');
     } else if (weapon === 'unarmed') {
         line(0, -4, 3, 4, 4);

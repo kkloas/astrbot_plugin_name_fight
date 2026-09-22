@@ -1,0 +1,11 @@
+import type { BattleEvent } from './replay';
+import type { RigPose } from './sampleMotion';
+type Point = [number, number];
+type Frame = { x: number; lift: number; opacity: number; blink: number; pose: RigPose };
+type Sample = { tip: Point; hand: Point; root: Point; frame: Frame };
+export const names: string[];
+export const notes: string[];
+export function phoenixMotion(event: BattleEvent, time: number, travel: number): Frame | undefined;
+export function phoenixEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => Sample, target: Point, dir: number, impactAge: number, hit: boolean): void;
+export function phoenixTime(local: number, contact?: number, move?: string): number;
+export function phoenixReplayTime(local: number, contact?: number, move?: string): number;

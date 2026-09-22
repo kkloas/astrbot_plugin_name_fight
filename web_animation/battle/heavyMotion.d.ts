@@ -1,0 +1,13 @@
+import type { BattleEvent } from './replay';
+import type { RigPose } from './sampleMotion';
+type Point = [number, number];
+type Frame = { x: number; lift: number; opacity: number; blink: number; pose: RigPose };
+type Sample = { tip: Point; hand: Point; root: Point; frame: Frame };
+export const names: string[];
+export const notes: string[];
+export function heavyMotion(event: BattleEvent, time: number, travel: number): Frame | undefined;
+export function heavyEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => Sample, target: Point, dir: number, impactAge: number, hit: boolean): void;
+export function heavyTime(local: number, contact?: number): number;
+export function heavyReplayTime(local: number, contact?: number): number;
+export function heavyHold(move: string): number;
+export function heavyShake(move: string, age: number): Point;

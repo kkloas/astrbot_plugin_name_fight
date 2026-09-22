@@ -1,0 +1,248 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 江湖行
+      - generic [ref=e7]: 名战
+    - navigation [ref=e8]:
+      - button "总览" [ref=e9] [cursor=pointer]
+      - button "人物" [active] [ref=e10] [cursor=pointer]
+      - button "对战" [ref=e11] [cursor=pointer]
+      - button "背包" [ref=e12] [cursor=pointer]
+      - button "排行" [ref=e13] [cursor=pointer]
+      - button "世界BOSS" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - generic [ref=e16]: 积分 55
+      - button "签到" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - complementary [ref=e19]:
+      - heading "角色信息" [level=2] [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - img "机密 avatar" [ref=e23]
+          - generic [ref=e24]: 中
+        - generic [ref=e25]:
+          - heading "机密" [level=3] [ref=e26]
+          - paragraph [ref=e27]:
+            - generic [ref=e28]: ★
+            - generic [ref=e29]: 1.0星
+          - paragraph [ref=e30]: 华山剑法
+          - generic [ref=e31]:
+            - generic "气血 325 · 气息虚浮" [ref=e32]:
+              - generic [ref=e34]: 气血
+              - generic [ref=e37]: "325"
+            - generic "攻击 82 · 守拙求稳" [ref=e38]:
+              - generic [ref=e40]: 攻击
+              - generic [ref=e43]: "82"
+            - generic "防御 97 · 守势沉雄" [ref=e44]:
+              - generic [ref=e46]: 防御
+              - generic [ref=e49]: "97"
+            - generic "速度 32 · 身形迟滞" [ref=e50]:
+              - generic [ref=e52]: 速度
+              - generic [ref=e55]: "32"
+            - generic "暴击 16.0% · 稳中求胜" [ref=e56]:
+              - generic [ref=e58]: 暴击
+              - generic [ref=e61]: 16.0%
+            - generic "闪避 14.5% · 步法生疏" [ref=e62]:
+              - generic [ref=e64]: 闪避
+              - generic [ref=e67]: 14.5%
+      - generic [ref=e68]:
+        - heading "日常" [level=3] [ref=e69]
+        - paragraph [ref=e70]: 角色仓库 5/5
+        - paragraph [ref=e71]: 背包物品 1
+        - paragraph [ref=e72]: 世界BOSS 未开启
+    - generic [ref=e169]:
+      - generic [ref=e170]:
+        - textbox "新角色名" [ref=e171]
+        - button "创建" [ref=e172] [cursor=pointer]
+        - button "替换栏位" [ref=e173] [cursor=pointer]
+      - generic [ref=e174]:
+        - button "泰雅 card 泰雅 ★★★★★★ 6.0星 落梅剑法 气血 518 攻击 123 防御 87 速度 63 暴击 20.9% 闪避 32.3%" [ref=e175] [cursor=pointer]:
+          - generic [ref=e176]:
+            - img "泰雅 card" [ref=e178]
+            - generic [ref=e179]:
+              - heading "泰雅" [level=3] [ref=e180]
+              - paragraph [ref=e181]:
+                - generic [ref=e182]: ★★★★★★
+                - generic [ref=e183]: 6.0星
+              - paragraph [ref=e184]: 落梅剑法
+              - generic [ref=e185]:
+                - generic "气血 518 · 气血如虹" [ref=e186]:
+                  - generic [ref=e188]: 气血
+                  - generic [ref=e191]: "518"
+                - generic "攻击 123 · 所向披靡" [ref=e192]:
+                  - generic [ref=e194]: 攻击
+                  - generic [ref=e197]: "123"
+                - generic "防御 87 · 守势沉雄" [ref=e198]:
+                  - generic [ref=e200]: 防御
+                  - generic [ref=e203]: "87"
+                - generic "速度 63 · 进退有度" [ref=e204]:
+                  - generic [ref=e206]: 速度
+                  - generic [ref=e209]: "63"
+                - generic "暴击 20.9% · 稳中求胜" [ref=e210]:
+                  - generic [ref=e212]: 暴击
+                  - generic [ref=e215]: 20.9%
+                - generic "闪避 32.3% · 闪转腾挪" [ref=e216]:
+                  - generic [ref=e218]: 闪避
+                  - generic [ref=e221]: 32.3%
+        - button "哈机密 avatar 中 哈机密 ★★★☆ 3.5星 暴雨梨花针 气血 585 攻击 53 防御 45 速度 63 暴击 29.6% 闪避 35.1%" [ref=e222] [cursor=pointer]:
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - img "哈机密 avatar" [ref=e225]
+              - generic [ref=e226]: 中
+            - generic [ref=e227]:
+              - heading "哈机密" [level=3] [ref=e228]
+              - paragraph [ref=e229]:
+                - generic [ref=e230]: ★★★☆
+                - generic [ref=e231]: 3.5星
+              - paragraph [ref=e232]: 暴雨梨花针
+              - generic [ref=e233]:
+                - generic "气血 585 · 北冥化生" [ref=e234]:
+                  - generic [ref=e236]: 气血
+                  - generic [ref=e239]: "585"
+                - generic "攻击 53 · 力道未成" [ref=e240]:
+                  - generic [ref=e242]: 攻击
+                  - generic [ref=e245]: "53"
+                - generic "防御 45 · 不堪一击" [ref=e246]:
+                  - generic [ref=e248]: 防御
+                  - generic [ref=e251]: "45"
+                - generic "速度 63 · 进退有度" [ref=e252]:
+                  - generic [ref=e254]: 速度
+                  - generic [ref=e257]: "63"
+                - generic "暴击 29.6% · 奇锋暗藏" [ref=e258]:
+                  - generic [ref=e260]: 暴击
+                  - generic [ref=e263]: 29.6%
+                - generic "闪避 35.1% · 闪转腾挪" [ref=e264]:
+                  - generic [ref=e266]: 闪避
+                  - generic [ref=e269]: 35.1%
+        - button "满钵钵i card 满钵钵i ★★★★★ 5.0星 暴雨梨花针 气血 471 攻击 103 防御 62 速度 72 暴击 8.6% 闪避 36.4%" [ref=e270] [cursor=pointer]:
+          - generic [ref=e271]:
+            - img "满钵钵i card" [ref=e273]
+            - generic [ref=e274]:
+              - heading "满钵钵i" [level=3] [ref=e275]
+              - paragraph [ref=e276]:
+                - generic [ref=e277]: ★★★★★
+                - generic [ref=e278]: 5.0星
+              - paragraph [ref=e279]: 暴雨梨花针
+              - generic [ref=e280]:
+                - generic "气血 471 · 根基深厚" [ref=e281]:
+                  - generic [ref=e283]: 气血
+                  - generic [ref=e286]: "471"
+                - generic "攻击 103 · 锋芒毕露" [ref=e287]:
+                  - generic [ref=e289]: 攻击
+                  - generic [ref=e292]: "103"
+                - generic "防御 62 · 轻甲薄阵" [ref=e293]:
+                  - generic [ref=e295]: 防御
+                  - generic [ref=e298]: "62"
+                - generic "速度 72 · 身轻如燕" [ref=e299]:
+                  - generic [ref=e301]: 速度
+                  - generic [ref=e304]: "72"
+                - generic "暴击 8.6% · 锋芒未显" [ref=e305]:
+                  - generic [ref=e307]: 暴击
+                  - generic [ref=e310]: 8.6%
+                - generic "闪避 36.4% · 飘渺难测" [ref=e311]:
+                  - generic [ref=e313]: 闪避
+                  - generic [ref=e316]: 36.4%
+        - button "曼波波 avatar 上 曼波波 ★★★★☆ 4.5星 乘云刀法 气血 412 攻击 121 防御 78 速度 63 暴击 23.2% 闪避 42.3%" [ref=e317] [cursor=pointer]:
+          - generic [ref=e318]:
+            - generic [ref=e319]:
+              - img "曼波波 avatar" [ref=e320]
+              - generic [ref=e321]: 上
+            - generic [ref=e322]:
+              - heading "曼波波" [level=3] [ref=e323]
+              - paragraph [ref=e324]:
+                - generic [ref=e325]: ★★★★☆
+                - generic [ref=e326]: 4.5星
+              - paragraph [ref=e327]: 乘云刀法
+              - generic [ref=e328]:
+                - generic "气血 412 · 本元稍欠" [ref=e329]:
+                  - generic [ref=e331]: 气血
+                  - generic [ref=e334]: "412"
+                - generic "攻击 121 · 所向披靡" [ref=e335]:
+                  - generic [ref=e337]: 攻击
+                  - generic [ref=e340]: "121"
+                - generic "防御 78 · 严阵以待" [ref=e341]:
+                  - generic [ref=e343]: 防御
+                  - generic [ref=e346]: "78"
+                - generic "速度 63 · 进退有度" [ref=e347]:
+                  - generic [ref=e349]: 速度
+                  - generic [ref=e352]: "63"
+                - generic "暴击 23.2% · 偶露峥嵘" [ref=e353]:
+                  - generic [ref=e355]: 暴击
+                  - generic [ref=e358]: 23.2%
+                - generic "闪避 42.3% · 翩若惊鸿" [ref=e359]:
+                  - generic [ref=e361]: 闪避
+                  - generic [ref=e364]: 42.3%
+        - button "在野 机密 avatar 中 机密 ★ 1.0星 华山剑法 气血 325 攻击 82 防御 97 速度 32 暴击 16.0% 闪避 14.5%" [ref=e365] [cursor=pointer]:
+          - text: 在野
+          - generic [ref=e366]:
+            - generic [ref=e367]:
+              - img "机密 avatar" [ref=e368]
+              - generic [ref=e369]: 中
+            - generic [ref=e370]:
+              - heading "机密" [level=3] [ref=e371]
+              - paragraph [ref=e372]:
+                - generic [ref=e373]: ★
+                - generic [ref=e374]: 1.0星
+              - paragraph [ref=e375]: 华山剑法
+              - generic [ref=e376]:
+                - generic "气血 325 · 气息虚浮" [ref=e377]:
+                  - generic [ref=e379]: 气血
+                  - generic [ref=e382]: "325"
+                - generic "攻击 82 · 守拙求稳" [ref=e383]:
+                  - generic [ref=e385]: 攻击
+                  - generic [ref=e388]: "82"
+                - generic "防御 97 · 守势沉雄" [ref=e389]:
+                  - generic [ref=e391]: 防御
+                  - generic [ref=e394]: "97"
+                - generic "速度 32 · 身形迟滞" [ref=e395]:
+                  - generic [ref=e397]: 速度
+                  - generic [ref=e400]: "32"
+                - generic "暴击 16.0% · 稳中求胜" [ref=e401]:
+                  - generic [ref=e403]: 暴击
+                  - generic [ref=e406]: 16.0%
+                - generic "闪避 14.5% · 步法生疏" [ref=e407]:
+                  - generic [ref=e409]: 闪避
+                  - generic [ref=e412]: 14.5%
+      - generic [ref=e413]:
+        - button "设为出战" [ref=e414] [cursor=pointer]
+        - button "小丹培养" [ref=e415] [cursor=pointer]
+        - button "中丹培养" [ref=e416] [cursor=pointer]
+        - button "突破" [ref=e417] [cursor=pointer]
+        - button "洗武学" [ref=e418] [cursor=pointer]
+        - button "换内功" [ref=e419] [cursor=pointer]
+        - button "换轻功" [ref=e420] [cursor=pointer]
+        - button "天机候选" [ref=e421] [cursor=pointer]
+    - complementary [ref=e128]:
+      - heading "江湖册" [level=2] [ref=e129]
+      - generic [ref=e130]:
+        - heading "机密" [level=3] [ref=e131]
+        - paragraph [ref=e132]: 战绩 0/0
+        - paragraph [ref=e133]: 资质 1.0 星
+        - paragraph [ref=e134]: 武学 华山剑法
+        - paragraph [ref=e135]: 内功 长青诀
+        - paragraph [ref=e136]: 轻功 流云步
+        - generic [ref=e137]:
+          - generic "气血 325 · 气息虚浮" [ref=e138]:
+            - generic [ref=e140]: 气血
+            - generic [ref=e141]: "325"
+            - generic [ref=e142]: 气息虚浮
+          - generic "攻击 82 · 守拙求稳" [ref=e143]:
+            - generic [ref=e145]: 攻击
+            - generic [ref=e146]: "82"
+            - generic [ref=e147]: 守拙求稳
+          - generic "防御 97 · 守势沉雄" [ref=e148]:
+            - generic [ref=e150]: 防御
+            - generic [ref=e151]: "97"
+            - generic [ref=e152]: 守势沉雄
+          - generic "速度 32 · 身形迟滞" [ref=e153]:
+            - generic [ref=e155]: 速度
+            - generic [ref=e156]: "32"
+            - generic [ref=e157]: 身形迟滞
+          - generic "暴击 16.0% · 稳中求胜" [ref=e158]:
+            - generic [ref=e160]: 暴击
+            - generic [ref=e161]: 16.0%
+            - generic [ref=e162]: 稳中求胜
+          - generic "闪避 14.5% · 步法生疏" [ref=e163]:
+            - generic [ref=e165]: 闪避
+            - generic [ref=e166]: 14.5%
+            - generic [ref=e167]: 步法生疏

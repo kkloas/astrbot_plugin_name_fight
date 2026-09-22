@@ -1,0 +1,46 @@
+
+  VITE v5.4.21  ready in 352 ms
+
+  ➜  Local:   http://127.0.0.1:5175/
+  ➜  press h + enter to show help
+01:13:50 [vite] hmr update /src/App.tsx, /src/battle/BattleView.tsx, /src/battle/InkStage.tsx
+01:16:38 [vite] hmr update /src/battle/InkStage.tsx
+01:23:09 [vite] hmr update /src/battle/InkStage.tsx
+01:23:12 [vite] hmr update /src/battle/InkStage.tsx
+01:23:13 [vite] hmr update /src/battle/BattleView.tsx
+01:23:15 [vite] hmr update /src/battle/battle.css
+01:26:47 [vite] hmr update /src/battle/BattleView.tsx
+01:26:49 [vite] hmr update /src/battle/InkStage.tsx
+01:35:15 [vite] hmr update /src/battle/InkStage.tsx, /src/battle/BattleView.tsx
+01:35:16 [vite] hmr update /src/battle/InkStage.tsx
+01:35:18 [vite] hmr update /src/battle/battle.css
+01:47:05 [vite] hmr update /src/battle/InkStage.tsx, /src/battle/BattleView.tsx
+01:48:07 [vite] hmr update /src/battle/InkStage.tsx
+01:49:59 [vite] hmr update /src/battle/InkStage.tsx
+01:50:02 [vite] hmr update /src/battle/InkStage.tsx
+01:52:46 [vite] hmr update /src/battle/InkStage.tsx
+01:52:48 [vite] hmr update /src/battle/InkStage.tsx
+01:52:49 [vite] hmr update /src/battle/BattleView.tsx
+01:52:50 [vite] hmr update /src/battle/battle.css
+01:55:29 [vite] hmr update /src/battle/InkStage.tsx
+01:55:30 [vite] hmr update /src/battle/InkStage.tsx
+01:56:39 [vite] hmr update /src/battle/InkStage.tsx
+01:57:30 [vite] hmr update /src/battle/InkStage.tsx
+01:58:47 [vite] hmr update /src/battle/InkStage.tsx
+02:04:29 [vite] hmr update /src/App.tsx, /src/battle/BattleView.tsx, /src/battle/InkStage.tsx
+02:05:24 [vite] hmr update /src/battle/BattleView.tsx
+02:05:25 [vite] hmr update /src/battle/battle.css
+02:06:18 [vite] hmr update /src/battle/InkStage.tsx
+02:07:31 [vite] hmr update /src/battle/InkStage.tsx
+02:08:17 [vite] hmr update /src/battle/InkStage.tsx
+02:11:59 [vite] hmr update /src/battle/BattleView.tsx
+02:14:05 [vite] hmr update /src/battle/BattleView.tsx
+02:14:06 [vite] hmr update /src/battle/battle.css
+02:17:51 [vite] hmr update /src/App.tsx, /src/battle/BattleView.tsx, /src/battle/InkStage.tsx
+02:17:53 [vite] hmr update /src/battle/BattleView.tsx
+02:17:54 [vite] hmr update /src/battle/InkStage.tsx
+02:19:16 [vite] hmr update /src/App.tsx, /src/battle/BattleView.tsx, /src/battle/InkStage.tsx
+02:19:17 [vite] hmr update /src/battle/InkStage.tsx
+02:19:19 [vite] hmr update /src/battle/BattleView.tsx
+02:26:22 [vite] hmr update /src/battle/InkStage.tsx
+02:28:55 [vite] hmr update /src/App.tsx, /src/battle/BattleView.tsx, /src/battle/InkStage.tsx

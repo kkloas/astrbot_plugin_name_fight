@@ -1,0 +1,221 @@
+{
+  "seeds_per_pair": 16,
+  "panels": [
+    {
+      "hp": 180,
+      "atk": 50,
+      "def": 40,
+      "spd": 35,
+      "crt": 12,
+      "eva": 12
+    },
+    {
+      "hp": 240,
+      "atk": 80,
+      "def": 60,
+      "spd": 50,
+      "crt": 22,
+      "eva": 22
+    },
+    {
+      "hp": 300,
+      "atk": 110,
+      "def": 85,
+      "spd": 70,
+      "crt": 32,
+      "eva": 32
+    }
+  ],
+  "arts": {
+    "sword_danyu": {
+      "name": "丹羽剑法",
+      "games": 14784,
+      "score_rate": 0.4719,
+      "matchups": {
+        "palm_crushing_wave": {
+          "name": "碎浪掌",
+          "games": 1344,
+          "wins": 696,
+          "draws": 0,
+          "score_rate": 0.5179,
+          "mean_remaining_hp": 112.28
+        },
+        "sword_falling_plum": {
+          "name": "落梅剑法",
+          "games": 1344,
+          "wins": 758,
+          "draws": 0,
+          "score_rate": 0.564,
+          "mean_remaining_hp": 131.3
+        },
+        "leg_shadow_whirl": {
+          "name": "追影腿",
+          "games": 1344,
+          "wins": 796,
+          "draws": 0,
+          "score_rate": 0.5923,
+          "mean_remaining_hp": 139.36
+        },
+        "sword_huashan": {
+          "name": "华山剑法",
+          "games": 1344,
+          "wins": 464,
+          "draws": 0,
+          "score_rate": 0.3452,
+          "mean_remaining_hp": 71.22
+        },
+        "short_panguanbi": {
+          "name": "掌命判官笔",
+          "games": 1344,
+          "wins": 732,
+          "draws": 2,
+          "score_rate": 0.5454,
+          "mean_remaining_hp": 127.69
+        },
+        "blade_chengyun": {
+          "name": "乘云刀法",
+          "games": 1344,
+          "wins": 588,
+          "draws": 0,
+          "score_rate": 0.4375,
+          "mean_remaining_hp": 95.15
+        },
+        "staff_yuejiaqiang": {
+          "name": "岳家枪法",
+          "games": 1344,
+          "wins": 532,
+          "draws": 0,
+          "score_rate": 0.3958,
+          "mean_remaining_hp": 77.26
+        },
+        "sword_ittoryu": {
+          "name": "北辰一刀流",
+          "games": 1344,
+          "wins": 573,
+          "draws": 0,
+          "score_rate": 0.4263,
+          "mean_remaining_hp": 91.37
+        },
+        "sword_xiaoyaowuxiang": {
+          "name": "逍遥无相剑",
+          "games": 1344,
+          "wins": 636,
+          "draws": 0,
+          "score_rate": 0.4732,
+          "mean_remaining_hp": 101.81
+        },
+        "hidden_baoyulihua": {
+          "name": "暴雨梨花针",
+          "games": 1344,
+          "wins": 668,
+          "draws": 2,
+          "score_rate": 0.4978,
+          "mean_remaining_hp": 112.0
+        },
+        "zither_duanzhi": {
+          "name": "断指离弦琴",
+          "games": 1344,
+          "wins": 532,
+          "draws": 0,
+          "score_rate": 0.3958,
+          "mean_remaining_hp": 87.35
+        }
+      }
+    },
+    "blade_jingchao": {
+      "name": "惊潮刀法",
+      "games": 14784,
+      "score_rate": 0.4725,
+      "matchups": {
+        "palm_crushing_wave": {
+          "name": "碎浪掌",
+          "games": 1344,
+          "wins": 688,
+          "draws": 0,
+          "score_rate": 0.5119,
+          "mean_remaining_hp": 111.74
+        },
+        "sword_falling_plum": {
+          "name": "落梅剑法",
+          "games": 1344,
+          "wins": 720,
+          "draws": 0,
+          "score_rate": 0.5357,
+          "mean_remaining_hp": 124.12
+        },
+        "leg_shadow_whirl": {
+          "name": "追影腿",
+          "games": 1344,
+          "wins": 790,
+          "draws": 0,
+          "score_rate": 0.5878,
+          "mean_remaining_hp": 140.66
+        },
+        "sword_huashan": {
+          "name": "华山剑法",
+          "games": 1344,
+          "wins": 477,
+          "draws": 0,
+          "score_rate": 0.3549,
+          "mean_remaining_hp": 71.54
+        },
+        "short_panguanbi": {
+          "name": "掌命判官笔",
+          "games": 1344,
+          "wins": 730,
+          "draws": 0,
+          "score_rate": 0.5432,
+          "mean_remaining_hp": 121.24
+        },
+        "blade_chengyun": {
+          "name": "乘云刀法",
+          "games": 1344,
+          "wins": 632,
+          "draws": 0,
+          "score_rate": 0.4702,
+          "mean_remaining_hp": 101.47
+        },
+        "staff_yuejiaqiang": {
+          "name": "岳家枪法",
+          "games": 1344,
+          "wins": 484,
+          "draws": 0,
+          "score_rate": 0.3601,
+          "mean_remaining_hp": 67.8
+        },
+        "sword_ittoryu": {
+          "name": "北辰一刀流",
+          "games": 1344,
+          "wins": 562,
+          "draws": 0,
+          "score_rate": 0.4182,
+          "mean_remaining_hp": 89.41
+        },
+        "sword_xiaoyaowuxiang": {
+          "name": "逍遥无相剑",
+          "games": 1344,
+          "wins": 656,
+          "draws": 0,
+          "score_rate": 0.4881,
+          "mean_remaining_hp": 104.98
+        },
+        "hidden_baoyulihua": {
+          "name": "暴雨梨花针",
+          "games": 1344,
+          "wins": 747,
+          "draws": 0,
+          "score_rate": 0.5558,
+          "mean_remaining_hp": 127.6
+        },
+        "zither_duanzhi": {
+          "name": "断指离弦琴",
+          "games": 1344,
+          "wins": 500,
+          "draws": 0,
+          "score_rate": 0.372,
+          "mean_remaining_hp": 79.89
+        }
+      }
+    }
+  }
+}

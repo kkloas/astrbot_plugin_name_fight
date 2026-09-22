@@ -1,5 +1,9 @@
+import { serpentMotion, serpentEffects } from './serpentMotion.js';
+import { phoenixMotion, phoenixEffects } from './phoenixMotion.js';
 import { twoBone } from './sampleMotion.js';
 import { ease } from './choreography.js';
+import { holyMotion, holyEffects } from './holyMotion.js';
+import { heavyMotion, heavyEffects } from './heavyMotion.js';
 
 // Cosmetic scores only. Multi-stroke choreography never adds combat hits.
 const m = (name, style, power, angle, lift = 0, strokes = 1, accent = 'edge') =>
@@ -50,6 +54,10 @@ export function expandedTechnique(event, fighter) {
 }
 
 export function expandedMotion(event, time, travel) {
+    if (event.martialArtId === 'whip_baimang') return serpentMotion(event, time, travel);
+    if (event.martialArtId === 'staff_bainiaochaofeng') return phoenixMotion(event, time, travel);
+    if (event.martialArtId === 'short_shenghuoling') return holyMotion(event, time, travel);
+    if (event.martialArtId === 'sword_xuantie') return heavyMotion(event, time, travel);
     const move = expandedMoveFor(event);
     if (!move) return undefined;
     const weapon = expandedArts[event.martialArtId].weapon;
@@ -122,6 +130,10 @@ export function expandedMotion(event, time, travel) {
 }
 
 export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit) {
+    if (event.martialArtId === 'whip_baimang') return serpentEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
+    if (event.martialArtId === 'staff_bainiaochaofeng') return phoenixEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
+    if (event.martialArtId === 'short_shenghuoling') return holyEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
+    if (event.martialArtId === 'sword_xuantie') return heavyEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
     const move = expandedMoveFor(event), art = expandedArts[event?.martialArtId];
     if (!move || local < 440 || local > 1480) return;
     const fade = Math.max(0, Math.min(1, (1480 - local) / 300));
