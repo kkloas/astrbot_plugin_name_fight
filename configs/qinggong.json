@@ -57,14 +57,43 @@
     "name": "暗影浮香",
     "description": "脱胎于诡道秘传的潜行身法，行动间悄无声息。更藏有绝境反扑的秘术，能在生死一线间强行激发潜能，于死局中寻得一丝杀机。",
     "combat_summary": "具备绝境反击能力的战术轻功。常态下仅提供基础的闪避与微弱的速度补益，但在濒死阶段能强行打断战斗节奏，给予绝地翻盘的可能。",
-    "spd_multiplier": 1.02,
-    "eva_bonus": 7.0,
+    "spd_multiplier": 1.0,
+    "eva_bonus": 6.0,
     "special_effect": "【暗香】当生命值首次跌破20%时，无视当前行动条与速度差，瞬间获得一次额外的出手机会（单场战斗限一次）。",
     "special_effect_data": {
       "type": "low_hp_extra_action",
-      "trigger_hp_ratio": 0.2,
+      "trigger_hp_ratio": 0.16,
       "limit": 1,
       "trigger_msg": "【暗香】{name} 于绝境中强行提气，瞬间夺回一次出手机会！"
+    }
+  },
+  {
+    "id": "wind_rider",
+    "name": "乘风御气诀",
+    "description": "以内力鼓荡周身，宛如御风而行。此身法讲究气机连绵不绝，身形一旦动起来，便会越来越快，直至化作狂风。",
+    "combat_summary": "成长型轻功。起步速度平平，但随着战斗回合数增加，速度会不断叠加，极度适合越打越快的长线战斗流派。",
+    "spd_multiplier": 1.03,
+    "eva_bonus": 6.0,
+    "special_effect": "【乘风】每次行动结束后，自身速度倍率永久提升0.035（最高叠加5层，满层状态为1.22倍率）。",
+    "special_effect_data": {
+      "type": "action_spd_stack",
+      "bonus_per_stack": 0.035,
+      "max_stacks": 5,
+      "trigger_msg": "【乘风】{name} 气机愈转愈疾，身法又快了一截！"
+    }
+  },
+  {
+    "id": "star_shifter",
+    "name": "移星乱步",
+    "description": "步法暗合奇门遁甲之理，不仅能精妙地避开敌方杀招，更能借敌方招式落空时的破绽，瞬间完成反击蓄势。",
+    "combat_summary": "防守反击型轻功。利用高闪避规避伤害，并转化防守为进攻优势，适合自带反击机制或单发攻击极具破坏力的角色。",
+    "spd_multiplier": 1.03,
+    "eva_bonus": 10.0,
+    "special_effect": "【移星】每次成功闪避敌方攻击后，自身下一次攻击伤害提升10%。",
+    "special_effect_data": {
+      "type": "dodge_damage_boost",
+      "damage_bonus_ratio": 0.10,
+      "trigger_msg": "【移星】{name} 借敌招落空之隙蓄势，下一击威力更盛！"
     }
   }
 ]

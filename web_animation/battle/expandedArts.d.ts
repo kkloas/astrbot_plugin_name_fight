@@ -1,0 +1,10 @@
+import type { BattleEvent, ReplayFighter } from '../../web/frontend/src/battle/replay';
+import type { RigPose } from '../../web/frontend/src/battle/sampleMotion';
+import type { Technique } from '../../web/frontend/src/battle/martialVisuals';
+export type ExpandedMove = { name: string; style: string; power: number; angle: number; lift: number; strokes: number; accent: string; ultimate: boolean };
+export const expandedArts: Record<string, { name: string; type: string; weapon: string; color: string; moves: ExpandedMove[] }>;
+export const expandedMoves: { id: string; name: string; type: string; move: string; power: number }[];
+export function expandedMoveFor(event?: BattleEvent): ExpandedMove | undefined;
+export function isExpandedArt(id?: string): boolean;
+export function expandedTechnique(event?: BattleEvent, fighter?: ReplayFighter): Technique | undefined;
+export function expandedMotion(event: BattleEvent, time: number, travel: number): {x: number; lift: number; opacity: number; blink: number; pose: RigPose} | undefined;

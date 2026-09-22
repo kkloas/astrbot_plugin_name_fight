@@ -1,0 +1,3 @@
+# Bot GIF rendering dependencies. AstrBot supplies its own core dependencies.
+Pillow>=10
+websockets>=14

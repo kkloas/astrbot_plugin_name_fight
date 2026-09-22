@@ -189,3 +189,9 @@ and mobile layout, and captures 24 comparison frames.
 selection across repeated uses of one move, stable seeking/replay/serialization,
 unchanged battle data and exact correspondence between mixed and forced-mode
 frames. It also verifies fixed bones in both branches and captures comparisons.
+# Shared Runtime Notice
+
+The maintained animation source now lives in `web_animation/battle/`.
+The TypeScript modules here are typed re-exports and React playback adapters.
+Edit the shared JavaScript to update both Web playback and AstrBot GIF output.
+See `SHARED_ANIMATION.md` at the repository root for release and verification.

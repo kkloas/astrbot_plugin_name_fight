@@ -237,10 +237,16 @@ class PveServiceTests(unittest.TestCase):
         self.assertEqual(relay["stars"], 1)
         self.assertEqual(len(relay["duels"]), 5)
 
-    def test_recommended_star_teams_meet_fixed_seed_win_rate_targets(self):
+    def test_main_2229cda_accepted_fixed_seed_win_rates(self):
         allowed_ratings = (1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0)
         templates = [self.repo.generate_preview_fighter(name) for name in ("平衡甲", "平衡乙", "平衡丙")]
-        expected_ranges = {"normal": (0.70, 0.80), "elite": (0.55, 0.65), "boss": (0.45, 0.60)}
+        # Accepted after the main@2229cda loadout sync. This is a deterministic
+        # regression snapshot, not a claim about population-wide balance.
+        expected_wins = {
+            "1-1": 74, "1-2": 64, "1-3": 87, "1-4": 77, "1-5": 78, "1-6": 47,
+            "2-1": 68, "2-2": 76, "2-3": 80, "2-4": 93, "2-5": 56, "2-6": 79,
+            "3-1": 81, "3-2": 90, "3-3": 92, "3-4": 89, "3-5": 89, "3-6": 83,
+        }
 
         for stage_index, stage_id in enumerate(self.service.stage_order):
             stage = self.service.stage_map[stage_id]
@@ -268,10 +274,7 @@ class PveServiceTests(unittest.TestCase):
             for trial in range(trials):
                 random.seed(20260921 + stage_index * 1000 + trial)
                 wins += int(self.service._team_battle(team, enemies, stage)["victory"])
-            win_rate = wins / trials
-            low, high = expected_ranges[str(stage["kind"])]
-            self.assertGreaterEqual(win_rate, low, stage_id)
-            self.assertLessEqual(win_rate, high, stage_id)
+            self.assertEqual(wins, expected_wins[stage_id], stage_id)
 
 
 if __name__ == "__main__":

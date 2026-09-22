@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @font-face { font-family: STKaiti; src: url('./STKAITI.TTF') format('truetype'); }
+    @font-face { font-family: STXingkai; src: url('./STXINGKA.TTF') format('truetype'); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; color: #282d27; }
+    body { width: 900px; font-family: STKaiti, KaiTi, serif; }
+    .heading { display:flex; justify-content:space-between; padding:14px 20px 10px; border:1px solid #a3a599; border-bottom:0; background:rgba(249,249,244,.58); font-size:20px; }
+    .heading span:first-child { color:#853a30; }
+    .duel-stage { position:relative; isolation:isolate; overflow:hidden; background:linear-gradient(rgba(250,250,245,.5),rgba(247,248,243,.05)),url('./ink-bg.png') center/100% 100% no-repeat; }
+    .hud { position:relative; z-index:2; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12%; padding:14px 24px 10px; border:1px solid #a4a99a; background:rgba(248,249,242,.72); }
+    .name { display:flex; justify-content:space-between; align-items:baseline; font-size:18px; }
+    .hp-track, .gauge-track { height:10px; border:1px solid #6c6f62; background:#d9dbd3; margin-top:7px; transform:skewX(-7deg); }
+    .hp-track i, .gauge-track i { display:block; height:100%; width:0; }
+    .hp-track i { background:#8f352a; }
+    .b .hp-track i { background:#505f53; }
+    .gauge-track { height:8px; border-color:#7a918d; margin-top:4px; }
+    .gauge-track i { background:#507c78; }
+    .meta { display:flex; justify-content:space-between; gap:10px; margin-top:5px; color:#586050; font-size:14px; }
+    .gauge-label { color:#3d615f; }
+    .states { min-height:20px; padding-top:5px; color:#773d31; font-size:14px; }
+    .stage { position:relative; border:1px solid #8b8e83; border-top:0; background:transparent; }
+    canvas { display:block; width:900px; height:430px; }
+    .move { position:absolute; top:16px; left:25%; width:50%; text-align:center; color:#4b4c3e; font-size:28px; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div class="heading"><span id="heading-state">交锋中</span><span id="heading-turn">凝神待发</span></div>
+  <div class="duel-stage">
+  <div class="hud">
+    <div class="fighter a"><div class="name"><strong id="name-a"></strong><span id="hp-value-a"></span></div><div class="hp-track"><i id="hp-a"></i></div><div class="meta"><span id="speed-a"></span><span id="gauge-value-a"></span></div><div class="gauge-track"><i id="gauge-a"></i></div><div class="meta"><span id="loadout-a"></span></div><div class="states" id="states-a"></div></div>
+    <div class="fighter b"><div class="name"><strong id="name-b"></strong><span id="hp-value-b"></span></div><div class="hp-track"><i id="hp-b"></i></div><div class="meta"><span id="speed-b"></span><span id="gauge-value-b"></span></div><div class="gauge-track"><i id="gauge-b"></i></div><div class="meta"><span id="loadout-b"></span></div><div class="states" id="states-b"></div></div>
+  </div>
+  <div class="stage"><div class="move" id="move-name"></div><canvas></canvas></div>
+  </div>
+  <script src="./battle-inline.js"></script>
+  <script type="module" src="./capture.js"></script>
+</body>
+</html>

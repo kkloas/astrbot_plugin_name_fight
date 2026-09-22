@@ -47,6 +47,7 @@ INITIAL_SIX_STAR_CHANCE = 0.003
 INNATE_SIX_STAR_POOL = 510
 SIGNIN_POINTS = 50
 ITEM_CATALOG = {
+    "special_summon_token": {"name": "特殊召唤令", "price": 800, "category": "summon"},
     "star_exp_pill_s": {
         "name": "小星尘丹",
         "price": 45,
@@ -140,6 +141,106 @@ def _default_db_path() -> Path:
 
 def _legacy_db_path() -> Path:
     return LEGACY_DATA_DIR / "fighters.db"
+
+
+WORLD_BOSS_KILL_PARTICIPATION_REWARD = {
+    "points": 500,
+    "items": {
+        "special_summon_token": 2,
+        "martial_token_choice": 2,
+        "martial_token_type": 2,
+        "star_exp_pill_m": 3,
+        "star_exp_pill_s": 5,
+    },
+}
+
+
+WORLD_BOSS_KILL_RANK_REWARDS = {
+    1: {
+        "points": 1500,
+        "items": {
+            "special_summon_token": 3,
+            "martial_token_choice": 2,
+            "star_exp_pill_m": 6,
+        },
+    },
+    2: {
+        "points": 1200,
+        "items": {
+            "special_summon_token": 2,
+            "martial_token_choice": 1,
+            "star_exp_pill_m": 5,
+        },
+    },
+    3: {
+        "points": 1000,
+        "items": {
+            "special_summon_token": 1,
+            "martial_token_type": 2,
+            "star_exp_pill_m": 4,
+        },
+    },
+    4: {
+        "points": 800,
+        "items": {
+            "martial_token_type": 2,
+            "star_exp_pill_m": 3,
+            "star_exp_pill_s": 4,
+        },
+    },
+    5: {
+        "points": 800,
+        "items": {
+            "martial_token_type": 2,
+            "star_exp_pill_m": 3,
+            "star_exp_pill_s": 4,
+        },
+    },
+}
+
+
+WORLD_BOSS_KILL_RANK_DEFAULT_REWARD = {
+    "points": 500,
+    "items": {
+        "martial_token_type": 1,
+        "star_exp_pill_m": 2,
+        "star_exp_pill_s": 3,
+    },
+}
+
+
+WORLD_BOSS_CLOSED_RANK_REWARDS = {
+    1: {
+        "points": 900,
+        "items": {
+            "special_summon_token": 1,
+            "martial_token_choice": 1,
+            "star_exp_pill_m": 4,
+        },
+    },
+    2: {
+        "points": 700,
+        "items": {
+            "martial_token_type": 2,
+            "star_exp_pill_m": 3,
+        },
+    },
+    3: {
+        "points": 500,
+        "items": {
+            "martial_token_type": 1,
+            "star_exp_pill_m": 2,
+        },
+    },
+}
+
+
+WORLD_BOSS_CLOSED_RANK_DEFAULT_REWARD = {
+    "points": 300,
+    "items": {
+        "star_exp_pill_s": 3,
+    },
+}
 
 
 class FighterRepository:
@@ -284,7 +385,6 @@ class FighterRepository:
                     "price": int(data.get("price", 0)),
                     "quantity": int(row["quantity"]),
                     "category": str(data.get("category", "unknown")),
-                    "description": str(data.get("description", "")),
                 }
             )
         return items
@@ -1220,11 +1320,16 @@ class FighterRepository:
             raise RuntimeError("active fighter lookup failed")
         return fighter
 
-    def create_fighter_for_user(self, user_id: str, fighter_name: str) -> dict[str, Any]:
+    def create_fighter_for_user(
+        self,
+        user_id: str,
+        fighter_name: str,
+        forced_base_star: float | None = None,
+    ) -> dict[str, Any]:
         roster = self.get_user_fighters(user_id)
         if len(roster) >= MAX_FIGHTERS_PER_USER:
             raise ValueError(f"\u6bcf\u540d\u7528\u6237\u6700\u591a\u4fdd\u7559 {MAX_FIGHTERS_PER_USER} \u4e2a\u89d2\u8272\u3002")
-        fighter = self.generate_preview_fighter(fighter_name)
+        fighter = self.generate_preview_fighter(fighter_name, forced_base_star=forced_base_star)
         self._insert_generated_fighter(fighter)
         slot_index = self._next_slot_index(roster)
         with self._connect() as connection:
@@ -1242,10 +1347,14 @@ class FighterRepository:
             raise RuntimeError("fighter binding failed")
         return bound
 
-    def generate_preview_fighter(self, fighter_name: str) -> dict[str, Any]:
+    def generate_preview_fighter(
+        self,
+        fighter_name: str,
+        forced_base_star: float | None = None,
+    ) -> dict[str, Any]:
         if self.get_fighter_by_name(fighter_name) is not None:
             raise ValueError("\u89d2\u8272\u540d\u5df2\u5b58\u5728: " + fighter_name)
-        return self._build_generated_fighter(fighter_name)
+        return self._build_generated_fighter(fighter_name, forced_base_star=forced_base_star)
 
     def replace_fighter_for_user(
         self,
@@ -1803,93 +1912,90 @@ class FighterRepository:
         phase2_payload: dict[str, Any],
         created_by: str,
     ) -> dict[str, Any]:
-        existing = self.get_active_group_boss(group_id)
-        if existing is not None:
-            raise ValueError('\u5f53\u524d\u7fa4\u5df2\u6709\u6b63\u5728\u8fdb\u884c\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002')
-        phase2_max_hp = int(phase2_payload.get('stats', {}).get('hp', 0))
+        if self.get_active_group_boss(group_id) is not None:
+            raise ValueError("��ǰȺ�Ѿ��н����е�����BOSS���")
+        phase2_stats = phase2_payload.get("stats", {})
+        phase2_max_hp = int(phase2_stats.get("hp", 0))
         if phase2_max_hp <= 0:
-            raise ValueError('\u4e16\u754cBOSS\u4e8c\u9636\u6bb5\u8840\u91cf\u914d\u7f6e\u65e0\u6548\u3002')
+            raise ValueError("����BOSS���׶�Ѫ��������Ч��")
         with self._connect() as connection:
             cursor = connection.execute(
                 """
                 INSERT INTO group_boss_activities (
                     group_id, boss_name, status, phase1_payload, phase2_payload,
                     phase2_max_hp, phase2_current_hp, created_by
-                ) VALUES (?, ?, 'active', ?, ?, ?, ?, ?)
+                )
+                VALUES (?, ?, 'active', ?, ?, ?, ?, ?)
                 """,
                 (
                     group_id,
                     boss_name,
-                    self._dump_payload_json(phase1_payload),
-                    self._dump_payload_json(phase2_payload),
+                    self._serialize_boss_payload(phase1_payload),
+                    self._serialize_boss_payload(phase2_payload),
                     phase2_max_hp,
                     phase2_max_hp,
                     created_by,
                 ),
             )
-            connection.commit()
             boss_id = int(cursor.lastrowid)
+            connection.commit()
         activity = self.get_group_boss_by_id(group_id, boss_id)
         if activity is None:
-            raise RuntimeError('world boss open failed')
+            raise RuntimeError("world boss activity creation failed")
         return activity
 
     def get_group_boss_by_id(self, group_id: str, boss_id: int) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(
-                'SELECT * FROM group_boss_activities WHERE group_id = ? AND boss_id = ?',
-                (group_id, int(boss_id)),
+                "SELECT * FROM group_boss_activities WHERE group_id = ? AND boss_id = ?",
+                (group_id, boss_id),
             ).fetchone()
-        return self._hydrate_group_boss_activity(row)
+        return self._hydrate_boss_activity(row)
 
     def get_active_group_boss(self, group_id: str) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT *
-                FROM group_boss_activities
+                SELECT * FROM group_boss_activities
                 WHERE group_id = ? AND status = 'active'
                 ORDER BY boss_id DESC
                 LIMIT 1
                 """,
                 (group_id,),
             ).fetchone()
-        return self._hydrate_group_boss_activity(row)
+        return self._hydrate_boss_activity(row)
 
     def get_latest_group_boss(self, group_id: str) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT *
-                FROM group_boss_activities
+                SELECT * FROM group_boss_activities
                 WHERE group_id = ?
                 ORDER BY boss_id DESC
                 LIMIT 1
                 """,
                 (group_id,),
             ).fetchone()
-        return self._hydrate_group_boss_activity(row)
+        return self._hydrate_boss_activity(row)
 
     def close_group_boss(self, group_id: str, boss_id: int) -> dict[str, Any]:
         activity = self.get_group_boss_by_id(group_id, boss_id)
         if activity is None:
-            raise ValueError('\u5f53\u524d\u7fa4\u6ca1\u6709\u5bf9\u5e94\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002')
-        if activity['status'] == 'settled':
-            return activity
-        with self._connect() as connection:
-            connection.execute(
-                """
-                UPDATE group_boss_activities
-                SET status = CASE WHEN status = 'active' THEN 'closed' ELSE status END,
-                    closed_at = CASE WHEN closed_at IS NULL THEN CURRENT_TIMESTAMP ELSE closed_at END
-                WHERE group_id = ? AND boss_id = ?
-                """,
-                (group_id, int(boss_id)),
-            )
-            connection.commit()
+            raise ValueError("δ�ҵ���Ӧ������BOSS���")
+        if activity["status"] == "active":
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE group_boss_activities
+                    SET status = 'closed', closed_at = CURRENT_TIMESTAMP
+                    WHERE group_id = ? AND boss_id = ?
+                    """,
+                    (group_id, boss_id),
+                )
+                connection.commit()
         updated = self.get_group_boss_by_id(group_id, boss_id)
         if updated is None:
-            raise RuntimeError('world boss close failed')
+            raise RuntimeError("world boss close failed")
         return updated
 
     def get_group_boss_attempt_usage(self, boss_id: int, group_id: str, user_id: str, day_key: str) -> int:
@@ -1900,9 +2006,9 @@ class FighterRepository:
                 FROM group_boss_attempts
                 WHERE boss_id = ? AND group_id = ? AND user_id = ? AND day_key = ?
                 """,
-                (int(boss_id), group_id, user_id, day_key),
+                (boss_id, group_id, user_id, day_key),
             ).fetchone()
-        return 0 if row is None else int(row['used_attempts'])
+        return 0 if row is None else int(row["used_attempts"])
 
     def consume_group_boss_attempt(
         self,
@@ -1919,28 +2025,23 @@ class FighterRepository:
                 FROM group_boss_attempts
                 WHERE boss_id = ? AND group_id = ? AND user_id = ? AND day_key = ?
                 """,
-                (int(boss_id), group_id, user_id, day_key),
+                (boss_id, group_id, user_id, day_key),
             ).fetchone()
-            used = 0 if row is None else int(row['used_attempts'])
+            used = 0 if row is None else int(row["used_attempts"])
             if used >= int(daily_limit):
-                raise ValueError('\u4f60\u4eca\u5929\u7684\u4e16\u754cBOSS\u6311\u6218\u6b21\u6570\u5df2\u7ecf\u7528\u5b8c\u3002')
-            next_used = used + 1
+                raise ValueError("����������BOSS��ս�����Ѿ������ˡ�")
+            used += 1
             connection.execute(
                 """
                 INSERT INTO group_boss_attempts (boss_id, group_id, user_id, day_key, used_attempts)
                 VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(boss_id, group_id, user_id, day_key) DO UPDATE SET
-                    used_attempts = excluded.used_attempts,
-                    updated_at = CURRENT_TIMESTAMP
+                ON CONFLICT(boss_id, group_id, user_id, day_key)
+                DO UPDATE SET used_attempts = excluded.used_attempts, updated_at = CURRENT_TIMESTAMP
                 """,
-                (int(boss_id), group_id, user_id, day_key, next_used),
+                (boss_id, group_id, user_id, day_key, used),
             )
             connection.commit()
-        return {
-            'used_attempts': next_used,
-            'remaining_attempts': max(0, int(daily_limit) - next_used),
-            'daily_limit': int(daily_limit),
-        }
+        return {"used_attempts": used, "remaining_attempts": max(0, int(daily_limit) - used)}
 
     def record_group_boss_damage(
         self,
@@ -1949,100 +2050,106 @@ class FighterRepository:
         user_id: str,
         display_name: str,
         damage: int,
-        attempt_increment: int = 1,
     ) -> dict[str, Any]:
-        delta = max(0, int(damage))
-        name = str(display_name or '').strip() or user_id
-        attempt_delta = max(0, int(attempt_increment))
+        damage = max(0, int(damage))
         with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO group_boss_contributions (
-                    boss_id, group_id, user_id, display_name, total_damage, attempts, last_attempt_at
-                ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(boss_id, group_id, user_id) DO UPDATE SET
-                    display_name = excluded.display_name,
-                    total_damage = group_boss_contributions.total_damage + excluded.total_damage,
-                    attempts = group_boss_contributions.attempts + excluded.attempts,
-                    last_attempt_at = CURRENT_TIMESTAMP
-                """,
-                (int(boss_id), group_id, user_id, name, delta, attempt_delta),
-            )
             row = connection.execute(
                 """
-                SELECT boss_id, group_id, user_id, display_name, total_damage, attempts, last_attempt_at
+                SELECT total_damage, attempts
                 FROM group_boss_contributions
                 WHERE boss_id = ? AND group_id = ? AND user_id = ?
                 """,
-                (int(boss_id), group_id, user_id),
+                (boss_id, group_id, user_id),
             ).fetchone()
-            connection.commit()
-        if row is None:
-            raise RuntimeError('world boss contribution row missing')
-        return {
-            'boss_id': int(row['boss_id']),
-            'group_id': str(row['group_id']),
-            'user_id': str(row['user_id']),
-            'display_name': str(row['display_name'] or user_id),
-            'total_damage': int(row['total_damage']),
-            'attempts': int(row['attempts']),
-            'last_attempt_at': str(row['last_attempt_at'] or ''),
-        }
-
-    def apply_group_boss_phase2_damage(self, boss_id: int, group_id: str, damage: int) -> dict[str, Any]:
-        actual = max(0, int(damage))
-        with self._connect() as connection:
-            row = connection.execute(
-                'SELECT phase2_current_hp, status FROM group_boss_activities WHERE group_id = ? AND boss_id = ?',
-                (group_id, int(boss_id)),
-            ).fetchone()
-            if row is None:
-                raise ValueError('\u5f53\u524d\u7fa4\u6ca1\u6709\u5bf9\u5e94\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002')
-            if str(row['status']) != 'active':
-                raise ValueError('\u5f53\u524d\u4e16\u754cBOSS\u5df2\u7ed3\u675f\uff0c\u65e0\u6cd5\u7ee7\u7eed\u9020\u6210\u4f24\u5bb3\u3002')
-            before_hp = int(row['phase2_current_hp'])
-            effective_damage = min(before_hp, actual)
-            after_hp = max(0, before_hp - effective_damage)
-            status = 'killed' if after_hp <= 0 else 'active'
+            total_damage = (0 if row is None else int(row["total_damage"])) + damage
+            attempts = (0 if row is None else int(row["attempts"])) + 1
             connection.execute(
                 """
-                UPDATE group_boss_activities
-                SET phase2_current_hp = ?,
-                    status = ?,
-                    killed_at = CASE WHEN ? = 'killed' AND killed_at IS NULL THEN CURRENT_TIMESTAMP ELSE killed_at END
-                WHERE group_id = ? AND boss_id = ?
+                INSERT INTO group_boss_contributions (
+                    boss_id, group_id, user_id, display_name, total_damage, attempts
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(boss_id, group_id, user_id)
+                DO UPDATE SET
+                    display_name = excluded.display_name,
+                    total_damage = excluded.total_damage,
+                    attempts = excluded.attempts,
+                    last_attempt_at = CURRENT_TIMESTAMP
                 """,
-                (after_hp, status, status, group_id, int(boss_id)),
+                (boss_id, group_id, user_id, display_name, total_damage, attempts),
             )
             connection.commit()
         return {
-            'boss_id': int(boss_id),
-            'group_id': group_id,
-            'before_hp': before_hp,
-            'after_hp': after_hp,
-            'applied_damage': effective_damage,
-            'is_killed': after_hp <= 0,
+            "boss_id": boss_id,
+            "group_id": group_id,
+            "user_id": user_id,
+            "display_name": display_name,
+            "total_damage": total_damage,
+            "attempts": attempts,
+        }
+
+    def apply_group_boss_phase2_damage(self, boss_id: int, group_id: str, damage: int) -> dict[str, Any]:
+        damage = max(0, int(damage))
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT phase2_current_hp, phase2_max_hp, status
+                FROM group_boss_activities
+                WHERE boss_id = ? AND group_id = ?
+                """,
+                (boss_id, group_id),
+            ).fetchone()
+            if row is None:
+                raise ValueError("δ�ҵ���Ӧ������BOSS���")
+            if str(row["status"]) != "active":
+                raise ValueError("��ǰ����BOSS��ѽ����������ټ�¼�˺���")
+            before_hp = int(row["phase2_current_hp"])
+            after_hp = max(0, before_hp - damage)
+            is_killed = after_hp <= 0
+            if is_killed:
+                connection.execute(
+                    """
+                    UPDATE group_boss_activities
+                    SET phase2_current_hp = ?, status = 'killed', killed_at = CURRENT_TIMESTAMP
+                    WHERE boss_id = ? AND group_id = ?
+                    """,
+                    (after_hp, boss_id, group_id),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE group_boss_activities
+                    SET phase2_current_hp = ?
+                    WHERE boss_id = ? AND group_id = ?
+                    """,
+                    (after_hp, boss_id, group_id),
+                )
+            connection.commit()
+        return {
+            "before_hp": before_hp,
+            "after_hp": after_hp,
+            "phase2_max_hp": int(row["phase2_max_hp"]),
+            "is_killed": is_killed,
         }
 
     def get_group_boss_rank(self, group_id: str, boss_id: int, limit: int = 10) -> list[dict[str, Any]]:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT user_id, display_name, total_damage, attempts, last_attempt_at
+                SELECT user_id, display_name, total_damage, attempts
                 FROM group_boss_contributions
                 WHERE group_id = ? AND boss_id = ?
-                ORDER BY total_damage DESC, attempts ASC, last_attempt_at ASC, user_id ASC
+                ORDER BY total_damage DESC, attempts ASC, user_id ASC
                 LIMIT ?
                 """,
-                (group_id, int(boss_id), int(limit)),
+                (group_id, boss_id, limit),
             ).fetchall()
         return [
             {
-                'user_id': str(row['user_id']),
-                'display_name': self.get_group_user_label(group_id, str(row['user_id'])) or str(row['display_name'] or row['user_id']),
-                'total_damage': int(row['total_damage']),
-                'attempts': int(row['attempts']),
-                'last_attempt_at': str(row['last_attempt_at'] or ''),
+                "user_id": str(row["user_id"]),
+                "display_name": str(row["display_name"] or row["user_id"]),
+                "total_damage": int(row["total_damage"]),
+                "attempts": int(row["attempts"]),
             }
             for row in rows
         ]
@@ -2070,78 +2177,120 @@ class FighterRepository:
         }
 
     def settle_group_boss(self, group_id: str, boss_id: int) -> dict[str, Any]:
-        activity = self.get_group_boss_by_id(group_id, boss_id)
-        if activity is None:
-            raise ValueError('\u5f53\u524d\u7fa4\u6ca1\u6709\u5bf9\u5e94\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002')
         existing = self.get_group_boss_settlement(group_id, boss_id)
         if existing is not None:
-            if activity['status'] != 'settled':
-                with self._connect() as connection:
-                    connection.execute(
-                        "UPDATE group_boss_activities SET status = 'settled', settled_at = COALESCE(settled_at, CURRENT_TIMESTAMP) WHERE group_id = ? AND boss_id = ?",
-                        (group_id, int(boss_id)),
-                    )
-                    connection.commit()
             return existing
-
-        rows = self.get_group_boss_rank(group_id, boss_id, limit=100)
-        rewards: list[dict[str, Any]] = []
-        for index, row in enumerate(rows, start=1):
-            user_id = str(row['user_id'])
-            points = int(WORLD_BOSS_KILL_REWARDS.get(index, WORLD_BOSS_DEFAULT_POINTS))
-            wallet_points = self.grant_points(user_id, points)
-            rewards.append(
+        activity = self.get_group_boss_by_id(group_id, boss_id)
+        if activity is None:
+            raise ValueError("δ�ҵ���Ӧ������BOSS���")
+        if activity["status"] not in ("killed", "closed", "settled"):
+            raise ValueError("����BOSS��δ���������ܽ��㡣")
+        entries = self.get_group_boss_rank(group_id, boss_id, limit=10)
+        killed = activity["status"] == "killed"
+        participant_rewards: list[dict[str, Any]] = []
+        if killed:
+            for entry in entries:
+                user_id = str(entry["user_id"])
+                points = int(WORLD_BOSS_KILL_PARTICIPATION_REWARD["points"])
+                wallet_points = self.grant_points(user_id, points)
+                item_rewards: list[dict[str, Any]] = []
+                for item_id, quantity in (WORLD_BOSS_KILL_PARTICIPATION_REWARD.get("items") or {}).items():
+                    if int(quantity) <= 0:
+                        continue
+                    self._grant_item_direct(user_id, str(item_id), int(quantity))
+                    item_rewards.append(
+                        {
+                            "item_id": str(item_id),
+                            "item_name": str(ITEM_CATALOG[str(item_id)]["name"]),
+                            "quantity": int(quantity),
+                        }
+                    )
+                participant_rewards.append(
+                    {
+                        "user_id": user_id,
+                        "display_name": str(entry["display_name"]),
+                        "points": points,
+                        "wallet_points": wallet_points,
+                        "items": item_rewards,
+                    }
+                )
+        rank_reward_map = WORLD_BOSS_KILL_RANK_REWARDS if killed else WORLD_BOSS_CLOSED_RANK_REWARDS
+        rank_default_reward = WORLD_BOSS_KILL_RANK_DEFAULT_REWARD if killed else WORLD_BOSS_CLOSED_RANK_DEFAULT_REWARD
+        rank_rewards: list[dict[str, Any]] = []
+        for index, entry in enumerate(entries, start=1):
+            reward_plan = dict(rank_reward_map.get(index, rank_default_reward))
+            points = int(reward_plan.get("points", 0))
+            wallet_points = self.grant_points(entry["user_id"], points) if points > 0 else self.get_user_points(entry["user_id"])
+            item_rewards: list[dict[str, Any]] = []
+            for item_id, quantity in (reward_plan.get("items") or {}).items():
+                if int(quantity) <= 0:
+                    continue
+                self._grant_item_direct(str(entry["user_id"]), str(item_id), int(quantity))
+                item_rewards.append(
+                    {
+                        "item_id": str(item_id),
+                        "item_name": str(ITEM_CATALOG[str(item_id)]["name"]),
+                        "quantity": int(quantity),
+                    }
+                )
+            rank_rewards.append(
                 {
-                    'rank': index,
-                    'user_id': user_id,
-                    'display_name': str(row['display_name'] or user_id),
-                    'total_damage': int(row['total_damage']),
-                    'attempts': int(row['attempts']),
-                    'points': points,
-                    'wallet_points': wallet_points,
+                    "rank": index,
+                    "user_id": entry["user_id"],
+                    "display_name": entry["display_name"],
+                    "total_damage": int(entry["total_damage"]),
+                    "attempts": int(entry["attempts"]),
+                    "points": points,
+                    "wallet_points": wallet_points,
+                    "items": item_rewards,
                 }
             )
         payload = {
-            'boss_id': int(boss_id),
-            'group_id': group_id,
-            'boss_name': activity['boss_name'],
-            'status': activity['status'],
-            'rewards': rewards,
+            "boss_name": activity["boss_name"],
+            "settlement_type": "killed" if killed else "closed",
+            "participant_rewards": participant_rewards,
+            "rank_rewards": rank_rewards,
         }
         with self._connect() as connection:
             connection.execute(
-                'INSERT INTO group_boss_settlements (boss_id, group_id, payload) VALUES (?, ?, ?)',
-                (int(boss_id), group_id, self._dump_payload_json(payload)),
+                """
+                INSERT INTO group_boss_settlements (boss_id, group_id, payload)
+                VALUES (?, ?, ?)
+                """,
+                (boss_id, group_id, json.dumps(payload, ensure_ascii=False)),
             )
             connection.execute(
                 """
                 UPDATE group_boss_activities
-                SET status = 'settled',
-                    settled_at = CURRENT_TIMESTAMP,
-                    closed_at = COALESCE(closed_at, CURRENT_TIMESTAMP)
+                SET status = 'settled', settled_at = CURRENT_TIMESTAMP
                 WHERE group_id = ? AND boss_id = ?
                 """,
-                (group_id, int(boss_id)),
+                (group_id, boss_id),
             )
             connection.commit()
-        return payload
+        settlement = self.get_group_boss_settlement(group_id, boss_id)
+        if settlement is None:
+            raise RuntimeError("world boss settlement failed")
+        return settlement
 
     def get_group_boss_settlement(self, group_id: str, boss_id: int) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(
-                'SELECT payload FROM group_boss_settlements WHERE group_id = ? AND boss_id = ?',
-                (group_id, int(boss_id)),
+                """
+                SELECT boss_id, group_id, payload, settled_at
+                FROM group_boss_settlements
+                WHERE group_id = ? AND boss_id = ?
+                """,
+                (group_id, boss_id),
             ).fetchone()
-        if row is None:
-            return None
-        return self._load_payload_json(row['payload'])
+        return self._hydrate_boss_settlement(row)
 
-    def _build_generated_fighter(self, name: str) -> dict[str, Any]:
+    def _build_generated_fighter(self, name: str, forced_base_star: float | None = None) -> dict[str, Any]:
         rng = self._rng_for_name(name)
         martial_art = rng.choice(self.martial_arts)
         neigong = rng.choice(self.neigong)
         qinggong = rng.choice(self.qinggong)
-        raw_stats, star_rating = self._generate_base_stats(rng)
+        raw_stats, star_rating = self._generate_base_stats(rng, forced_star_rating=forced_base_star)
         breakthrough_stage = 0
         final_stats = self._recalculate_final_stats(raw_stats, float(star_rating), breakthrough_stage, martial_art, neigong, qinggong)
         return {
@@ -2213,8 +2362,18 @@ class FighterRepository:
         seed = int.from_bytes(digest[:8], "big")
         return random.Random(seed)
 
-    def _generate_base_stats(self, rng: random.Random) -> tuple[dict[str, float], float]:
-        if rng.random() < INITIAL_SIX_STAR_CHANCE:
+    def _generate_base_stats(
+        self,
+        rng: random.Random,
+        forced_star_rating: float | None = None,
+    ) -> tuple[dict[str, float], float]:
+        if forced_star_rating is not None:
+            forced_star_rating = float(forced_star_rating)
+            if abs(forced_star_rating - 6.0) < 0.001:
+                total_pool = INNATE_SIX_STAR_POOL
+            else:
+                total_pool = self._target_pool_for_star(forced_star_rating)
+        elif rng.random() < INITIAL_SIX_STAR_CHANCE:
             total_pool = INNATE_SIX_STAR_POOL
             forced_star_rating = 6.0
         else:
@@ -2734,3 +2893,101 @@ class FighterRepository:
             "neigong": neigong,
             "qinggong": qinggong,
         }
+
+
+    def special_summon_preview_fighter(self, user_id: str, fighter_name: str) -> dict[str, Any]:
+        item_id = "special_summon_token"
+        if self.get_fighter_by_name(fighter_name) is not None:
+            raise ValueError("\u89d2\u8272\u540d\u5df2\u5b58\u5728: " + fighter_name)
+        forced_base_star = 6.0 if random.random() < 0.10 else 5.0
+        fighter = self._build_generated_fighter(fighter_name, forced_base_star=forced_base_star)
+        remaining = self._consume_item(user_id, item_id, 1)
+        fighter["summon_item_id"] = item_id
+        fighter["summon_item_name"] = ITEM_CATALOG[item_id]["name"]
+        fighter["summon_remaining"] = remaining
+        fighter["summon_base_star"] = forced_base_star
+        return fighter
+
+
+    def bind_prepared_fighter_for_user(self, user_id: str, prepared_fighter: dict[str, Any]) -> dict[str, Any]:
+        roster = self.get_user_fighters(user_id)
+        if len(roster) >= MAX_FIGHTERS_PER_USER:
+            raise ValueError(f"\u6bcf\u540d\u7528\u6237\u6700\u591a\u4fdd\u7559 {MAX_FIGHTERS_PER_USER} \u4e2a\u89d2\u8272\u3002")
+        preview_name = str(prepared_fighter["name"])
+        existing = self.get_fighter_by_name(preview_name)
+        if existing is not None:
+            raise ValueError("\u89d2\u8272\u540d\u5df2\u5b58\u5728: " + preview_name)
+        self._insert_generated_fighter(prepared_fighter)
+        slot_index = self._next_slot_index(roster)
+        with self._connect() as connection:
+            connection.execute("UPDATE user_fighters SET is_active = 0 WHERE user_id = ?", (user_id,))
+            connection.execute(
+                """
+                INSERT INTO user_fighters (user_id, fighter_name, slot_index, is_active)
+                VALUES (?, ?, ?, 1)
+                """,
+                (user_id, preview_name, slot_index),
+            )
+            connection.commit()
+        bound = self.get_user_fighter_by_name(user_id, preview_name)
+        if bound is None:
+            raise RuntimeError("fighter binding failed")
+        return bound
+
+
+    def _serialize_boss_payload(self, payload: dict[str, Any]) -> str:
+        return json.dumps(payload, ensure_ascii=False)
+
+
+    def _deserialize_boss_payload(self, payload: str) -> dict[str, Any]:
+        return json.loads(payload)
+
+
+    def _hydrate_boss_activity(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
+        if row is None:
+            return None
+        data = dict(row)
+        data["boss_id"] = int(data["boss_id"])
+        data["phase2_max_hp"] = int(data["phase2_max_hp"])
+        data["phase2_current_hp"] = int(data["phase2_current_hp"])
+        data["phase1_payload"] = self._deserialize_boss_payload(str(data["phase1_payload"]))
+        data["phase2_payload"] = self._deserialize_boss_payload(str(data["phase2_payload"]))
+        return data
+
+
+    def _hydrate_boss_settlement(self, row: sqlite3.Row | None) -> dict[str, Any] | None:
+        if row is None:
+            return None
+        payload = json.loads(str(row["payload"]))
+        payload["boss_id"] = int(row["boss_id"])
+        payload["group_id"] = str(row["group_id"])
+        payload["settled_at"] = str(row["settled_at"])
+        return payload
+
+
+    def update_group_boss_payloads(
+        self,
+        group_id: str,
+        boss_id: int,
+        phase1_payload: dict[str, Any],
+        phase2_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE group_boss_activities
+                SET phase1_payload = ?, phase2_payload = ?
+                WHERE group_id = ? AND boss_id = ?
+                """,
+                (
+                    self._serialize_boss_payload(phase1_payload),
+                    self._serialize_boss_payload(phase2_payload),
+                    group_id,
+                    boss_id,
+                ),
+            )
+            connection.commit()
+        updated = self.get_group_boss_by_id(group_id, boss_id)
+        if updated is None:
+            raise RuntimeError("world boss payload refresh failed")
+        return updated

@@ -25,11 +25,11 @@ class NewMartialTests(unittest.TestCase):
         for key in ("neigong", "qinggong"):
             setattr(cls.repo, key, json.loads((ROOT / "configs" / f"{key}.json").read_text(encoding="utf-8")))
 
-    def test_original_config_unchanged(self):
+    def test_config_matches_release_baseline(self):
         previous = json.loads(subprocess.check_output(
-            ["git", "show", "9605cfc:configs/martial_arts.json"], cwd=ROOT).decode("utf-8"))
-        self.assertEqual(self.arts[:len(previous)], previous)
-        self.assertEqual(len(self.arts), len(previous) + 2)
+            ["git", "show", "2229cda:configs/martial_arts.json"], cwd=ROOT).decode("utf-8"))
+        self.assertEqual(self.arts, previous)
+        self.assertEqual(len(self.arts), 18)
         self.assertEqual(len({a["id"] for a in self.arts}), len(self.arts))
 
     def test_generation_and_reroll_pools(self):

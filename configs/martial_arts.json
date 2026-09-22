@@ -64,9 +64,9 @@
     "description": "剑路轻盈多变，最擅趁人立足未稳时连削带点。看似飘忽柔雅，实则每一剑都暗藏切筋断势的狠辣。",
     "combat_summary": "此剑法胜在轻快与刁钻，最擅连削带点拆人架势；看似不以蛮力见长，实则常靠流血与缴械把人慢慢逼垮。",
     "stat_modifiers": {
-      "atk": 1.08,
-      "spd": 1.08,
-      "crt": 1.1
+      "atk": 1.12,
+      "spd": 1.12,
+      "crt": 1.12
     },
     "target_bias": {
       "arm": 1.25,
@@ -79,8 +79,8 @@
     "moves": [
       {
         "name": "寒枝点雪",
-        "power_min": 0.82,
-        "power_max": 1.08,
+        "power_min": 0.92,
+        "power_max": 1.18,
         "template": "{attacker} 剑光微寒，一招【{move_name}】倏然点向 {defender} 的{body_part}。",
         "target_bias": {
           "arm": 1.25,
@@ -89,18 +89,18 @@
         "effects": [
           {
             "type": "disarmed",
-            "chance": 0.2,
-            "duration": 1,
+            "chance": 0.3,
+            "duration": 2,
             "part_bonus": {
-              "arm": 0.15
+              "arm": 0.18
             }
           }
         ]
       },
       {
         "name": "回风斩",
-        "power_min": 0.92,
-        "power_max": 1.2,
+        "power_min": 1.0,
+        "power_max": 1.28,
         "template": "{attacker} 剑势回旋，【{move_name}】横卷而出，掠过 {defender} 的{body_part}。",
         "target_bias": {
           "abdomen": 1.15,
@@ -109,12 +109,12 @@
         "effects": [
           {
             "type": "bleeding",
-            "chance": 0.24,
-            "duration": 2,
-            "atk_scale": 0.22,
+            "chance": 0.34,
+            "duration": 3,
+            "atk_scale": 0.32,
             "part_bonus": {
-              "abdomen": 0.08,
-              "arm": 0.06
+              "abdomen": 0.1,
+              "arm": 0.08
             }
           }
         ]
@@ -780,6 +780,7 @@
     "name": "北辰一刀流",
     "type": "sword",
     "description": "源自东瀛的古流实战剑术，讲究「一击必杀」与「切落」之理。摒弃一切多余的防守，唯有将精气神凝聚于拔刀的瞬间，是极其凶险霸道的剑法。",
+    "combat_summary": "极度强调致命一击的实战剑术。速度与暴击都很突出，招式大多直指头胸要害；一旦被它抢进中线，往往会在流血、破甲与断势压制下迅速失去还手余地。",
     "stat_modifiers": {
       "atk": 1.15,
       "spd": 1.05,
@@ -930,6 +931,7 @@
     "name": "逍遥无相剑",
     "type": "sword",
     "description": "逍遥派绝学剑法，讲究「意在笔先，画尽意在」，剑招无特定形相，随心所欲，无孔不入。练至大成，剑气纵横，人剑合一，令对手防不胜防。",
+    "combat_summary": "飘忽多变的诡道剑法。以极高的速度与闪避周旋拉扯，能在缠斗中不断挂上虚弱、迟缓、流血与破甲；对手越想硬抓节奏，越容易被它用变化和身法拖入失衡局面。",
     "stat_modifiers": {
       "atk": 1.05,
       "spd": 1.2,
@@ -1413,6 +1415,804 @@
         "texts": [
           "铮——！琴弦应声绷断！{attacker} 以断指为代价拨出绝命一击，一曲「{move_name}」化作肉眼可见的半月形音波气刃，带着无可匹敌的毁灭力斩向 {defender} 的{body_part_text}！",
           "万籁俱寂，只余一音！{attacker} 目眶欲裂，将毕生功力倾注于最后一弦，绝杀「{move_name}」挟带着玉石俱焚的意志，轰然贯穿了 {defender} 的{body_part_text}！"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "staff_bainiaochaofeng",
+    "name": "百鸟朝凤枪",
+    "type": "staff",
+    "description": "相传脱胎于汉末名将的绝顶枪法。枪尖抖动犹如百鸟齐鸣，虚实难辨。出枪极快，以繁复密集的攻势让对手眼花缭乱，防不胜防。",
+    "combat_summary": "极具视觉压迫力的速攻枪法。单发伤害虽然中规中矩，但凭借高出手速度与连绵的流血、破甲特效，一旦被其卷入“百鸟”的节奏，便会被一点点放血至死。",
+    "stat_modifiers": {
+      "atk": 1.1,
+      "spd": 1.1,
+      "crt": 1.15,
+      "eva": 1.05
+    },
+    "target_bias": {
+      "head": 1.1,
+      "chest": 1.2,
+      "arm": 1.0,
+      "abdomen": 1.1,
+      "leg": 0.9
+    },
+    "crit_reactions": [
+      "枪出如龙！{defender} 只觉眼前一阵刺目的银芒闪过，胸前瞬间爆开几团血花！",
+      "这一枪实在太快！{defender} 尚未反应过来，护体罡气已被生生刺穿，闷哼着连连后退。",
+      "繁复的枪影瞬间合而为一，{defender} 防御尽散，大穴上赫然多了一个血淋淋的血洞！"
+    ],
+    "moves": [
+      {
+        "name": "凤点头",
+        "damage_multiplier": 0.9,
+        "target_weights": {
+          "面门": 40,
+          "胸口": 60
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 手腕轻抖，枪尖如灵禽啄食，一招「{move_name}」极其连贯地刺向 {defender} 的{body_part_text}。",
+          "枪锋轻点，{attacker} 以「{move_name}」试探，银芒倏地逼近 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "穿林打叶",
+        "damage_multiplier": 0.85,
+        "target_weights": {
+          "手臂": 50,
+          "胸口": 50
+        },
+        "effects": [
+          {
+            "type": "bleeding",
+            "chance": 0.3,
+            "duration": 2,
+            "atk_scale": 0.25
+          }
+        ],
+        "texts": [
+          "{attacker} 枪势急转，枪锋在空气中刮出尖啸，这记「{move_name}」专挑 {defender} 护甲薄弱的{body_part_text}划去！",
+          "犹如劲风扫叶，{attacker} 施展「{move_name}」，长枪连擦带挑，瞬间掠过 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "鸟鸣涧",
+        "damage_multiplier": 1.0,
+        "target_weights": {
+          "小腹": 60,
+          "胸口": 40
+        },
+        "effects": [],
+        "texts": [
+          "枪身发出清脆的嗡鸣声，{attacker} 借力打力，一招「{move_name}」稳健地捣向 {defender} 的{body_part_text}。",
+          "{attacker} 步伐交错，长枪如灵蛇出洞，以「{move_name}」之姿扎向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "百鸟入林",
+        "damage_multiplier": 0.85,
+        "target_weights": {
+          "胸口": 60,
+          "手臂": 40
+        },
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.3,
+            "duration": 2,
+            "def_multiplier": 0.6
+          }
+        ],
+        "texts": [
+          "{attacker} 枪花乱颤，瞬间化作数十道虚影！一式「{move_name}」虚虚实实，趁乱直取 {defender} 的{body_part_text}破绽。",
+          "枪影如织，{attacker} 以「{move_name}」将真气灌注枪尖，硬生生钻向 {defender} 的{body_part_text}，意图撕裂其防线。"
+        ]
+      },
+      {
+        "name": "有凤来仪",
+        "damage_multiplier": 1.1,
+        "target_weights": {
+          "头顶": 40,
+          "肩颈": 60
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 跃至半空，长枪带着极其华丽的弧线劈落，这招「{move_name}」堂堂正正地压向 {defender} 的{body_part_text}。",
+          "长枪高举，气势陡增，{attacker} 大喝一声使出「{move_name}」，狠狠砸向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "乱花迷眼",
+        "damage_multiplier": 0.85,
+        "target_weights": {
+          "双眼": 70,
+          "面门": 30
+        },
+        "effects": [
+          {
+            "type": "weakened",
+            "chance": 0.3,
+            "duration": 2,
+            "atk_multiplier": 0.8
+          }
+        ],
+        "texts": [
+          "{attacker} 将枪身急抖，枪尖反光直射对手双目，这阴柔的一记「{move_name}」点向 {defender} 的{body_part_text}，令其攻势为之一滞。",
+          "无数细碎的枪花在眼前绽放，{attacker} 施展「{move_name}」逼迫 {defender} 回防{body_part_text}，打乱了其出招的步调。"
+        ]
+      },
+      {
+        "name": "凤翔九天",
+        "damage_multiplier": 1.2,
+        "target_weights": {
+          "胸口": 50,
+          "小腹": 50
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 周身气浪翻滚，人随枪走，一记「{move_name}」犹如逆天而上的飞鸟，悍然贯向 {defender} 的{body_part_text}！",
+          "枪芒暴涨，{attacker} 以极强爆发力刺出「{move_name}」，长枪带着尖锐的破空声直取 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "绝技·百鸟朝凤",
+        "damage_multiplier": 1.35,
+        "target_weights": {
+          "心口": 50,
+          "咽喉": 50
+        },
+        "effects": [],
+        "texts": [
+          "刹那间，漫天枪影尽数收束于一点！{attacker} 刺出绝杀「{move_name}」，枪锋化作一只啼鸣的火凤，带着恐怖的贯穿力轰向 {defender} 的{body_part_text}！",
+          "万鸟齐鸣的幻音响彻四周！{attacker} 目光如炬，倾注全部真气的一记「{move_name}」以雷霆万钧之势，死死钉入 {defender} 的{body_part_text}！"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "short_shenghuoling",
+    "name": "圣火令",
+    "type": "short_weapon",
+    "description": "源自波斯明教的顶尖绝学。将内功与独特的非对称步法结合，兵刃短小，但招式怪异绝伦，专走常人意想不到的偏锋，常令中原武林人士大吃一惊。",
+    "combat_summary": "主打“出其不意”的诡道武学。拥有极高的闪避与速度，招式往往从不可思议的角度袭来。虽然硬碰硬的伤害不高，但缴械、眩晕与减速的组合能让对手完全丧失反击能力。",
+    "stat_modifiers": {
+      "atk": 1.08,
+      "spd": 1.1,
+      "crt": 1.05,
+      "eva": 1.1
+    },
+    "target_bias": {
+      "head": 1.2,
+      "chest": 0.9,
+      "arm": 1.0,
+      "abdomen": 0.8,
+      "leg": 1.2
+    },
+    "crit_reactions": [
+      "{defender} 完全没看清这一招的来势，被怪异的劲力击中，顿时气血翻腾，险些栽倒在地！",
+      "圣火令以不可思议的角度重击而下！{defender} 疼得五官扭曲，骨头仿佛都要散架了。",
+      "这一击阴毒无比！{defender} 被震得倒飞而出，护体罡气如同被毒蛇咬破般瞬间溃散。"
+    ],
+    "moves": [
+      {
+        "name": "诡步欺身",
+        "damage_multiplier": 0.95,
+        "target_weights": {
+          "下盘": 50,
+          "侧肋": 50
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 身体呈现一种违反常理的扭曲，瞬间拉近距离，一记「{move_name}」从死角扫向 {defender} 的{body_part_text}。",
+          "毫无征兆地，{attacker} 如鬼魅般滑移至对手身侧，手中圣火令以「{move_name}」之姿拍向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "火树银花",
+        "damage_multiplier": 1.05,
+        "target_weights": {
+          "胸口": 60,
+          "手臂": 40
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 双手中的圣火令交击，爆出一团耀眼的火星，借此掩护，一招「{move_name}」急削 {defender} 的{body_part_text}。",
+          "兵刃翻飞，反光耀眼！{attacker} 施展「{move_name}」，凌厉的短刃划出一道诡异的弧线，切向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "夺刃式",
+        "damage_multiplier": 0.8,
+        "target_weights": {
+          "手腕": 70,
+          "手臂": 30
+        },
+        "effects": [
+          {
+            "type": "disarmed",
+            "chance": 0.2,
+            "duration": 1
+          }
+        ],
+        "texts": [
+          "{attacker} 不击要害，反而将圣火令贴着对手的兵刃绞上，这记奇诡的「{move_name}」狠狠砸向 {defender} 的{body_part_text}大筋！",
+          "极其刁钻的变招！{attacker} 手腕反折，以「{move_name}」专打 {defender} 握持兵器的{body_part_text}，意图震散其真力。"
+        ]
+      },
+      {
+        "name": "影不留踪",
+        "damage_multiplier": 0.95,
+        "target_weights": {
+          "后背": 60,
+          "后脑": 40
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 忽然矮身一伏，从视线盲区闪至对手身后，一招「{move_name}」冷酷地敲向 {defender} 的{body_part_text}。",
+          "犹如附骨之疽，{attacker} 踏出波斯怪步，以「{move_name}」从极其刁钻的身位刺向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "焚心似火",
+        "damage_multiplier": 0.85,
+        "target_weights": {
+          "后脑": 60,
+          "天灵": 40
+        },
+        "effects": [
+          {
+            "type": "stunned",
+            "chance": 0.15,
+            "duration": 1
+          }
+        ],
+        "texts": [
+          "{attacker} 猛然暴起，圣火令在半空画出一个怪圈，这招「{move_name}」带着乱人心魄的风声重击 {defender} 的{body_part_text}！",
+          "招式中竟暗含波斯催眠之理，{attacker} 施展「{move_name}」，圣火令出其不意地砸向 {defender} 的{body_part_text}，欲令其陷入眩晕。"
+        ]
+      },
+      {
+        "name": "绊马索",
+        "damage_multiplier": 0.85,
+        "target_weights": {
+          "脚踝": 60,
+          "膝盖": 40
+        },
+        "effects": [
+          {
+            "type": "slowed",
+            "chance": 0.35,
+            "duration": 2,
+            "spd_multiplier": 0.75
+          }
+        ],
+        "texts": [
+          "{attacker} 身形就地一滚，圣火令犹如一条毒蛇贴地扫出！这招「{move_name}」死死缠向 {defender} 的{body_part_text}，牵制其行动。",
+          "专攻下盘空当！{attacker} 以进为退，手中兵刃使出「{move_name}」，猛力勾击 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "圣火燎原",
+        "damage_multiplier": 1.1,
+        "target_weights": {
+          "胸口": 50,
+          "小腹": 50
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 步法骤然加快，双手圣火令化作一团炽烈的红芒，一招「{move_name}」狂暴地倾泻在 {defender} 的{body_part_text}上！",
+          "攻势如火！{attacker} 不顾一切地贴身短打，这记「{move_name}」连绵不绝地凿向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "绝技·明王降世",
+        "damage_multiplier": 1.35,
+        "target_weights": {
+          "面门": 50,
+          "心口": 50
+        },
+        "effects": [],
+        "texts": [
+          "空气仿佛在这一瞬间燃烧起来！{attacker} 身形幻化出多重怪异的残影，绝招「{move_name}」自所有无法防御的死角，轰然绞杀 {defender} 的{body_part_text}！",
+          "波斯神明之威！{attacker} 双目赤红，将全部诡道内力压缩于兵刃之上，这招颠覆常理的「{move_name}」带着无尽的死光，直斩 {defender} 的{body_part_text}！"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sword_xuantie",
+    "name": "玄铁重剑",
+    "type": "sword",
+    "description": "“重剑无锋，大巧不工。”以天外陨铁铸成的无锋重剑，剑法极其古朴，摒弃一切繁复变化，纯以碾压级别的内力与重量正面轰击。非天生神力且内力深厚者无法驾驭。",
+    "combat_summary": "极致的重武器压制流派。极度牺牲机动性，但拥有傲视全场的面板攻击力和招式倍率。无论对手防御多高，在重剑的绝对力量面前都会被砸碎护甲甚至陷入眩晕。",
+    "stat_modifiers": {
+      "atk": 1.22,
+      "spd": 0.9,
+      "crt": 1.06,
+      "eva": 0.88
+    },
+    "target_bias": {
+      "head": 1.2,
+      "chest": 1.3,
+      "arm": 1.0,
+      "abdomen": 1.1,
+      "leg": 0.7
+    },
+    "crit_reactions": [
+      "犹如陨石坠地！{defender} 举起兵刃格挡，却听见“咔嚓”一声脆响，连人带兵刃被生生砸飞！",
+      "毫无花哨的蛮力镇压！{defender} 狂喷出一大口鲜血，胸口明显塌陷了下去。",
+      "地动山摇的一击！{defender} 眼前一黑，双膝一软，险些被这恐怖的重压碾碎在原地。"
+    ],
+    "moves": [
+      {
+        "name": "举重若轻",
+        "damage_multiplier": 1.1,
+        "target_weights": {
+          "胸口": 60,
+          "手臂": 40
+        },
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.3,
+            "duration": 2,
+            "def_multiplier": 0.5
+          }
+        ],
+        "texts": [
+          "{attacker} 单手提起沉重无比的黑剑，看似缓慢，却带起低沉的轰鸣声，一招「{move_name}」直撞 {defender} 的{body_part_text}。",
+          "剑锋未至，罡风先临！{attacker} 以「{move_name}」之势推开空气，重剑狠狠压向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "大巧不工",
+        "damage_multiplier": 1.08,
+        "target_weights": {
+          "小腹": 50,
+          "胸口": 50
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 毫无招式变化，只是纯粹地将真气贯注剑身，一记「{move_name}」如铁壁般撞向 {defender} 的{body_part_text}。",
+          "不闪不避，硬碰硬！{attacker} 抡圆了玄铁剑，以「{move_name}」的霸道威能扫向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "铁锁横江",
+        "damage_multiplier": 1.08,
+        "target_weights": {
+          "肋下": 60,
+          "手臂": 40
+        },
+        "effects": [],
+        "texts": [
+          "重剑横扫，封死所有退路！{attacker} 施展「{move_name}」，厚重的剑脊带着摧枯拉朽之势砸向 {defender} 的{body_part_text}。",
+          "只听轰然一声闷响，{attacker} 以「{move_name}」截断了对手的攻势，剑身硬生生磕向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "拍击",
+        "damage_multiplier": 1.15,
+        "target_weights": {
+          "天灵": 40,
+          "头顶": 60
+        },
+        "effects": [
+          {
+            "type": "stunned",
+            "chance": 0.2,
+            "duration": 1
+          }
+        ],
+        "texts": [
+          "不用剑锋，只用剑面！{attacker} 怒喝一声，将宽阔的剑身当作铁门板，一招粗暴的「{move_name}」狠狠拍向 {defender} 的{body_part_text}！",
+          "黑影压顶！{attacker} 反手一记「{move_name}」，玄铁剑带着恐怖的风压直接扇向 {defender} 的{body_part_text}，欲将其震晕。"
+        ]
+      },
+      {
+        "name": "顺水推舟",
+        "damage_multiplier": 1.12,
+        "target_weights": {
+          "胸口": 70,
+          "小腹": 30
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 借着重剑自身的惯性，顺势往前猛力一送！这记「{move_name}」重若千钧，杵向 {defender} 的{body_part_text}。",
+          "人借剑势，剑随人走。{attacker} 爆发神力使出「{move_name}」，如同攻城锤一般撞向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "泰山压顶",
+        "damage_multiplier": 1.15,
+        "target_weights": {
+          "双肩": 50,
+          "胸口": 50
+        },
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.35,
+            "duration": 2,
+            "def_multiplier": 0.4
+          }
+        ],
+        "texts": [
+          "{attacker} 高高跃起，双手紧握重剑，犹如山岳崩塌般劈下一招「{move_name}」，狂暴地粉碎了 {defender} {body_part_text}的防御！",
+          "剑未落，地面的石板已层层龟裂！{attacker} 以无匹的神力砸下「{move_name}」，欲将 {defender} 的{body_part_text}连同护甲一并砸碎。"
+        ]
+      },
+      {
+        "name": "横扫千军",
+        "damage_multiplier": 1.2,
+        "target_weights": {
+          "腰间": 50,
+          "侧肋": 50
+        },
+        "effects": [],
+        "texts": [
+          "气流被生生撕裂！{attacker} 运足十成功力，黑剑在半空划出一道恐怖的扇形轨迹，这招「{move_name}」拦腰斩向 {defender} 的{body_part_text}！",
+          "{attacker} 周身罡气爆发，以无可阻挡之势抡出「{move_name}」，黑色的死光拦腰斩向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "绝技·破天",
+        "damage_multiplier": 1.3,
+        "target_weights": {
+          "心口": 50,
+          "头顶": 50
+        },
+        "effects": [],
+        "texts": [
+          "万籁俱寂，唯有黑剑的雷音咆哮！{attacker} 将极意与重剑合二为一，绝技「{move_name}」化作击碎天穹的黑色流星，轰然砸烂了 {defender} 的{body_part_text}！",
+          "返璞归真的极致一击！{attacker} 目光睥睨，玄铁剑仿佛突破了空间的限制，这毁天灭地的「{move_name}」带着绝对的力量砸向 {defender} 的{body_part_text}！"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fist_qishang",
+    "name": "七伤拳",
+    "type": "unarmed",
+    "description": "“一练七伤，七者皆伤。”此拳法蕴含阴阳两股、正反不同的多重暗劲。出拳看似平平无奇，实则劲力直透脏腑。中拳者不仅外伤，且经脉错乱、内力涣散。",
+    "combat_summary": "专注于榨干对手输出的内伤流派。每一拳打出都暗藏摧筋断脉的阴柔之力，极高概率给对手挂上多重【虚弱】，让敌人的攻击力断崖式暴跌。",
+    "stat_modifiers": {
+      "atk": 1.1,
+      "spd": 1.0,
+      "crt": 1.06,
+      "eva": 1.0
+    },
+    "target_bias": {
+      "head": 1.0,
+      "chest": 1.3,
+      "arm": 0.9,
+      "abdomen": 1.3,
+      "leg": 0.8
+    },
+    "crit_reactions": [
+      "七股不同的暗劲在体内轰然引爆！{defender} 发出一声凄厉的惨叫，连退七步，每退一步便呕出一口黑血。",
+      "看似绵软的一拳，却瞬间击碎了脏器的防御！{defender} 面如金纸，顿觉四肢百骸的真气流失殆尽。",
+      "{defender} 只觉五内如焚，经脉仿佛纠结在一起，痛苦地蜷缩着身子，连提气的力气都没了。"
+    ],
+    "moves": [
+      {
+        "name": "损心诀",
+        "damage_multiplier": 0.9,
+        "target_weights": {
+          "心口": 70,
+          "胸口": 30
+        },
+        "effects": [
+          {
+            "type": "weakened",
+            "chance": 0.28,
+            "duration": 2,
+            "atk_multiplier": 0.75
+          }
+        ],
+        "texts": [
+          "{attacker} 拳势忽忽吞吞，暗藏阴毒内劲，一招「{move_name}」悄无声息地印在 {defender} 的{body_part_text}，直逼其心脉。",
+          "拳未到而劲先吐！{attacker} 以「{move_name}」催动至阴真气，猛击 {defender} 的{body_part_text}，意图打散其心气。"
+        ]
+      },
+      {
+        "name": "伤肺诀",
+        "damage_multiplier": 1.0,
+        "target_weights": {
+          "左胸": 50,
+          "右胸": 50
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 提气拔高，拳风带起尖锐的呼啸，这记刚猛的「{move_name}」重重捣向 {defender} 的{body_part_text}。",
+          "{attacker} 步步紧逼，双拳交错打出，以「{move_name}」的阳刚劲力轰击 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "摧肝肠诀",
+        "damage_multiplier": 1.05,
+        "target_weights": {
+          "侧肋": 60,
+          "小腹": 40
+        },
+        "effects": [
+          {
+            "type": "weakened",
+            "chance": 0.26,
+            "duration": 2,
+            "atk_multiplier": 0.82
+          }
+        ],
+        "texts": [
+          "拳影交错，{attacker} 施展极其毒辣的「{move_name}」，一股旋转的绞痛劲力瞬间透入 {defender} 的{body_part_text}深处。",
+          "{attacker} 身体诡异地一扭，避开锋芒，反手一记「{move_name}」刁钻地钻入 {defender} 的{body_part_text}，欲断其肝肠。"
+        ]
+      },
+      {
+        "name": "藏离诀",
+        "damage_multiplier": 1.0,
+        "target_weights": {
+          "背心": 60,
+          "后脑": 40
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 身形如鬼魅般绕到身后，一记似空非空的「{move_name}」沉沉地擂在 {defender} 的{body_part_text}上。",
+          "不拘泥于招式，{attacker} 顺势一推一送，以「{move_name}」的暗力震向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "精失诀",
+        "damage_multiplier": 1.1,
+        "target_weights": {
+          "丹田": 80,
+          "小腹": 20
+        },
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.25,
+            "duration": 2,
+            "def_multiplier": 0.58
+          }
+        ],
+        "texts": [
+          "{attacker} 厉喝一声，将真气疯狂压缩于拳骨，这招「{move_name}」粗暴地撕裂护体罡气，猛捣 {defender} 的{body_part_text}。",
+          "专破内家罡气！{attacker} 双拳齐出，以排山倒海般的「{move_name}」轰击 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "意恍惚诀",
+        "damage_multiplier": 1.05,
+        "target_weights": {
+          "太阳穴": 50,
+          "面门": 50
+        },
+        "effects": [
+          {
+            "type": "weakened",
+            "chance": 0.28,
+            "duration": 2,
+            "atk_multiplier": 0.78
+          }
+        ],
+        "texts": [
+          "拳风激荡，{attacker} 忽然变幻拳路，打出令人心神不宁的「{move_name}」，虚虚实实地笼罩了 {defender} 的{body_part_text}。",
+          "暗劲直冲灵台！{attacker} 欺身而上，一招「{move_name}」夹带着迷幻的破空声，捶向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "气浮躁诀",
+        "damage_multiplier": 1.1,
+        "target_weights": {
+          "咽喉": 40,
+          "胸口": 60
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 拳法犹如狂风骤雨，一记接一记连环爆发，这招「{move_name}」蛮横地打在 {defender} 的{body_part_text}上，打乱其呼吸步调。",
+          "真气暴走！{attacker} 目光通红，以极快的爆发力使出「{move_name}」，双拳连捣 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "绝技·七者皆伤",
+        "damage_multiplier": 1.12,
+        "target_weights": {
+          "心口": 60,
+          "丹田": 40
+        },
+        "effects": [
+          {
+            "type": "weakened",
+            "chance": 0.55,
+            "duration": 2,
+            "atk_multiplier": 0.62
+          }
+        ],
+        "texts": [
+          "阴阳二气轰然逆转！{attacker} 拼着自损经脉的风险，绝技「{move_name}」将七股截然不同的毁灭暗劲融合为一，深深轰入了 {defender} 的{body_part_text}！",
+          "生死同错的极致折磨！{attacker} 喉头溢血，但这毁天灭地的「{move_name}」已不可阻挡地贯穿了 {defender} 的{body_part_text}，彻底碾碎了其斗志！"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "whip_baimang",
+    "name": "白蟒软鞭",
+    "type": "flexible_weapon",
+    "description": "以极品西域白蟒皮糅合精钢丝编织而成，鞭身生满细密倒刺。招式犹如毒蛇吐信，灵动诡异，最擅长在远距离折磨对手，利用倒刺不断撕裂伤口。",
+    "combat_summary": "拥有渐进式流血机制的折磨流派。基础伤害偏低，但拥有很高的速度和闪避。其核心在于通过连环鞭打，把流血层层叠高，战线越长越危险。",
+    "stat_modifiers": {
+      "atk": 1.0,
+      "spd": 1.13,
+      "crt": 1.1,
+      "eva": 1.14
+    },
+    "target_bias": {
+      "head": 1.1,
+      "chest": 1.0,
+      "arm": 1.3,
+      "abdomen": 0.9,
+      "leg": 1.2
+    },
+    "crit_reactions": [
+      "鞭梢上的倒刺深深勾入皮肉，猛然一扯！{defender} 惨厉地大叫，一大块血肉直接被剥离出去！",
+      "白色的鞭影犹如活物般勒紧了 {defender}，锋利的鳞刺瞬间绞碎了护体罡气，鲜血呈喷射状泼洒！",
+      "{defender} 只觉肌肤如遭千万根烈火钢针穿刺，连绵的剧痛让人几欲发狂，脚步已然虚浮。"
+    ],
+    "moves": [
+      {
+        "name": "银蛇吐信",
+        "damage_multiplier": 0.72,
+        "target_weights": {
+          "面门": 40,
+          "手臂": 60
+        },
+        "effects": [
+          {
+            "type": "bleeding",
+            "chance": 0.4,
+            "duration": 2,
+            "atk_scale": 0.18
+          }
+        ],
+        "texts": [
+          "{attacker} 手腕轻抖，白蟒鞭犹如一条昂首的白蛇，一招「{move_name}」轻巧且毒辣地弹向 {defender} 的{body_part_text}，划出一道浅痕。",
+          "鞭影闪烁，{attacker} 以「{move_name}」试探，鞭梢的倒刺在 {defender} 的{body_part_text}上刮起一溜血珠。"
+        ]
+      },
+      {
+        "name": "灵蛇缠腕",
+        "damage_multiplier": 0.76,
+        "target_weights": {
+          "手腕": 70,
+          "手臂": 30
+        },
+        "effects": [
+          {
+            "type": "disarmed",
+            "chance": 0.25,
+            "duration": 1
+          }
+        ],
+        "texts": [
+          "{attacker} 手法忽转阴柔，长鞭在半空画出一个个圆圈，一式「{move_name}」极其精准地缠上了 {defender} 握持兵器的{body_part_text}！",
+          "犹如灵蛇绕树，{attacker} 施展「{move_name}」，鞭身死死绞紧 {defender} 的{body_part_text}，猛力一拽意图夺下武器。"
+        ]
+      },
+      {
+        "name": "毒龙卷柱",
+        "damage_multiplier": 0.8,
+        "target_weights": {
+          "双腿": 60,
+          "脚踝": 40
+        },
+        "effects": [
+          {
+            "type": "slowed",
+            "chance": 0.35,
+            "duration": 2,
+            "spd_multiplier": 0.72
+          }
+        ],
+        "texts": [
+          "{attacker} 鞭势下沉，贴地如龙卷风般盘旋，这招「{move_name}」狠狠抽打在 {defender} 的{body_part_text}上，束缚其步法。",
+          "长鞭缠绕而上！{attacker} 以退为进，使出「{move_name}」死死绊住了 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "鳞片倒割",
+        "damage_multiplier": 0.86,
+        "target_weights": {
+          "侧肋": 50,
+          "手臂": 50
+        },
+        "effects": [
+          {
+            "type": "bleeding",
+            "chance": 0.42,
+            "duration": 3,
+            "atk_scale": 0.26
+          }
+        ],
+        "texts": [
+          "{attacker} 猛然向后一扯鞭柄，招式「{move_name}」令鞭身上无数锋利的倒刺瞬间张开，狠狠划过 {defender} 的{body_part_text}！",
+          "伤口被二次撕裂！{attacker} 冷酷地收网，长鞭带着尖啸的「{move_name}」在 {defender} 的{body_part_text}上犁出血槽。"
+        ]
+      },
+      {
+        "name": "狂蟒翻江",
+        "damage_multiplier": 0.82,
+        "target_weights": {
+          "背部": 60,
+          "胸口": 40
+        },
+        "effects": [
+          {
+            "type": "bleeding",
+            "chance": 0.48,
+            "duration": 3,
+            "atk_scale": 0.34
+          }
+        ],
+        "texts": [
+          "鞭影重重，掀起滔天骇浪！{attacker} 疯狂挥舞长鞭，一式「{move_name}」犹如狂蟒翻腾，铺天盖地地抽在 {defender} 的{body_part_text}上。",
+          "{attacker} 劲力灌注鞭身，将其舞作一面带刺的白网，这招「{move_name}」残忍地切割着 {defender} 的{body_part_text}，鲜血四溢。"
+        ]
+      },
+      {
+        "name": "千丝万缕",
+        "damage_multiplier": 0.9,
+        "target_weights": {
+          "全身": 60,
+          "面门": 40
+        },
+        "effects": [],
+        "texts": [
+          "{attacker} 手腕高速震颤，一条长鞭瞬间幻化出无数鞭影，这招「{move_name}」密不透风地笼罩了 {defender} 的{body_part_text}。",
+          "只听得空气中满是恐怖的气爆声！{attacker} 施展「{move_name}」，鞭梢化作暴雨般点向 {defender} 的{body_part_text}。"
+        ]
+      },
+      {
+        "name": "嗜血蟒绞",
+        "damage_multiplier": 0.9,
+        "target_weights": {
+          "咽喉": 50,
+          "胸口": 50
+        },
+        "effects": [
+          {
+            "type": "bleeding",
+            "chance": 0.5,
+            "duration": 3,
+            "atk_scale": 0.42
+          }
+        ],
+        "texts": [
+          "{attacker} 眼神冰冷，手中长鞭犹如闻到了血腥味的活物，招式「{move_name}」死死绞紧 {defender} 的{body_part_text}，疯狂向内收缩！",
+          "倒刺已经深及见骨！{attacker} 发力一拧，这记毒辣至极的「{move_name}」在 {defender} 的{body_part_text}上搅出大量的血肉。"
+        ]
+      },
+      {
+        "name": "绝技·白蟒索命",
+        "damage_multiplier": 1.08,
+        "target_weights": {
+          "心口": 50,
+          "咽喉": 50
+        },
+        "effects": [
+          {
+            "type": "bleeding",
+            "chance": 0.8,
+            "duration": 4,
+            "atk_scale": 0.6
+          }
+        ],
+        "texts": [
+          "凄厉的破空声如鬼哭狼嚎！{attacker} 腾空跃起，绝技「{move_name}」令整条白蟒鞭化作一束刺目的白光，瞬间贯穿并死死锁住了 {defender} 的{body_part_text}，开启了最后的绞杀！",
+          "血如泉涌，生机尽绝！{attacker} 将所有真气灌注于倒刺之上，绝杀「{move_name}」伴随着刺骨的剧痛，无情地撕烂了 {defender} {body_part_text}的所有防线！"
         ]
       }
     ]

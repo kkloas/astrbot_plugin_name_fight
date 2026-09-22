@@ -3,54 +3,27 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
-    from .stat_quality import stat_quality_comment
-except ImportError:
-    from stat_quality import stat_quality_comment
-
 HELP_LINES = [
-    '\u53ef\u7528\u6307\u4ee4:',
-    '/\u5e2e\u52a9 - \u67e5\u770b\u5168\u90e8\u6307\u4ee4\u8bf4\u660e',
-    '/\u6559\u7a0b - \u67e5\u770b\u65b0\u624b\u6559\u7a0b\u548c\u517b\u6210\u8bf4\u660e',
-    '/\u521b\u5efa\u89d2\u8272 \u89d2\u8272\u540d - \u521b\u5efa\u65b0\u89d2\u8272\uff1b\u82e5\u540d\u4e0b\u5df2\u6ee1 3 \u4eba\uff0c\u5219\u8fdb\u5165\u9876\u66ff\u9009\u62e9',
-    '/\u9009\u62e9\u89d2\u8272 \u5e8f\u53f7 - \u5728\u5019\u9009\u89d2\u8272\u51fa\u73b0\u540e\uff0c\u9009\u62e9\u8981\u88ab\u9876\u66ff\u7684\u65e7\u89d2\u8272\u680f\u4f4d',
-    '/\u89d2\u8272\u5217\u8868 - \u67e5\u770b\u4f60\u5f53\u524d\u540d\u4e0b\u5168\u90e8\u89d2\u8272',
-    '/\u5207\u6362\u89d2\u8272 \u89d2\u8272\u540d - \u5207\u6362\u5f53\u524d\u51fa\u6218\u89d2\u8272',
-    '/\u89d2\u8272\u8be6\u60c5 [\u89d2\u8272\u540d] - \u67e5\u770b\u89d2\u8272\u8be6\u60c5\uff1b\u4e0d\u586b\u540d\u5b57\u65f6\u67e5\u770b\u89d2\u8272\u680f',
-    '/\u7b7e\u5230 - \u6bcf\u65e5\u7b7e\u5230\u9886\u53d6\u79ef\u5206',
-    '/\u79ef\u5206 - \u67e5\u770b\u5f53\u524d\u79ef\u5206',
-    '/\u8d60\u9001 @\u5bf9\u65b9 100 - \u7ed9\u540c\u7fa4\u73a9\u5bb6\u8d60\u9001\u79ef\u5206',
-    '/\u80cc\u5305 - \u67e5\u770b\u80cc\u5305\u9053\u5177',
-    '/\u5546\u5e97 - \u67e5\u770b\u79ef\u5206\u5546\u5e97',
-    '/\u8d2d\u4e70 \u9053\u5177\u540d \u6570\u91cf - \u4ece\u5546\u5e97\u5151\u6362\u9053\u5177',
-    '/\u5582\u517b \u89d2\u8272\u540d \u9053\u5177\u540d [\u6570\u91cf] - \u7ed9\u89d2\u8272\u5582\u661f\u7ecf\u9a8c\u9053\u5177',
-    '/\u7a81\u7834 \u89d2\u8272\u540d - \u8ba9 5 \u661f\u89d2\u8272\u7a81\u7834\u5230 6 \u661f',
-    '/\u968f\u673a\u6362\u6b66\u5b66 \u89d2\u8272\u540d - \u6d88\u8017\u6d17\u9ad3\u7b26\uff0c\u5168\u6b66\u5b66\u6c60\u968f\u673a\u6362 1 \u4e2a\u6b66\u529f',
-    '/\u6d17\u9ad3\u7b26 \u89d2\u8272\u540d - \u4e0e /\u968f\u673a\u6362\u6b66\u5b66 \u7b49\u4ef7',
-    '/\u6362\u5185\u529f \u89d2\u8272\u540d - \u6d88\u8017\u6362\u5b97\u4ee4\uff0c\u968f\u673a\u66f4\u6362 1 \u4e2a\u5185\u529f',
-    '/\u6362\u8f7b\u529f \u89d2\u8272\u540d - \u6d88\u8017\u6362\u5b97\u4ee4\uff0c\u968f\u673a\u66f4\u6362 1 \u4e2a\u8f7b\u529f',
-    '/\u6362\u6b66\u529f \u89d2\u8272\u540d - \u6d88\u8017\u6362\u5b97\u4ee4\uff0c\u968f\u673a\u66f4\u6362 1 \u4e2a\u6b66\u529f',
-    '/\u6362\u5b97\u4ee4 \u5185\u529f|\u8f7b\u529f|\u6b66\u529f \u89d2\u8272\u540d - \u6309\u6307\u5b9a\u7c7b\u578b\u968f\u673a\u66f4\u6362',
-    '/\u81ea\u9009\u6362\u6b66\u5b66 \u89d2\u8272\u540d - \u6d88\u8017\u5929\u673a\u6b8b\u5377\uff0c\u83b7\u5f97 3 \u4e2a\u6b66\u529f\u5019\u9009',
-    '/\u9ad8\u7ea7\u6d17\u5185\u529f \u89d2\u8272\u540d - \u6d88\u8017\u5929\u673a\u6b8b\u5377\uff0c\u83b7\u5f97 3 \u4e2a\u5185\u529f\u5019\u9009',
-    '/\u9ad8\u7ea7\u6d17\u8f7b\u529f \u89d2\u8272\u540d - \u6d88\u8017\u5929\u673a\u6b8b\u5377\uff0c\u83b7\u5f97 3 \u4e2a\u8f7b\u529f\u5019\u9009',
-    '/\u5929\u673a\u6b8b\u5377 \u6b66\u529f|\u5185\u529f|\u8f7b\u529f \u89d2\u8272\u540d - \u6309\u6307\u5b9a\u7c7b\u578b\u751f\u6210 3 \u4e2a\u5019\u9009',
-    '/\u9009\u62e9\u6b66\u5b66 1|2|3 - \u5728\u9ad8\u7ea7\u81ea\u9009\u540e\u9009\u62e9\u6700\u7ec8\u6761\u76ee',
-    '/\u6392\u4f4d\u6311\u6218 \u89d2\u8272\u540d - \u5411\u76ee\u6807\u89d2\u8272\u53d1\u8d77\u6392\u4f4d\u6311\u6218\uff0c\u7b49\u5f85\u5bf9\u65b9 /\u63a5\u53d7 \u6216 /\u62d2\u7edd',
-    '/\u6311\u6218 \u89d2\u8272\u540d - \u76f4\u63a5\u5f3a\u5236\u5f00\u6218\uff0c\u4e0d\u9700\u8981\u5bf9\u65b9\u786e\u8ba4\uff1b\u53ea\u8bb0 1/3 \u5a31\u4e50\u5411 ELO\uff0c\u4e0d\u4ea7\u79ef\u5206',
-    '/\u63a5\u53d7 - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684 1v1 \u6311\u6218',
-    '/\u62d2\u7edd - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684 1v1 \u6311\u6218',
-    '/\u6392\u4f4d\u699c - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 1v1 \u5dc5\u5cf0\u6392\u884c\u699c',
-    '/\u4e09\u4eba\u961f\u4f0d - \u67e5\u770b\u5f53\u524d 3v3 \u51fa\u6218\u987a\u5e8f\u4e0e\u9635\u5bb9',
-    '/\u961f\u4f0d\u987a\u5e8f 2 1 3 - \u8c03\u6574 3v3 \u51fa\u6218\u987a\u5e8f',
-    '/\u6392\u4f4d\u6311\u62183 @\u76ee\u6807 - \u5411\u5bf9\u65b9\u53d1\u8d77 3v3 \u6392\u4f4d\u6311\u6218',
-    '/\u6311\u62183 @\u76ee\u6807\u73a9\u5bb6 - \u76f4\u63a5\u5f3a\u5236\u5f00\u59cb 3v3 \u8fde\u6218\uff1b\u53ea\u8bb0 1/3 \u5a31\u4e50\u5411 ELO\uff0c\u4e0d\u4ea7\u79ef\u5206',
-    '/\u63a5\u53d73 - \u63a5\u53d7\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
-    '/\u62d2\u7edd3 - \u62d2\u7edd\u522b\u4eba\u53d1\u6765\u7684 3v3 \u6311\u6218',
-    '/\u4e09\u6392\u699c - \u67e5\u770b\u5f53\u524d\u7fa4\u7684 3v3 \u5dc5\u5cf0\u6392\u884c\u699c',
-    '/\u5468\u699c\u7ed3\u7b97 [1v1|3v3|all] - \u624b\u52a8\u7ed3\u7b97\u672c\u5468\u6392\u884c\u699c\u5956\u52b1',
-    '/\u65e5\u699c\u7ed3\u7b97 [1v1|3v3|all] [YYYY-MM-DD] - \u624b\u52a8\u8865\u7ed3\u7b97\u67d0\u4e00\u5929\u7684\u65e5\u699c\u5956\u52b1',
+    '【指令导航】',
+    '角色养成: /教程 /角色列表 /角色详情 /切换角色 /创建角色',
+    '商店背包: /商店 /背包 /积分 /购买 道具名 数量',
+    '3v3队伍: /三人队伍 /队伍顺序 2 1 3 /排位挑战3 @目标 /三排榜',
+    '1v1对战: /排位挑战 角色名 /挑战 角色名 /接受 /拒绝 /排位榜',
+    '世界BOSS: /boss /bosshelp /bossfight /bossquick /bosssim /bosssimquick',
+    '管理员: /bossopen /bossclose /bosssettle /周榜结算 /日榜结算',
+    '特殊召唤: /商店 查看道具，再用 /特殊召唤令 角色名',
+    '提示: 想看具体道具效果用 /商店，想看 BOSS 规则和奖励用 /bosshelp。',
 ]
+
+ITEM_USAGE_GUIDE = {
+    '小星尘丹': '升星经验的小丹药。',
+    '中星尘丹': '升星经验更多的丹药。',
+    '破境丹': '让 5.0 星角色突破到 6.0 星。',
+    '特殊召唤令': '90% 五星 / 10% 六星基础资质召唤。',
+    '洗髓符': '随机更换 1 个武功。',
+    '换宗令': '随机更换内功、轻功或武功。',
+    '天机残卷': '生成 3 个候选供你自选。',
+}
 
 GUIDE_LINES = [
     '\u65b0\u624b\u6559\u7a0b:',
@@ -82,6 +55,23 @@ GUIDE_LINES = [
     '- /\u6311\u6218 \u548c /\u6311\u62183 \u53ea\u7528\u4e8e\u5a31\u4e50\uff0c\u4e0d\u4ea7\u79ef\u5206\uff0c\u53ea\u8bb0\u5f55 2/5 \u5e45\u5ea6\u7684\u8f7b\u91cf ELO \u53d8\u5316',
     '- \u6d17\u6b66\u5b66\u53ea\u6539\u6b66\u5b66\uff0c\u4e0d\u4f1a\u91cd\u7f6e\u4f60\u7684\u8865\u661f\u548c\u7a81\u7834\u8fdb\u5ea6',
     '- \u5468\u699c\u7ed3\u7b97\u53ef\u53d1\u653e\u989d\u5916\u79ef\u5206\u548c\u7a00\u6709\u6d17\u7ec3\u9053\u5177',
+    '',
+    '\u4e16\u754cBOSS\u73a9\u6cd5:',
+    '- \u7ba1\u7406\u5458\u5148\u7528 /bossopen \u5f00\u542f\u672c\u7fa4\u4e16\u754cBOSS\u6d3b\u52a8',
+    '- \u73a9\u5bb6\u7528 /boss \u67e5\u770b\u5f53\u524d\u72b6\u6001\u3001\u5171\u4eab\u4e8c\u9636\u6bb5\u8840\u91cf\u548c\u81ea\u5df1\u4eca\u65e5\u5269\u4f59\u6b21\u6570',
+    '- \u73a9\u5bb6\u7528\u5f53\u524d 3v3 \u9635\u5bb9\u6267\u884c /bossfight \u6311\u6218',
+    '- \u5982\u679c\u53ea\u60f3\u770b\u7ed3\u8bba\uff0c\u53ef\u76f4\u63a5\u7528 /bossquick \u8d70\u5feb\u901f\u6458\u8981\u7248\u5b9e\u6218',
+    '- \u5f00\u6253\u524d\u53ef\u5148\u7528 /bosssim\u3001/bosssim phase1\u3001/bosssim phase2 \u6f14\u7ec3\u961f\u4f0d\uff0c\u4e0d\u6263\u6b21\u6570\u4e5f\u4e0d\u5199\u5171\u4eab\u8840\u91cf',
+    '- \u53ea\u60f3\u770b\u6458\u8981\u6a21\u62df\u7ed3\u679c\uff0c\u53ef\u7528 /bosssimquick\u3001/bosssimquick phase1\u3001/bosssimquick phase2',
+    '- \u6bcf\u6b21\u6311\u6218\u90fd\u4f1a\u5148\u6253\u4e00\u9636\u6bb5\u95e8\u69db\uff0c\u53ea\u6709\u6253\u8fdb\u4e8c\u9636\u6bb5\u540e\u7684\u4f24\u5bb3\u624d\u4f1a\u8ba1\u5165\u5171\u4eab\u8840\u91cf\u548c\u8d21\u732e\u699c',
+    '- \u6bcf\u4eba\u6bcf\u5929\u9ed8\u8ba4 3 \u6b21\u4e16\u754cBOSS\u6311\u6218\u6b21\u6570',
+    '- \u7528 /bossrank \u67e5\u770b\u8d21\u732e\u699c\uff1b\u51fb\u6740\u540e\u53ef\u7528 /bosssettle \u67e5\u770b\u7ed3\u7b97\uff1b\u82e5\u6d3b\u52a8\u4f5c\u5e9f\u53ef\u7528 /bossclose \u5173\u95ed',
+    '',
+    '\u7279\u6b8a\u53ec\u5524:',
+    '- \u5546\u5e97\u65b0\u589e\u300c\u7279\u6b8a\u53ec\u5524\u4ee4\u300d\uff0c\u552e\u4ef7 1000 \u79ef\u5206',
+    '- \u5148\u7528 /\u8d2d\u4e70 \u7279\u6b8a\u53ec\u5524\u4ee4 1 \u8d2d\u5165\uff0c\u518d\u7528 /\u7279\u6b8a\u53ec\u5524 \u89d2\u8272\u540d \u6d88\u8017',
+    '- \u53ec\u5524\u89d2\u8272\u53ef\u4ee5\u81ea\u5df1\u547d\u540d\uff0c\u57fa\u7840\u8d44\u8d28\u6309 90% \u4e94\u661f / 10% \u516d\u661f \u51b3\u5b9a',
+    '- \u6b66\u5b66\u3001\u5185\u529f\u3001\u8f7b\u529f\u4ecd\u6309\u6b63\u5e38\u968f\u673a\u6c60\u751f\u6210\uff0c\u82e5\u540d\u4e0b\u5df2\u6ee1\u5219\u7167\u65e7\u8d70\u9876\u66ff\u6d41\u7a0b',
 ]
 
 OUTCOME_PREFIXES = (
@@ -130,7 +120,67 @@ STAR_REQUIREMENTS = {
 
 
 def stat_comment(stat: str, value: float) -> str:
-    return stat_quality_comment(stat, value)
+    if stat == 'hp':
+        if value >= 760:
+            return '\u5317\u51a5\u5316\u751f'
+        if value >= 620:
+            return '\u6c14\u8840\u5982\u8679'
+        if value >= 520:
+            return '\u6839\u57fa\u6df1\u539a'
+        if value >= 420:
+            return '\u5185\u606f\u8fde\u7ef5'
+        return '\u672c\u5143\u7a0d\u6b20'
+    if stat == 'atk':
+        if value >= 140:
+            return '\u648c\u5929\u52a8\u5730'
+        if value >= 100:
+            return '\u6240\u5411\u62ab\u9761'
+        if value >= 85:
+            return '\u950b\u8292\u6bd5\u9732'
+        if value >= 70:
+            return '\u84c4\u52bf\u6210\u52b2'
+        return '\u5b88\u62d9\u6c42\u7a33'
+    if stat == 'def':
+        if value >= 130:
+            return '\u82cd\u5c71\u8d1f\u96ea'
+        if value >= 95:
+            return '\u4e0d\u52a8\u5982\u5c71'
+        if value >= 80:
+            return '\u5b88\u52bf\u6c89\u96c4'
+        if value >= 65:
+            return '\u4e25\u9635\u4ee5\u5f85'
+        return '\u8f7b\u7532\u8584\u9635'
+    if stat == 'spd':
+        if value >= 110:
+            return '\u6d6e\u5149\u63a0\u5f71'
+        if value >= 72:
+            return '\u8ffd\u98ce\u9010\u7535'
+        if value >= 58:
+            return '\u8eab\u8f7b\u5982\u71d5'
+        if value >= 45:
+            return '\u8fdb\u9000\u6709\u5ea6'
+        return '\u6b65\u5c65\u6c89\u7a33'
+    if stat == 'crt':
+        if value >= 36:
+            return '\u767d\u8679\u8d2f\u65e5'
+        if value >= 24:
+            return '\u6740\u673a\u70bd\u76db'
+        if value >= 18:
+            return '\u5947\u950b\u6697\u85cf'
+        if value >= 12:
+            return '\u5076\u9732\u5ce5\u5d58'
+        return '\u7a33\u4e2d\u6c42\u80dc'
+    if stat == 'eva':
+        if value >= 42:
+            return '\u7fe9\u82e5\u60ca\u9e3f'
+        if value >= 28:
+            return '\u98d8\u6e3a\u96be\u6d4b'
+        if value >= 22:
+            return '\u95ea\u8f6c\u817e\u632a'
+        if value >= 16:
+            return '\u8f6c\u5708\u81ea\u5982'
+        return '\u820d\u907f\u5c31\u6321'
+    return ''
 
 
 def star_line(fighter: dict[str, Any]) -> str:
@@ -246,6 +296,13 @@ def _martial_signature(martial_art: dict[str, Any]) -> str:
     if not tags:
         return ''
     return '\u7279\u6027\uff1a' + '\uff0c'.join(tags[:2])
+
+
+def _profile_summary(entry: dict[str, Any], fallback: str) -> str:
+    summary = str(entry.get('combat_summary') or '').strip()
+    if not summary:
+        return fallback
+    return summary
 
 def _neigong_flavor(neigong: dict[str, Any]) -> str:
     hp = float(neigong.get('hp_multiplier', 1.0))
@@ -431,11 +488,14 @@ def fighter_summary_lines(fighter: dict[str, Any], created: bool) -> list[str]:
         opener = f'\u3010\u89d2\u8272\u67e5\u770b\u3011{fighter["name"]}\u7684\u5f53\u524d\u9762\u677f\u5982\u4e0b\u3002'
     lines = [opener, star_line(fighter), growth_line(fighter)]
     martial_signature = _martial_signature(martial_art)
-    lines.append(f'\u6b66\u5b66: \u3010{martial_art["name"]}\u3011{_martial_flavor(martial_art)}\uff0c{_martial_mechanics(martial_art)}\u3002' + (f' {martial_signature}' if martial_signature else ''))
+    martial_fallback = f'{_martial_flavor(martial_art)}，{_martial_mechanics(martial_art)}。'
+    lines.append(f'\u6b66\u5b66: \u3010{martial_art["name"]}\u3011{_profile_summary(martial_art, martial_fallback)}' + (f' {martial_signature}' if martial_signature else ''))
     neigong_signature = _neigong_signature(neigong)
-    lines.append(f'\u5185\u529f: \u3010{neigong["name"]}\u3011{_neigong_flavor(neigong)}\uff0c{_neigong_mechanics(neigong)}\u3002' + (f' {neigong_signature}' if neigong_signature else ''))
+    neigong_fallback = f'{_neigong_flavor(neigong)}，{_neigong_mechanics(neigong)}。'
+    lines.append(f'\u5185\u529f: \u3010{neigong["name"]}\u3011{_profile_summary(neigong, neigong_fallback)}' + (f' {neigong_signature}' if neigong_signature else ''))
     qinggong_signature = _qinggong_signature(qinggong)
-    lines.append(f'\u8f7b\u529f: \u3010{qinggong["name"]}\u3011{_qinggong_flavor(qinggong)}\uff0c{_qinggong_mechanics(qinggong)}\u3002' + (f' {qinggong_signature}' if qinggong_signature else ''))
+    qinggong_fallback = f'{_qinggong_flavor(qinggong)}，{_qinggong_mechanics(qinggong)}。'
+    lines.append(f'\u8f7b\u529f: \u3010{qinggong["name"]}\u3011{_profile_summary(qinggong, qinggong_fallback)}' + (f' {qinggong_signature}' if qinggong_signature else ''))
     lines.append(
         f'\u9762\u677f: \u6c14\u8840 {stats["hp"]}\u3010{stat_comment("hp", stats["hp"])}\u3011 '
         f'| \u653b\u51fb {stats["atk"]}\u3010{stat_comment("atk", stats["atk"])}\u3011 '
@@ -597,17 +657,45 @@ def wallet_message(wallet: dict[str, Any]) -> str:
 
 def bag_message(items: list[dict[str, Any]]) -> str:
     if not items:
-        return '【背包】你当前还没有任何道具。'
+        return '【背包】你当前还没有任何道具。\n常用入口: /商店 查看作用并购买道具。'
     lines = ['【背包】']
-    for item in items:
+    for index, item in enumerate(items):
+        desc = ITEM_USAGE_GUIDE.get(item['name'], '暂无额外说明。')
+        if index > 0:
+            lines.append('')
         lines.append(f"{item['name']} x{item['quantity']}")
+        lines.append(f"效果: {desc}")
+    lines.append('')
+    lines.extend(
+        [
+            '通用使用:',
+            '/喂养 角色名 道具名 [数量]',
+            '/突破 角色名',
+            '/洗髓符 角色名',
+            '/换宗令 内功|轻功|武功 角色名',
+            '/天机残卷 武功|内功|轻功 角色名',
+            '/特殊召唤令 角色名',
+            '常用相关: /商店 /购买 道具名 数量 /积分',
+        ]
+    )
     return '\n'.join(lines)
 
 
-def shop_message(items: list[dict[str, Any]]) -> str:
+def shop_message(items: list[dict[str, Any]], wallet_points: int | None = None) -> str:
     lines = ['【积分商店】']
+    if wallet_points is not None:
+        lines.append(f'当前积分: {int(wallet_points)}')
+    lines.append('常用相关: /积分 /购买 道具名 数量 /背包')
     for item in items:
+        desc = ITEM_USAGE_GUIDE.get(item['name'], '暂无额外说明。')
         lines.append(f"{item['name']} | {item['price']}积分")
+        lines.append(f"效果: {desc}")
+    lines.extend(
+        [
+            '/购买 道具名 数量',
+            '购买后去 /背包 查看对应使用方式。',
+        ]
+    )
     return '\n'.join(lines)
 
 
@@ -721,69 +809,129 @@ def _loadout_choice_summary(item: dict[str, Any], category: str | None) -> str:
     return ""
 
 
-
-def boss_status_message(activity: dict[str, Any] | None, entries: list[dict[str, Any]], remaining_attempts: int | None = None, daily_limit: int | None = None) -> str:
+def boss_status_message(
+    activity: dict[str, Any] | None,
+    entries: list[dict[str, Any]],
+    remaining_attempts: int | None = None,
+    daily_limit: int | None = None,
+) -> str:
     if activity is None:
-        return '\u3010\u4e16\u754cBOSS\u3011\u5f53\u524d\u7fa4\u8fd8\u6ca1\u6709\u6b63\u5728\u8fdb\u884c\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002'
+        return "【世界BOSS】当前群还没有正在进行的世界BOSS活动。"
+    phase1 = activity.get("phase1_payload") or {}
+    phase2 = activity.get("phase2_payload") or {}
+    phase1_stats = phase1.get("stats") or {}
+    phase2_stats = phase2.get("stats") or {}
+
+    def _stage_title(payload: dict[str, Any], fallback: str) -> str:
+        label = str(payload.get("label") or fallback)
+        name = str(payload.get("name") or fallback)
+        return f"{label}: {name}"
+
+    def _stage_desc(payload: dict[str, Any]) -> str:
+        return str(payload.get("description") or "").strip()
+
+    def _stage_panel(stats: dict[str, Any], current_hp: int | None = None) -> str:
+        hp_value = int(current_hp if current_hp is not None else stats.get("hp", 0))
+        return (
+            f"气血 {hp_value} | 攻击 {int(stats.get('atk', 0))} | 防御 {int(stats.get('def', 0))} | "
+            f"速度 {float(stats.get('spd', 0)):.1f} | 暴击 {float(stats.get('crt', 0)):.1f}% | "
+            f"闪避 {float(stats.get('eva', 0)):.1f}%"
+        )
+
+    def _stage_loadout(payload: dict[str, Any]) -> str:
+        martial_obj = payload.get("martial_art") or {}
+        neigong_obj = payload.get("neigong") or {}
+        qinggong_obj = payload.get("qinggong") or {}
+        martial = martial_obj.get("name") or payload.get("martial_art_id") or "未知武学"
+        neigong = neigong_obj.get("name") or payload.get("neigong_id") or "未知内功"
+        qinggong = qinggong_obj.get("name") or payload.get("qinggong_id") or "未知轻功"
+        lines = [f"配置: {martial} / {neigong} / {qinggong}"]
+        martial_summary = str(martial_obj.get("boss_summary") or "").strip()
+        neigong_summary = str(neigong_obj.get("boss_summary") or "").strip()
+        qinggong_summary = str(qinggong_obj.get("boss_summary") or "").strip()
+        if martial_summary:
+            lines.append(f"武学: {martial_summary}")
+        if neigong_summary:
+            lines.append(f"内功: {neigong_summary}")
+        if qinggong_summary:
+            lines.append(f"轻功: {qinggong_summary}")
+        return "\n".join(lines)
+
     lines = [
-        f"\u3010\u4e16\u754cBOSS\u3011{activity['boss_name']}",
-        '\u89c4\u5219: \u6bcf\u6b21\u6311\u6218\u90fd\u5148\u6253\u4e00\u9636\u6bb5, \u53ea\u6709\u4e8c\u9636\u6bb5\u4f24\u5bb3\u8ba1\u5165\u7fa4\u5171\u4eab\u8840\u91cf\u4e0e\u8d21\u732e\u699c\u3002',
-        f"\u4e8c\u9636\u6bb5\u8840\u91cf: {activity['phase2_current_hp']}/{activity['phase2_max_hp']}",
+        f"【世界BOSS】{activity['boss_name']}",
+        "规则: 每次挑战都先打一阶段，只有二阶段伤害计入群共享血量与贡献榜。",
     ]
+    phase1_desc = _stage_desc(phase1)
+    if phase1_desc:
+        lines.append(f"背景: {phase1_desc}")
+    lines.extend(
+        [
+            _stage_title(phase1, "一阶段"),
+            _stage_panel(phase1_stats),
+            _stage_loadout(phase1),
+            _stage_title(phase2, "二阶段"),
+            _stage_panel(phase2_stats, int(activity["phase2_current_hp"])),
+            _stage_loadout(phase2),
+            f"二阶段共享血量: {activity['phase2_current_hp']}/{activity['phase2_max_hp']}",
+        ]
+    )
+    phase2_desc = _stage_desc(phase2)
+    if phase2_desc:
+        lines.append(f"说明: {phase2_desc}")
     if remaining_attempts is not None and daily_limit is not None:
         used = max(0, int(daily_limit) - int(remaining_attempts))
-        lines.append(f'\u4eca\u65e5\u6b21\u6570: {used}/{daily_limit}, \u5269\u4f59 {remaining_attempts}')
+        lines.append(f"今日次数: {used}/{daily_limit}, 剩余 {remaining_attempts}")
     if not entries:
-        lines.append('\u5f53\u524d\u8fd8\u6ca1\u6709\u4efb\u4f55\u4e8c\u9636\u6bb5\u4f24\u5bb3\u8bb0\u5f55\u3002')
-        return '\n'.join(lines)
-    lines.append('\u8d21\u732e\u699c Top 5:')
+        lines.append("当前还没有任何二阶段伤害记录。")
+        return "\n".join(lines)
+    lines.append("贡献榜 Top 5:")
     for index, entry in enumerate(entries[:5], start=1):
-        lines.append(f"{index}. {entry['display_name']} | \u4f24\u5bb3 {entry['total_damage']} | \u6311\u6218 {entry['attempts']}")
-    return '\n'.join(lines)
+        lines.append(f"{index}. {entry['display_name']} | 伤害 {entry['total_damage']} | 挑战 {entry['attempts']}")
+    return "\n".join(lines)
 
 
 def boss_rank_message(entries: list[dict[str, Any]]) -> str:
     if not entries:
-        return '\u3010\u4e16\u754cBOSS\u8d21\u732e\u699c\u3011\u5f53\u524d\u8fd8\u6ca1\u6709\u4efb\u4f55\u4e8c\u9636\u6bb5\u8d21\u732e\u8bb0\u5f55\u3002'
-    lines = ['\u3010\u4e16\u754cBOSS\u8d21\u732e\u699c Top 10\u3011']
+        return "【世界BOSS贡献榜】当前还没有任何二阶段贡献记录。"
+    lines = ["【世界BOSS贡献榜 Top 10】"]
     for index, entry in enumerate(entries[:10], start=1):
-        lines.append(f"{index}. {entry['display_name']} | \u4f24\u5bb3 {entry['total_damage']} | \u6311\u6218 {entry['attempts']}")
-    return '\n'.join(lines)
+        lines.append(f"{index}. {entry['display_name']} | 伤害 {entry['total_damage']} | 挑战 {entry['attempts']}")
+    return "\n".join(lines)
 
 
 def boss_fight_result_message(result: dict[str, Any]) -> str:
-    boss_name = str(result.get('boss_name') or '\u4e16\u754cBOSS')
-    lines = [f'\u3010\u4e16\u754cBOSS\u6311\u6218\u3011{boss_name}']
-    if not result.get('phase1_cleared'):
-        lines.append('\u4f60\u5012\u5728\u4e86\u4e00\u9636\u6bb5\u95e8\u69db\u524d, \u672c\u6b21\u672a\u80fd\u8fdb\u5165\u4e8c\u9636\u6bb5\u3002')
-        lines.append(f"\u4eca\u65e5\u5269\u4f59\u6b21\u6570: {result['remaining_attempts']}/{result['daily_limit']}")
-        return '\n'.join(lines)
-    lines.append('\u4f60\u5df2\u51fb\u7834\u4e00\u9636\u6bb5, \u6b8b\u9635\u8fdb\u5165\u4e8c\u9636\u6bb5\u3002')
-    if not result.get('entered_phase2'):
-        lines.append('\u4f46\u4f60\u7684\u961f\u4f0d\u5df2\u5728\u8fc7\u95e8\u540e\u8017\u5c3d, \u672c\u6b21\u672a\u5bf9\u4e8c\u9636\u6bb5\u9020\u6210\u4f24\u5bb3\u3002')
-        lines.append(f"\u4eca\u65e5\u5269\u4f59\u6b21\u6570: {result['remaining_attempts']}/{result['daily_limit']}")
-        return '\n'.join(lines)
-    lines.append(f"\u672c\u6b21\u4e8c\u9636\u6bb5\u4f24\u5bb3: {result['phase2_damage']}")
-    lines.append(f"\u4e8c\u9636\u6bb5\u5269\u4f59\u8840\u91cf: {result['phase2_current_hp']}/{result['phase2_max_hp']}")
-    lines.append(f"\u4f60\u7684\u7d2f\u8ba1\u8d21\u732e: {result['total_damage']}")
-    lines.append(f"\u4eca\u65e5\u5269\u4f59\u6b21\u6570: {result['remaining_attempts']}/{result['daily_limit']}")
-    if result.get('is_killed'):
-        lines.append('\u4f60\u4eec\u51fb\u6740\u4e86\u8fd9\u671f\u4e16\u754cBOSS\u3002')
-    return '\n'.join(lines)
+    boss_name = str(result.get("boss_name") or "世界BOSS")
+    lines = [f"【世界BOSS挑战】{boss_name}"]
+    if not result.get("phase1_cleared"):
+        lines.append("你倒在了一阶段门槛前，本次未能进入二阶段。")
+        lines.append(f"今日剩余次数: {result['remaining_attempts']}/{result['daily_limit']}")
+        return "\n".join(lines)
+    lines.append("你已击破一阶段，残阵进入二阶段。")
+    if not result.get("entered_phase2"):
+        lines.append("但你的队伍已在过门后耗尽，本次未对二阶段造成伤害。")
+        lines.append(f"今日剩余次数: {result['remaining_attempts']}/{result['daily_limit']}")
+        return "\n".join(lines)
+    lines.append(f"本次二阶段伤害: {result['phase2_damage']}")
+    lines.append(f"二阶段剩余血量: {result['phase2_current_hp']}/{result['phase2_max_hp']}")
+    lines.append(f"你的累计贡献: {result['total_damage']}")
+    lines.append(f"今日剩余次数: {result['remaining_attempts']}/{result['daily_limit']}")
+    if result.get("is_killed"):
+        lines.append("你们击杀了这期世界BOSS。")
+    return "\n".join(lines)
 
 
 def boss_settlement_message(payload: dict[str, Any] | None, closed_without_kill: bool = False) -> str:
     if closed_without_kill:
-        return '\u3010\u4e16\u754cBOSS\u5df2\u5173\u95ed\u3011\u672c\u671f\u4e16\u754cBOSS\u672a\u88ab\u51fb\u6740, \u4e0d\u53d1\u653e\u51fb\u6740\u5956\u52b1\u3002'
+        return "【世界BOSS已关闭】本期世界BOSS未被击杀，不发放击杀奖励。"
     if not payload:
-        return '\u3010\u4e16\u754cBOSS\u7ed3\u7b97\u3011\u5f53\u524d\u6ca1\u6709\u53ef\u5c55\u793a\u7684\u51fb\u6740\u7ed3\u7b97\u3002'
-    lines = [f"\u3010\u4e16\u754cBOSS\u7ed3\u7b97\u3011{payload.get('boss_name', '\u4e16\u754cBOSS')}"]
-    rewards = payload.get('rewards') or []
+        return "【世界BOSS结算】当前没有可展示的击杀结算。"
+    lines = [f"【世界BOSS结算】{payload.get('boss_name', '世界BOSS')}"]
+    rewards = payload.get("rewards") or []
     if not rewards:
-        lines.append('\u672c\u671f\u6ca1\u6709\u53ef\u53d1\u653e\u7684\u8d21\u732e\u5956\u52b1\u3002')
-        return '\n'.join(lines)
+        lines.append("本期没有可发放的贡献奖励。")
+        return "\n".join(lines)
     for reward in rewards[:10]:
         lines.append(
-            f"\u7b2c{reward['rank']}\u540d {reward['display_name']} | \u4f24\u5bb3 {reward['total_damage']} | +{reward['points']}\u79ef\u5206"
+            f"第{reward['rank']}名 {reward['display_name']} | 伤害 {reward['total_damage']} | +{reward['points']}积分"
         )
-    return '\n'.join(lines)
+    return "\n".join(lines)

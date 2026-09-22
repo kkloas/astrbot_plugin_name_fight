@@ -58,7 +58,7 @@ def effect_fixtures():
         for offset, f in enumerate((a, b)):
             f.update(martial_art=deepcopy(arts[(seed+offset) % len(arts)]),
                      neigong=deepcopy(internals[(seed+offset) % len(internals)]),
-                     qinggong=deepcopy(steps[(seed*3+offset) % len(steps)]))
+                     qinggong=deepcopy(steps[(seed+offset) % len(steps)]))
         data = fixture(a, b, seed=seed, actions=40)
         for event in data["events"]:
             effect = event.get("effect") or event.get("cause") or event.get("status")
