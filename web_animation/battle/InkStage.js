@@ -1,9 +1,10 @@
+import {drawArtTrigger,drawArtFootwork,drawArtAura} from './innerLightEffects.js';
+import { qishangTime, qishangReplayTime, qishangEffects, qishangBody } from './qishangMotion.js';
 import { serpentTime, serpentReplayTime } from './serpentMotion.js';
 import { phoenixTime, phoenixReplayTime } from './phoenixMotion.js';
 import { stateAt, statusLabels } from './replay.js';
 import { techniqueFor, legacyTechniqueFor, weaponFor } from './martialVisuals.js';
 import { drawWeapon } from './inkWeapons.js';
-import { drawAura, drawTrigger, drawFootwork } from './inkEffects.js';
 import { drawTechnique, drawImpact, drawPreparation, drawSampleAccent } from './inkStrikes.js';
 import { contactTime, impactFor, plantedFoot } from './choreography.js';
 import { sampleMove } from './sampleMotion.js';
@@ -200,7 +201,7 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed') {
     if (attack?.martialArtId === 'sword_xuantie' && impact.hit) impact.hold = heavyHold(attack.move);
     const contact = outcome && turn ? outcome.time - turn.time : 950;
     const actionTime = contactTime(local, contact, impact.hold);
-    if (turn && attack && local >= 0 && local < (attack.martialArtId === 'whip_baimang' ? contact + 730 : attack.martialArtId === 'staff_bainiaochaofeng' && attack.move === '绝技·百鸟朝凤' ? contact + 760 : 1740)) {
+    if (turn && attack && local >= 0 && local < (['fist_qishang', 'whip_baimang'].includes(attack.martialArtId) ? contact + 730 : attack.martialArtId === 'staff_bainiaochaofeng' && attack.move === '绝技·百鸟朝凤' ? contact + 760 : 1740)) {
         if (turn.actor === side) {
             const t = actionTime;
             const stepProgress = clamp((t - 380) / 460);
@@ -262,11 +263,11 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed') {
             }
             // The preceding choreography is the retained f39413d animation path.
             const authoredTime = attack.martialArtId === 'short_shenghuoling' ? holyTime(t, contact) :
-                attack.martialArtId === 'sword_xuantie' ? heavyTime(t, contact) : attack.martialArtId === 'staff_bainiaochaofeng' ? phoenixTime(t, contact, attack.move) : attack.martialArtId === 'whip_baimang' ? serpentTime(t, contact) : t;
+                attack.martialArtId === 'sword_xuantie' ? heavyTime(t, contact) : attack.martialArtId === 'staff_bainiaochaofeng' ? phoenixTime(t, contact, attack.move) : attack.martialArtId === 'whip_baimang' ? serpentTime(t, contact) : attack.martialArtId === 'fist_qishang' ? qishangTime(t, contact) : t;
             const moveFrame = variant === 'current' && attack && moveMotion(attack, authoredTime, travel, weapon, outcome?.type === 'dodge');
             if (moveFrame) {
                 const frame = moveFrame;
-                const transition = (attack.martialArtId === 'staff_bainiaochaofeng' || attack.martialArtId === 'whip_baimang') ? smooth(authoredTime / 140) : smooth(t / 140) * (1 - smooth((t - 1620) / 120));
+                const transition = ['fist_qishang', 'staff_bainiaochaofeng', 'whip_baimang'].includes(attack.martialArtId) ? smooth(authoredTime / 140) : smooth(t / 140) * (1 - smooth((t - 1620) / 120));
                 x = home + dir * frame.x;
                 pose = blend(motion.idle, frame.pose, transition);
                 if (attack.martialArtId === 'whip_baimang') {
@@ -275,7 +276,7 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed') {
                     const shift = (defenderFrame.x - width * (other === 'a' ? .235 : .765)) * dir;
                     pose.whip = frame.pose.whip.map((p, j, arr) => [p[0] + shift * smooth(j / (arr.length - 1)), p[1]]);
                 }
-                if (attack.martialArtId === 'short_shenghuoling') {
+                if (attack.martialArtId === 'short_shenghuoling' || attack.martialArtId === 'fist_qishang') {
                     pose.facing = frame.pose.facing;
                     pose.roll = frame.pose.roll;
                 }
@@ -415,7 +416,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         ctx.save();
         ctx.globalAlpha = frame.opacity;
         if (effects && state.hp[side] > 0)
-            drawAura(ctx, x, 324 + lift, state.states[side], time, state.stacks[side]);
+            drawArtAura(ctx, frame, dir, state.states[side], time, state.stacks[side]);
         const local = turn ? time - turn.time : -1;
         if (effects && actor.martialArt.id !== 'zither_duanzhi' && attack?.actor === side && !isNewMove(attack) && !expandedMoveFor(attack))
             drawPreparation(ctx, technique, x, dir, local, ['needles', 'zither'].includes(weapon));
@@ -434,7 +435,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
                 return { x: past.x, y: 324 + past.lift };
             });
             if (frame.opacity > .1)
-                drawFootwork(ctx, qinggong, x, dir, .85 * frame.opacity, time, trace);
+                drawArtFootwork(ctx, qinggong, x, dir, .85 * frame.opacity, time, trace, Math.max(1, Math.min(5, battle.events.filter(e => e.time <= time && (e.target || e.actor) === side && e.type === 'passive_trigger' && e.effect === 'action_spd_stack').length)));
         }
         if (effects && !reducedMotion && frame.blink > .01) {
             ctx.save();
@@ -492,6 +493,14 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
             const destination = outcome?.type === 'dodge' ? targetX : frameAt(targetSide, outcome?.time || time, turn).x;
             if (index >= 0 && frame.armed)
                 qinFX(ctx, index, qinTime(time - turn.time, contact), frame.x + dir * 40, destination, force.hit);
+        }
+        else if (attack.martialArtId === 'fist_qishang' && turn) {
+            const contact = (outcome?.time ?? turn.time + 950) - turn.time;
+            const receiver = frameAt(targetSide, time, turn);
+            const sampleAt = t => ({ frame: frameAt(side, turn.time + qishangReplayTime(t, contact), turn) });
+            if (frame.armed)
+                qishangEffects(ctx, attack, qishangTime(time - turn.time, contact), sampleAt,
+                    qishangBody(receiver, -dir).center, dir, Math.max(-1, impactAge / .68), force.hit, receiver);
         }
         else if (expandedMoveFor(attack) && turn) {
             const holy = attack.martialArtId === 'short_shenghuoling';
@@ -554,7 +563,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
     }
     for (const event of battle.events) {
         const age = time - event.time;
-        if (age < 0 || age > 1150)
+        if (age < 0 || age > (event.sourceSkill?.id === 'biyun_xinfa' ? 2600 : 1400))
             continue;
         const side = event.target || event.actor;
         if (!side)
@@ -564,11 +573,11 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode) {
         const otherSide = event.fromSide || (event.actor !== side ? event.actor : side === 'a' ? 'b' : 'a');
         const otherX = otherSide ? frameAt(otherSide, event.time, eventTurn).x : x;
         // Reflection originates at the defender, while the HP event targets the attacker.
-        const liveX = frames[side].x;
-        const liveOtherX = otherSide ? frames[otherSide].x : otherX;
         if (effects) {
             const reflected = ['thorns', 'part_counter'].includes(event.cause);
-            drawTrigger(ctx, event, reflected ? liveOtherX : liveX, reflected ? liveX : liveOtherX, age);
+            const owner = reflected ? otherSide : side;
+            const visualEvent = event.effect === 'action_spd_stack' ? {...event, stacks: Math.min(5, battle.events.filter(e => e.time <= event.time && (e.target || e.actor) === owner && e.type === 'passive_trigger' && e.effect === 'action_spd_stack').length)} : event;
+            drawArtTrigger(ctx, visualEvent, frames[owner], owner === 'a' ? 1 : -1, frames[reflected ? side : otherSide] || frames[owner], age);
         }
         if (age > 850)
             continue;

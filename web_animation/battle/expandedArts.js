@@ -1,3 +1,4 @@
+import { qishangMotion } from './qishangMotion.js';
 import { serpentMotion, serpentEffects } from './serpentMotion.js';
 import { phoenixMotion, phoenixEffects } from './phoenixMotion.js';
 import { twoBone } from './sampleMotion.js';
@@ -54,6 +55,7 @@ export function expandedTechnique(event, fighter) {
 }
 
 export function expandedMotion(event, time, travel) {
+    if (event.martialArtId === 'fist_qishang') return qishangMotion(event, time, travel);
     if (event.martialArtId === 'whip_baimang') return serpentMotion(event, time, travel);
     if (event.martialArtId === 'staff_bainiaochaofeng') return phoenixMotion(event, time, travel);
     if (event.martialArtId === 'short_shenghuoling') return holyMotion(event, time, travel);

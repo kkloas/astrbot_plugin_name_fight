@@ -1,0 +1,13 @@
+import type { BattleEvent } from './replay';
+import type { RigPose } from './sampleMotion';
+type Point = [number, number];
+type Frame = { x: number; lift: number; opacity: number; blink: number; pose: RigPose };
+export const names: string[];
+export const notes: string[];
+export const colors: string[];
+export const beats: number[][];
+export function qishangMotion(event: BattleEvent, time: number, travel: number): Frame | undefined;
+export function qishangBody(frame: Frame, dir: number): { center: Point; down: Point; right: Point };
+export function qishangTime(time: number, contact?: number): number;
+export function qishangReplayTime(time: number, contact?: number): number;
+export function qishangEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => { frame: Frame }, target: Point, dir: number, impactAge: number, hit: boolean, receiver?: Frame): void;
