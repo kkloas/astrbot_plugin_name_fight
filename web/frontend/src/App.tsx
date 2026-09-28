@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PveView } from './pve/PveView';
 
 const API_BASE = '';
@@ -27,6 +27,7 @@ type Fighter = {
   baseStarRating: number;
   starExp: number;
   breakthroughStage: number;
+  nextStarExp?: number | null;
   wins: number;
   battles: number;
   stats: Stats;
@@ -45,6 +46,15 @@ type Item = {
   category: string;
   description?: string;
   energy_restore?: number;
+  star_exp?: number;
+};
+
+type PendingChoice = {
+  fighter_name: string;
+  category: string;
+  target_label: string;
+  old_entry: Entry;
+  options: Entry[];
 };
 
 type LeaderboardEntry = {
@@ -62,6 +72,8 @@ type GameState = {
   activeFighter: Fighter | null;
   wallet: { points: number; last_signin_date: string };
   items: Item[];
+  pendingChoice: PendingChoice | null;
+  pendingSummon: Fighter | null;
   shop: Item[];
   leaderboard: LeaderboardEntry[];
   worldBoss: any;
@@ -84,6 +96,7 @@ const itemLabels: Record<string, string> = {
   martial_token_type: '换宗令',
   martial_token_choice: '天机残卷',
   energy_pill: '行气丹',
+  special_summon_token: '特殊召唤令',
 };
 
 
@@ -181,11 +194,20 @@ function hpPercent(hp: number, maxHp: number): string {
 export function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [view, setView] = useState<View>('jianghu');
+  const [shopTab, setShopTab] = useState<'bag' | 'shop'>('bag');
   const [selectedName, setSelectedName] = useState<string>('');
   const [newName, setNewName] = useState('');
   const [replaceMode, setReplaceMode] = useState(false);
   const [notice, setNotice] = useState('');
-  const [choiceOptions, setChoiceOptions] = useState<any | null>(null);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [abandonChoiceConfirm, setAbandonChoiceConfirm] = useState(false);
+  const [summonOpen, setSummonOpen] = useState(false);
+  const [summonReplaceSlot, setSummonReplaceSlot] = useState<number | null>(null);
+  const summonActionLock = useRef(false);
+  const [summonBusy, setSummonBusy] = useState(false);
+  const [itemUse, setItemUse] = useState<{ itemId: string; fighterName: string } | null>(null);
+  const choiceActionLock = useRef(false);
+  const [choiceBusy, setChoiceBusy] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -208,6 +230,8 @@ export function App() {
   async function refresh() {
     const state = await api<GameState>('/api/session/bootstrap');
     setGame(state);
+    if (state.pendingChoice) setChoiceOpen(true);
+    else if (state.pendingSummon) setSummonOpen(true);
     if (!selectedName && state.activeFighter) setSelectedName(state.activeFighter.name);
   }
 
@@ -248,11 +272,44 @@ export function App() {
     }
   }
 
+  async function useOwnedItem(itemId: string, fighterName: string, category: string, quantity: number, summonName = ''): Promise<boolean> {
+    const target = encodeURIComponent(fighterName);
+    let result: any = null;
+    if (itemId === 'energy_pill') {
+      result = await mutate(() => api('/api/items/use', { method: 'POST', body: JSON.stringify({ itemId }) }), '历练体力已恢复');
+    } else if (itemId === 'star_exp_pill_s' || itemId === 'star_exp_pill_m') {
+      result = await mutate(() => api(`/api/fighters/${target}/feed`, {
+        method: 'POST', body: JSON.stringify({ itemId, quantity }),
+      }), '培养完成');
+    } else if (itemId === 'breakthrough_pill') {
+      result = await mutate(() => api(`/api/fighters/${target}/breakthrough`, { method: 'POST' }), '突破完成');
+    } else if (itemId === 'martial_token_basic' || itemId === 'martial_token_type') {
+      result = await mutate(() => api(`/api/fighters/${target}/reroll`, {
+        method: 'POST', body: JSON.stringify({ itemId, category }),
+      }), '功法已更换');
+    } else if (itemId === 'martial_token_choice') {
+      result = await mutate(() => api(`/api/fighters/${target}/choices`, {
+        method: 'POST', body: JSON.stringify({ itemId, category }),
+      }), '天机候选已生成');
+    } else if (itemId === 'special_summon_token') {
+      result = await mutate(() => api('/api/summon/preview', {
+        method: 'POST', body: JSON.stringify({ name: summonName.trim() }),
+      }), '召唤预览已生成, 确认入队时才消耗召唤令');
+    }
+    if (result) {
+      setItemUse(null);
+      if (itemId === 'martial_token_choice') { choiceActionLock.current = false; setChoiceOpen(true); }
+      if (itemId === 'special_summon_token') { summonActionLock.current = false; setSummonOpen(true); }
+    }
+    return !!result;
+  }
+
   if (!game) {
     return <div className="loading">正在铺开江湖卷轴...</div>;
   }
 
   return (
+    <>
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
@@ -268,7 +325,10 @@ export function App() {
             ['leaderboard', '排行'],
             ['boss', '世界BOSS'],
           ].map(([key, label]) => (
-            <button key={key} className={view === key ? 'active' : ''} onClick={() => setView(key as View)}>
+            <button key={key} className={view === key ? 'active' : ''} onClick={() => {
+              if (key === 'shop') setShopTab('bag');
+              setView(key as View);
+            }}>
               {label}
             </button>
           ))}
@@ -319,40 +379,7 @@ export function App() {
                   '已设为当前出战',
                 )
               }
-              feed={(name: string, itemId: string) =>
-                mutate(
-                  () =>
-                    api(`/api/fighters/${encodeURIComponent(name)}/feed`, {
-                      method: 'POST',
-                      body: JSON.stringify({ itemId, quantity: 1 }),
-                    }),
-                  '培养完成',
-                )
-              }
-              breakthrough={(name: string) =>
-                mutate(() => api(`/api/fighters/${encodeURIComponent(name)}/breakthrough`, { method: 'POST' }), '突破完成')
-              }
-              reroll={(name: string, category: string, itemId: string) =>
-                mutate(
-                  () =>
-                    api(`/api/fighters/${encodeURIComponent(name)}/reroll`, {
-                      method: 'POST',
-                      body: JSON.stringify({ category, itemId }),
-                    }),
-                  '洗练完成',
-                )
-              }
-              createChoices={async (name: string) => {
-                const result: any = await mutate(
-                  () =>
-                    api(`/api/fighters/${encodeURIComponent(name)}/choices`, {
-                      method: 'POST',
-                      body: JSON.stringify({ category: 'martial_art', itemId: 'martial_token_choice' }),
-                    }),
-                  '候选已生成',
-                );
-                if (result) setChoiceOptions(result.result);
-              }}
+              openItem={(itemId: string, fighterName: string) => setItemUse({ itemId, fighterName })}
             />
           )}
           {view === 'pve' && <PveView
@@ -365,8 +392,10 @@ export function App() {
           {view === 'shop' && (
             <ShopView
               game={game}
+              tab={shopTab}
+              setTab={setShopTab}
               buy={(id, quantity) => mutate(() => api('/api/shop/buy', { method: 'POST', body: JSON.stringify({ itemId: id, quantity }) }), '购买成功')}
-              useItem={(id) => mutate(() => api('/api/items/use', { method: 'POST', body: JSON.stringify({ itemId: id }) }), '历练体力已恢复')}
+              openItem={(itemId) => setItemUse({ itemId, fighterName: selected?.name || '' })}
             />
           )}
           {view === 'leaderboard' && <LeaderboardView entries={game.leaderboard} />}
@@ -376,33 +405,123 @@ export function App() {
 
         <aside className="right-panel">
           <h2>江湖册</h2>
-          {selected ? <DetailPanel fighter={selected} /> : <p>选择一个角色查看详情。</p>}
-          {choiceOptions && (
+          {selected ? <DetailPanel fighter={selected} breakthroughPills={game.items.find((item) => item.item_id === 'breakthrough_pill')?.quantity || 0} /> : <p>选择一个角色查看详情。</p>}
+          {game.pendingChoice && (
             <div className="choice-box">
-              <h3>天机候选</h3>
-              {choiceOptions.options.map((option: Entry) => (
-                <button
-                  key={option.id}
-                  onClick={async () => {
-                    await mutate(
-                      () =>
-                        api(`/api/fighters/${encodeURIComponent(choiceOptions.fighter_name)}/choices/apply`, {
-                          method: 'POST',
-                          body: JSON.stringify({ category: choiceOptions.category, choiceId: option.id }),
-                        }),
-                      '候选已确认',
-                    );
-                    setChoiceOptions(null);
-                  }}
-                >
-                  {option.name}
-                </button>
-              ))}
+              <h3>待选天机候选</h3>
+              <p>{game.pendingChoice.fighter_name} - {game.pendingChoice.target_label}</p>
+              <button onClick={() => setChoiceOpen(true)}>继续选择</button>
+            </div>
+          )}
+          {game.pendingSummon && (
+            <div className="choice-box">
+              <h3>待确认特殊召唤</h3>
+              <p>{game.pendingSummon.name} - {game.pendingSummon.starRating.toFixed(1)} 星</p>
+              <button onClick={() => setSummonOpen(true)}>查看预览</button>
             </div>
           )}
         </aside>
       </main>
     </div>
+      {itemUse && <ItemUseDialog
+        key={`${itemUse.itemId}:${itemUse.fighterName}`}
+        game={game}
+        notice={notice}
+        itemId={itemUse.itemId}
+        initialFighterName={itemUse.fighterName}
+        close={() => setItemUse(null)}
+        confirm={useOwnedItem}
+        showPending={() => { setItemUse(null); setChoiceOpen(true); }}
+        showPendingSummon={() => { setItemUse(null); setSummonOpen(true); }}
+        openShop={() => { setItemUse(null); setShopTab('shop'); setView('shop'); }}
+      />}
+      {summonOpen && game.pendingSummon && (
+        <div className="item-modal-backdrop" role="presentation">
+          <div className="item-modal" role="dialog" aria-modal="true" aria-label="特殊召唤预览">
+            <h2>特殊召唤预览</h2>
+            {notice && <p className="item-feedback" role="alert">{notice}</p>}
+            <HeroCard fighter={game.pendingSummon} />
+            <p>武功 {game.pendingSummon.martialArt.name} / 内功 {game.pendingSummon.neigong.name} / 轻功 {game.pendingSummon.qinggong.name}</p>
+            <p className="item-effect">确认后消耗 1 枚特殊召唤令, 新角色自动设为出战。关闭后预览会保留, 刷新可继续确认, 确认前不能重抽。</p>
+            {game.fighters.length >= game.session.maxFighters && <>
+              <label>选择要替换的角色
+                <select value={summonReplaceSlot || ''} onChange={(event) => setSummonReplaceSlot(Number(event.target.value) || null)}>
+                  <option value="">请选择角色栏位</option>
+                  {game.fighters.map((fighter) => <option key={fighter.name} value={fighter.slotIndex}>{fighter.slotIndex}. {fighter.name} - {fighter.starRating.toFixed(1)} 星</option>)}
+                </select>
+              </label>
+              {summonReplaceSlot && <p className="item-warning">确认后将永久删除 {game.fighters.find((fighter) => fighter.slotIndex === summonReplaceSlot)?.name} 及其战绩。</p>}
+            </>}
+            <div className="item-modal-actions">
+              <button disabled={summonBusy || (game.fighters.length >= game.session.maxFighters && !summonReplaceSlot)} onClick={async () => {
+                if (summonActionLock.current) return;
+                summonActionLock.current = true;
+                setSummonBusy(true);
+                const result: any = await mutate(() => api('/api/summon/confirm', {
+                  method: 'POST', body: JSON.stringify({ replaceSlot: game.fighters.length >= game.session.maxFighters ? summonReplaceSlot : null }),
+                }), '特殊召唤已完成');
+                if (result) {
+                  setSelectedName(result.fighter.name);
+                  setSummonOpen(false);
+                  setSummonReplaceSlot(null);
+                  setView('fighters');
+                } else summonActionLock.current = false;
+                setSummonBusy(false);
+              }}>{summonBusy ? '确认中...' : '确认召唤'}</button>
+              <button disabled={summonBusy} onClick={() => setSummonOpen(false)}>关闭预览, 保留结果</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {choiceOpen && game.pendingChoice && (
+        <div className="item-modal-backdrop" role="presentation">
+          <div className="item-modal" role="dialog" aria-modal="true" aria-label="天机候选">
+            <h2>天机候选</h2>
+            {notice && <p className="item-feedback" role="alert">{notice}</p>}
+            <p>{game.pendingChoice.fighter_name} 的{game.pendingChoice.target_label}, 当前为 {game.pendingChoice.old_entry.name}</p>
+            <div className="choice-options">
+              {game.pendingChoice.options.map((option) => (
+                <button key={option.id} disabled={choiceBusy} onClick={async () => {
+                  if (choiceActionLock.current) return;
+                  choiceActionLock.current = true;
+                  setChoiceBusy(true);
+                  const result = await mutate(() => api(
+                    `/api/fighters/${encodeURIComponent(game.pendingChoice!.fighter_name)}/choices/apply`,
+                    { method: 'POST', body: JSON.stringify({ category: game.pendingChoice!.category, choiceId: option.id }) },
+                  ), `已选择 ${option.name}`);
+                  if (result) setChoiceOpen(false);
+                  else choiceActionLock.current = false;
+                  setChoiceBusy(false);
+                }}>
+                  <strong>{option.name}</strong>
+                  <span>{option.type || ''} {option.description || ''}</span>
+                </button>
+              ))}
+            </div>
+            {abandonChoiceConfirm ? (
+              <div className="item-modal-actions">
+                <span>放弃后残卷不退还</span>
+                <button disabled={choiceBusy} onClick={async () => {
+                  if (choiceActionLock.current) return;
+                  choiceActionLock.current = true;
+                  setChoiceBusy(true);
+                  const result = await mutate(() => api('/api/fighters/choices/abandon', { method: 'POST' }), '已放弃候选');
+                  if (result) { setChoiceOpen(false); setAbandonChoiceConfirm(false); }
+                  else choiceActionLock.current = false;
+                  setChoiceBusy(false);
+                }}>确认放弃</button>
+                <button onClick={() => setAbandonChoiceConfirm(false)}>返回</button>
+              </div>
+            ) : (
+              <div className="item-modal-actions">
+                <button onClick={() => setChoiceOpen(false)}>稍后选择</button>
+                <button onClick={() => setAbandonChoiceConfirm(true)}>放弃候选</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -433,6 +552,7 @@ function FighterPortrait({ fighter, size = 'normal' }: { fighter: Fighter; size?
       </div>
     );
   }
+
   if (rating < 5 && breakthrough <= 0) {
     return (
       <div className={`portrait portrait-avatar ${tierClass} size-${size}`}>
@@ -533,7 +653,7 @@ function JianghuView({
         <button className="workflow-card workflow-trial" onClick={() => setView('pve')}>
           <span>03</span>
           <h3>江湖历练</h3>
-          <p>三人接力挑战十八个固定关卡，争取满星通关并领取章节宝箱。</p>
+          <p>三人接力挑战三十个固定关卡,争取满星通关并领取章节宝箱.</p>
         </button>
         <button className="workflow-card workflow-rank" onClick={() => setView('leaderboard')}>
           <span>04</span>
@@ -599,7 +719,7 @@ function StageReady({ active, openPve, setView }: { active: Fighter | null; open
           <span className="ink-seal">影</span>
         </div>
         <h3>江湖舆图</h3>
-        <p>青石镇、黑水寨与天机楼</p>
+        <p>青石镇,黑水寨,天机楼与隐潮盟</p>
       </div>
       <div className="stage-footer">
         <button onClick={() => setView('fighters')}>角色仓库</button>
@@ -621,7 +741,7 @@ function CreateBox({ newName, setNewName, createFighter }: any) {
 }
 
 function FightersView(props: any) {
-  const { game, selectedName, setSelectedName, newName, setNewName, replaceMode, setReplaceMode, createFighter, setActive, feed, breakthrough, reroll, createChoices } = props;
+  const { game, selectedName, setSelectedName, newName, setNewName, replaceMode, setReplaceMode, createFighter, setActive, openItem } = props;
   return (
     <div className="fighters-view">
       <div className="toolbar">
@@ -648,20 +768,19 @@ function FightersView(props: any) {
       {props.selected && (
         <div className="operation-panel">
           <button onClick={() => setActive(props.selected.name)}>设为出战</button>
-          <button onClick={() => feed(props.selected.name, 'star_exp_pill_s')}>小丹培养</button>
-          <button onClick={() => feed(props.selected.name, 'star_exp_pill_m')}>中丹培养</button>
-          <button onClick={() => breakthrough(props.selected.name)}>突破</button>
-          <button onClick={() => reroll(props.selected.name, 'martial_art', 'martial_token_basic')}>洗武学</button>
-          <button onClick={() => reroll(props.selected.name, 'neigong', 'martial_token_type')}>换内功</button>
-          <button onClick={() => reroll(props.selected.name, 'qinggong', 'martial_token_type')}>换轻功</button>
-          <button onClick={() => createChoices(props.selected.name)}>天机候选</button>
+          <button onClick={() => openItem('star_exp_pill_s', props.selected.name)}>小丹培养</button>
+          <button onClick={() => openItem('star_exp_pill_m', props.selected.name)}>中丹培养</button>
+          <button onClick={() => openItem('breakthrough_pill', props.selected.name)}>突破</button>
+          <button onClick={() => openItem('martial_token_basic', props.selected.name)}>洗武学</button>
+          <button onClick={() => openItem('martial_token_type', props.selected.name)}>换功法</button>
+          <button onClick={() => openItem('martial_token_choice', props.selected.name)}>天机候选</button>
         </div>
       )}
     </div>
   );
 }
 
-function DetailPanel({ fighter }: { fighter: Fighter }) {
+function DetailPanel({ fighter, breakthroughPills }: { fighter: Fighter; breakthroughPills: number }) {
   const rows: Array<[keyof Stats, string, boolean]> = [
     ['hp', '气血', false],
     ['atk', '攻击', false],
@@ -675,6 +794,17 @@ function DetailPanel({ fighter }: { fighter: Fighter }) {
       <h3>{fighter.name}</h3>
       <p>战绩 {fighter.wins}/{fighter.battles}</p>
       <p>资质 {fighter.starRating.toFixed(1)} 星</p>
+      {fighter.nextStarExp === undefined ? (
+        <p className="star-progress-note">经验门槛尚未同步, 请重启 Web 后端</p>
+      ) : fighter.nextStarExp ? (
+        <div className="star-progress">
+          <span>星尘经验 {fighter.starExp}/{fighter.nextStarExp}</span>
+          <div className="star-progress-track"><i style={{ width: hpPercent(fighter.starExp, fighter.nextStarExp) }} /></div>
+          <small>距离 {Math.min(5, fighter.starRating + 0.5).toFixed(1)} 星还需 {Math.max(0, fighter.nextStarExp - fighter.starExp)} 点</small>
+        </div>
+      ) : (
+        <p className="star-progress-note">{fighter.starRating < 6 ? `星尘已满, 持有破境丹 ${breakthroughPills} 个, 使用后可突破至 6 星` : '已达到当前资质上限'}</p>
+      )}
       <p>武学 {fighter.martialArt.name}</p>
       <p>内功 {fighter.neigong.name}</p>
       <p>轻功 {fighter.qinggong.name}</p>
@@ -701,47 +831,185 @@ function DetailPanel({ fighter }: { fighter: Fighter }) {
 
 function ShopView({
   game,
+  tab,
+  setTab,
   buy,
-  useItem,
+  openItem,
 }: {
   game: GameState;
-  buy: (id: string, quantity: number) => void;
-  useItem: (id: string) => void;
+  tab: 'bag' | 'shop';
+  setTab: (tab: 'bag' | 'shop') => void;
+  buy: (id: string, quantity: number) => Promise<any>;
+  openItem: (id: string) => void;
 }) {
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [purchase, setPurchase] = useState<{ itemId: string; quantity: number } | null>(null);
+  const purchaseLock = useRef(false);
+  const [buying, setBuying] = useState(false);
   const energyIsFull = game.pveSummary.profile.energy >= game.pveSummary.profile.maximum_energy;
+  const purchaseItem = game.shop.find((item) => item.item_id === purchase?.itemId);
   return (
     <div className="shop-view">
-      <section>
+      <div className="shop-tabs">
+        <button className={tab === 'bag' ? 'active' : ''} onClick={() => setTab('bag')}>背包</button>
+        <button className={tab === 'shop' ? 'active' : ''} onClick={() => setTab('shop')}>商店</button>
+      </div>
+      {tab === 'shop' && <section>
         <h2>商店</h2>
+        <p>当前积分 {game.wallet.points}</p>
         <div className="shop-grid">
-          {game.shop.map((item) => (
+          {game.shop.map((item) => {
+            const quantity = quantities[item.item_id] || 1;
+            const owned = game.items.find((ownedItem) => ownedItem.item_id === item.item_id)?.quantity || 0;
+            return (
             <div className="shop-card" key={item.item_id}>
-              <span className="item-help" tabIndex={0} aria-label={`用途: ${item.description || '暂无说明'}`}>
-                !
-                <span className="item-tooltip" role="tooltip">{item.description || '暂无说明'}</span>
-              </span>
               <h3>{displayItem(item)}</h3>
-              <p>价格 {item.price}</p>
-              <button onClick={() => buy(item.item_id, 1)}>购买</button>
+              <p>{item.item_id === 'special_summon_token' ? '五星概率 90%, 六星概率 10%; 预览保留, 确认入队时消耗道具' : item.description || '暂无说明'}</p>
+              <p>单价 {item.price} 积分 | 已有 {owned}</p>
+              <label className="shop-quantity">数量
+                <input type="number" min={1} step={1} value={quantity} onChange={(event) => {
+                  const next = Math.max(1, Math.floor(Number(event.target.value) || 1));
+                  setQuantities((current) => ({ ...current, [item.item_id]: next }));
+                }} />
+              </label>
+              <button onClick={() => { purchaseLock.current = false; setPurchase({ itemId: item.item_id, quantity }); }}>购买 {quantity} 个</button>
             </div>
-          ))}
+          ); })}
         </div>
-      </section>
-      <section>
+        {purchase && purchaseItem && (
+          <div className="purchase-confirm">
+            <h3>确认购买</h3>
+            <p>{displayItem(purchaseItem)} x{purchase.quantity}</p>
+            <p>{purchaseItem.price} x {purchase.quantity} = {purchaseItem.price * purchase.quantity} 积分</p>
+            <p>{game.wallet.points >= purchaseItem.price * purchase.quantity
+              ? `购买后剩余 ${game.wallet.points - purchaseItem.price * purchase.quantity} 积分`
+              : `还差 ${purchaseItem.price * purchase.quantity - game.wallet.points} 积分`}</p>
+            <div className="item-modal-actions">
+              <button disabled={buying || game.wallet.points < purchaseItem.price * purchase.quantity} onClick={async () => {
+                if (purchaseLock.current) return;
+                purchaseLock.current = true;
+                setBuying(true);
+                const result = await buy(purchase.itemId, purchase.quantity);
+                if (result) setPurchase(null);
+                else purchaseLock.current = false;
+                setBuying(false);
+              }}>{buying ? '购买中...' : game.wallet.points < purchaseItem.price * purchase.quantity ? '积分不足' : '确认购买'}</button>
+              <button disabled={buying} onClick={() => setPurchase(null)}>取消</button>
+            </div>
+          </div>
+        )}
+      </section>}
+      {tab === 'bag' && <section>
         <h2>背包</h2>
         <div className="bag-list">
           {game.items.length ? game.items.map((item) => (
             <div className="bag-item" key={item.item_id}>
-              <span>{displayItem(item)} x{item.quantity}</span>
-              {item.category === 'energy' && (
-                <button disabled={energyIsFull} onClick={() => useItem(item.item_id)}>
-                  {energyIsFull ? '体力已满' : '使用'}
-                </button>
-              )}
+              <div><strong>{displayItem(item)} x{item.quantity}</strong><small>{item.category === 'summon' ? '输入名字生成预览, 确认后消耗' : item.description}</small></div>
+              <button disabled={item.category === 'energy' && energyIsFull} onClick={() => openItem(item.item_id)}>
+                {item.category === 'energy' && energyIsFull ? '体力已满' : '使用'}
+              </button>
             </div>
           )) : <p>背包空空。</p>}
         </div>
-      </section>
+      </section>}
+    </div>
+  );
+}
+
+function ItemUseDialog({ game, notice, itemId, initialFighterName, close, confirm, showPending, showPendingSummon, openShop }: {
+  game: GameState;
+  notice: string;
+  itemId: string;
+  initialFighterName: string;
+  close: () => void;
+  confirm: (itemId: string, fighterName: string, category: string, quantity: number, summonName?: string) => Promise<boolean>;
+  showPending: () => void;
+  showPendingSummon: () => void;
+  openShop: () => void;
+}) {
+  const item = game.items.find((entry) => entry.item_id === itemId);
+  const [fighterName, setFighterName] = useState(initialFighterName || game.activeFighter?.name || game.fighters[0]?.name || '');
+  const [category, setCategory] = useState(itemId === 'martial_token_type' ? 'neigong' : 'martial_art');
+  const [quantity, setQuantity] = useState(1);
+  const [summonName, setSummonName] = useState('');
+  const useLock = useRef(false);
+  const [usingItem, setUsingItem] = useState(false);
+  const fighter = game.fighters.find((entry) => entry.name === fighterName);
+  const needsFighter = itemId !== 'energy_pill' && itemId !== 'special_summon_token';
+  const isGrowth = itemId === 'star_exp_pill_s' || itemId === 'star_exp_pill_m';
+  const energyMissing = game.pveSummary.profile.maximum_energy - game.pveSummary.profile.energy;
+  const ineligible = (isGrowth && !!fighter && fighter.starRating >= 5)
+    || (itemId === 'breakthrough_pill' && !!fighter && fighter.starRating !== 5);
+  const canUse = !!item && (!needsFighter || !!fighter) && !ineligible && (itemId !== 'energy_pill' || energyMissing > 0)
+    && (itemId !== 'martial_token_choice' || !game.pendingChoice)
+    && (itemId !== 'special_summon_token' || (!!summonName.trim() && !game.pendingSummon));
+  let effect = item?.description || '';
+  if (isGrowth && fighter && item) {
+    const gain = quantity * (item.star_exp || 0);
+    const next = fighter.nextStarExp || 0;
+    const preview = fighter.starExp + gain < next
+      ? `预计变为 ${fighter.starExp + gain}/${next}`
+      : `预计至少达到 ${Math.min(5, fighter.starRating + 0.5).toFixed(1)} 星`;
+    effect = `本次最多增加 ${gain} 点星尘经验, ${preview}; 达到 5 星后停止消耗`;
+  }
+  if (itemId === 'breakthrough_pill' && fighter) effect = `${fighter.name} 从 5.0 星突破至 6.0 星, 消耗 1 个破境丹`;
+  if (itemId === 'energy_pill' && item) effect = `当前体力 ${game.pveSummary.profile.energy}/${game.pveSummary.profile.maximum_energy}, 本次恢复 ${Math.min(item.energy_restore || 0, energyMissing)} 点`;
+  if (itemId === 'martial_token_basic' && fighter) effect = `随机更换 ${fighter.martialArt.name}, 结果确认后不可撤回`;
+  if (itemId === 'martial_token_type' && fighter) effect = `随机更换${category === 'neigong' ? '内功' : '轻功'}, 结果确认后不可撤回`;
+  if (itemId === 'martial_token_choice') effect = '消耗 1 个残卷后生成 3 个候选, 刷新后可继续选择; 放弃不退还残卷';
+  if (itemId === 'special_summon_token') effect = '五星概率 90%, 六星概率 10%; 输入新角色名后生成预览, 结果会保留且不能重抽, 确认入队时才消耗 1 枚召唤令';
+  return (
+    <div className="item-modal-backdrop" role="presentation">
+      <div className="item-modal" role="dialog" aria-modal="true" aria-label="使用道具">
+        <h2>使用 {item ? displayItem(item) : displayItem(game.shop.find((entry) => entry.item_id === itemId) || { item_id: itemId, name: itemId, price: 0, category: '' })}</h2>
+        {notice && <p className="item-feedback" role="alert">{notice}</p>}
+        {!item ? (
+          <><p>背包中没有这个道具。</p><div className="item-modal-actions"><button onClick={openShop}>前往商店</button><button onClick={close}>关闭</button></div></>
+        ) : (
+          <>
+            <p>当前持有 {item.quantity} 个</p>
+            {itemId === 'special_summon_token' && <label>新角色名
+              <input value={summonName} maxLength={32} onChange={(event) => setSummonName(event.target.value)} placeholder="输入新角色名" />
+            </label>}
+            {needsFighter && <label>目标角色
+              <select value={fighterName} onChange={(event) => setFighterName(event.target.value)}>
+                {game.fighters.map((entry) => <option key={entry.name} value={entry.name}>{entry.name} - {entry.starRating.toFixed(1)} 星</option>)}
+              </select>
+            </label>}
+            {itemId === 'martial_token_type' && <label>更换部位
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="neigong">内功</option><option value="qinggong">轻功</option>
+              </select>
+            </label>}
+            {itemId === 'martial_token_choice' && <label>候选部位
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="martial_art">武功</option><option value="neigong">内功</option><option value="qinggong">轻功</option>
+              </select>
+            </label>}
+            {isGrowth && <label>使用数量
+              <input type="number" min={1} max={item.quantity} step={1} value={quantity} onChange={(event) => {
+                setQuantity(Math.min(item.quantity || 1, Math.max(1, Math.floor(Number(event.target.value) || 1))));
+              }} />
+            </label>}
+            <p className="item-effect">{effect}</p>
+            {ineligible && <p className="item-warning">{isGrowth ? '角色已达到 5 星' : '仅 5 星且未突破的角色可使用'}</p>}
+            {itemId === 'martial_token_choice' && game.pendingChoice && <button onClick={showPending}>先完成已有候选</button>}
+            {itemId === 'special_summon_token' && game.pendingSummon && <button onClick={showPendingSummon}>先处理已有召唤预览</button>}
+            <div className="item-modal-actions">
+              <button disabled={!canUse || usingItem} onClick={async () => {
+                if (useLock.current) return;
+                useLock.current = true;
+                setUsingItem(true);
+                if (!await confirm(itemId, fighterName, category, quantity, summonName)) {
+                  useLock.current = false;
+                  setUsingItem(false);
+                }
+              }}>{usingItem ? '处理中...' : itemId === 'special_summon_token' ? '生成预览' : '确认使用'}</button>
+              <button disabled={usingItem} onClick={close}>取消</button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

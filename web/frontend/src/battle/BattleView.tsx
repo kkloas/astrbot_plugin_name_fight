@@ -52,9 +52,9 @@ export function BattleView({ battle, playback, startBattle, showResult = true }:
             <div className={`duel-initiative${acting?' is-acting':ready?' is-ready':''}${boost?' is-boosted':''}`}>
               <div className="duel-initiative-label"><span>速度 {Math.round(state.speeds[side]) || '--'}</span>
                 {boost && <b className="duel-boost-label">{boost.effect==='battle_start_first_strike'?'抢先':'提气'}</b>}
-                <span className="duel-action-value">{state.hasGauge?`${label} ${Math.floor(gauge[side])}/100`:'行动未记录'}</span></div>
+                <span className="duel-action-value">{state.hasGauge?(state.ended || victory || state.hp[side] <= 0?label:`${label} ${Math.floor(gauge[side])}/100`):'行动未记录'}</span></div>
               <div className="duel-action-track" role="progressbar" aria-label={`${fighter.name}行动条`} aria-valuemin={0} aria-valuemax={100}
-                aria-valuenow={Math.min(100,Math.max(0,gauge[side]))} aria-valuetext={`${label}, 行动值 ${Math.floor(gauge[side])}`}>
+                aria-valuenow={Math.min(100,Math.max(0,gauge[side]))} aria-valuetext={state.ended || victory || state.hp[side] <= 0?label:`${label}, 行动值 ${Math.floor(gauge[side])}`}>
                 <i style={{width:`${Math.min(100,Math.max(0,gauge[side]))}%`}} /><b />
               </div>
             </div>

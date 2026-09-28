@@ -649,6 +649,13 @@ input:focus {
   opacity: 0.92;
 }
 
+.star-progress { margin: 10px 0 14px; font-size: 13px; }
+.star-progress span, .star-progress small { display: block; }
+.star-progress small { color: rgba(246, 236, 212, 0.72); margin-top: 5px; }
+.star-progress-track { height: 7px; margin-top: 7px; background: rgba(255, 255, 255, 0.14); border-radius: 7px; overflow: hidden; }
+.star-progress-track i { display: block; height: 100%; background: linear-gradient(90deg, #ab762f, #ead39a); }
+.star-progress-note { color: #ead39a; }
+
 .mini-stats {
   display: flex;
   gap: 12px;
@@ -1790,11 +1797,12 @@ input:focus {
    ========================================================= */
 
 .shop-view {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 14px;
+  display: block;
   animation: fade-slide-up 420ms var(--ease-ink) both;
 }
+
+.shop-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.shop-tabs button.active { background: #4b2923; color: #fff4df; }
 
 .shop-view h2 {
   margin: 0 0 12px;
@@ -1895,6 +1903,26 @@ input:focus {
   flex: 0 0 auto;
   padding: 5px 9px;
 }
+
+.bag-item small { display: block; max-width: 220px; margin-top: 4px; color: #62594d; line-height: 1.45; }
+.shop-card p { line-height: 1.45; }
+.shop-quantity { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+.shop-quantity input { width: 82px; padding: 6px 8px; }
+.purchase-confirm { margin-top: 14px; padding: 16px; border: 1px solid rgba(25, 23, 20, 0.55); background: rgba(247, 243, 232, 0.93); }
+.purchase-confirm h3 { margin-top: 0; }
+.item-modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 18px; background: rgba(12, 12, 10, 0.7); }
+.item-modal { width: min(560px, 100%); max-height: min(760px, calc(100vh - 36px)); overflow: auto; padding: 24px; border: 2px solid #614931; background: #f3eddd; box-shadow: 0 18px 55px rgba(0, 0, 0, 0.45); color: #29251f; }
+.item-modal h2 { margin: 0 0 12px; }
+.item-modal label { display: grid; gap: 6px; margin-top: 14px; }
+.item-modal select, .item-modal input { width: 100%; padding: 9px 10px; border: 1px solid #7d6d59; background: #fffaf0; color: #29251f; }
+.item-modal-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.item-effect { padding: 12px; background: #e8dfc9; line-height: 1.55; }
+.item-warning { color: #9a2b20; }
+.item-feedback { padding: 8px 10px; background: #e8dfc9; }
+.choice-options { display: grid; gap: 10px; margin-top: 16px; }
+.choice-options button { display: grid; gap: 5px; width: 100%; text-align: left; background: #eae1cb; }
+.choice-options strong { font-size: 17px; }
+.choice-options span { font-size: 13px; line-height: 1.45; }
 
 /* =========================================================
    排行榜

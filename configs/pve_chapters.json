@@ -205,7 +205,7 @@
     {
       "id": "chapter_3",
       "name": "天机楼决战",
-      "description": "幕后之人藏身天机楼顶，沿途皆是各擅绝技的死士。",
+      "description": "幕后之人藏身天机楼顶,沿途皆是各擅绝技的死士.",
       "chests": [
         {"stars": 6, "points": 120, "items": []},
         {"stars": 12, "points": 0, "items": [{"item_id": "star_exp_pill_m", "quantity": 2}]},
@@ -214,47 +214,88 @@
       "stages": [
         {
           "id": "3-1", "name": "问剑阶", "kind": "normal", "recommended_stars": 4.5, "energy_cost": 10, "stat_scale": 0.78,
-          "trait": {"id": "sword_steps", "name": "步步争先", "description": "敌方速度提高 12%。", "enemy": {"stat_multipliers": {"spd": 1.12}}},
+          "trait": {"id": "sword_steps", "name": "步步争先", "description": "敌方速度提高 12%.", "enemy": {"stat_multipliers": {"spd": 1.12}}},
+          "encounter": {"description": "七名守阶弟子接连涌来,击败第 2,4 人后可选择继续战斗或换人.", "rotate_after": [2, 4], "wave_after": [2, 4]},
+          "star_objectives": ["通关", "至少两人出场", "三人出场,且至少两人存活"],
+          "tactics": [
+            {"id": "3-1-rush", "name": "冲阶", "description": "抢先压制杂兵;我方攻击提高 10%,防御降低 6%.", "effect_text": "冲阶抢攻,敌阵节奏被打乱.", "player": {"stat_multipliers": {"atk": 1.10, "def": 0.94}}},
+            {"id": "3-1-hold", "name": "稳步推进", "description": "抵住连续接战;我方防御提高 10%,速度降低 5%.", "effect_text": "稳住阵脚,连续接战更从容.", "player": {"stat_multipliers": {"def": 1.10, "spd": 0.95}}}
+          ],
           "first_clear": {"points": 30, "items": []},
           "enemies": [
-            {"name": "问剑弟子青锋", "stats": {"hp": 530, "atk": 108, "def": 82, "spd": 79, "crt": 27, "eva": 24}, "martial_art_id": "sword_huashan", "neigong_id": "hunyuan_qigong", "qinggong_id": "cloud_step"},
-            {"name": "问剑弟子霜华", "stats": {"hp": 510, "atk": 111, "def": 78, "spd": 84, "crt": 29, "eva": 26}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "swan_shadow"},
-            {"name": "问剑执事凌越", "stats": {"hp": 570, "atk": 116, "def": 88, "spd": 82, "crt": 30, "eva": 24}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"}
+            {"name": "守阶弟子青锋", "stats": {"hp": 270, "atk": 92, "def": 65, "spd": 72, "crt": 20, "eva": 18}, "martial_art_id": "sword_huashan", "neigong_id": "hunyuan_qigong", "qinggong_id": "cloud_step"},
+            {"name": "守阶弟子霜华", "stats": {"hp": 260, "atk": 94, "def": 62, "spd": 76, "crt": 21, "eva": 20}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "swan_shadow"},
+            {"name": "守阶弟子凌越", "stats": {"hp": 290, "atk": 98, "def": 68, "spd": 74, "crt": 22, "eva": 19}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "守阶弟子玄衣", "stats": {"hp": 275, "atk": 95, "def": 64, "spd": 77, "crt": 21, "eva": 20}, "martial_art_id": "sword_huashan", "neigong_id": "hunyuan_qigong", "qinggong_id": "cloud_step"},
+            {"name": "守阶弟子白袍", "stats": {"hp": 280, "atk": 96, "def": 65, "spd": 75, "crt": 20, "eva": 19}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "swan_shadow"},
+            {"name": "守阶弟子执灯", "stats": {"hp": 290, "atk": 98, "def": 67, "spd": 76, "crt": 21, "eva": 18}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "守阶执事凌越", "stats": {"hp": 345, "atk": 106, "def": 75, "spd": 80, "crt": 24, "eva": 20}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"}
           ]
         },
         {
           "id": "3-2", "name": "听雨廊", "kind": "normal", "recommended_stars": 4.8, "energy_cost": 10, "stat_scale": 0.78,
-          "trait": {"id": "rain_blades", "name": "雨幕藏锋", "description": "双方暴击提高 8 点。", "player": {"stat_additions": {"crt": 8}}, "enemy": {"stat_additions": {"crt": 8}}},
+          "trait": {"id": "rain_blades", "name": "雨幕藏锋", "description": "双方暴击提高 8 点.", "player": {"stat_additions": {"crt": 8}}, "enemy": {"stat_additions": {"crt": 8}}},
+          "encounter": {"description": "五名伏击者分段出现,第 3,5 人登场前发动暗器齐射.", "rotate_after": [2, 4], "wave_after": [2, 4]},
+          "star_objectives": ["通关", "至少两人出场", "三人出场,且至少两人存活"],
+          "tactics": [
+            {"id": "3-2-listen", "name": "听声辨位", "description": "找准雨中暗器;敌方闪避降低 12 点,但我方防御降低 6%.", "effect_text": "雨声暴露伏击者方位.", "enemy": {"stat_additions": {"eva": -12}}, "player": {"stat_multipliers": {"def": 0.94}}},
+            {"id": "3-2-shelter", "name": "避雨结阵", "description": "暗器齐射伤害从最大气血的 12% 降至 5%;我方速度降低 5%.", "effect_text": "众人借廊柱挡下大半暗器.", "player": {"stat_multipliers": {"spd": 0.95}}}
+          ],
           "first_clear": {"points": 30, "items": []},
           "enemies": [
-            {"name": "听雨琴奴", "stats": {"hp": 520, "atk": 112, "def": 79, "spd": 85, "crt": 29, "eva": 27}, "martial_art_id": "zither_duanzhi", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
-            {"name": "廊下飞针", "stats": {"hp": 505, "atk": 115, "def": 76, "spd": 88, "crt": 31, "eva": 28}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "blood_moon_skill", "qinggong_id": "shadow_drift"},
-            {"name": "听雨使顾寒声", "stats": {"hp": 585, "atk": 121, "def": 89, "spd": 84, "crt": 32, "eva": 25}, "martial_art_id": "short_panguanbi", "neigong_id": "xiantian_qigong", "qinggong_id": "shadow_fragrance"}
+            {"name": "听雨琴奴", "stats": {"hp": 360, "atk": 99, "def": 72, "spd": 78, "crt": 23, "eva": 22}, "martial_art_id": "zither_duanzhi", "neigong_id": "biyun_xinfa", "qinggong_id": "phantom_lotus"},
+            {"name": "廊下飞针", "stats": {"hp": 350, "atk": 103, "def": 68, "spd": 82, "crt": 25, "eva": 24}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "blood_moon_skill", "qinggong_id": "shadow_drift"},
+            {"name": "雨廊潜影", "stats": {"hp": 355, "atk": 104, "def": 70, "spd": 84, "crt": 25, "eva": 25}, "martial_art_id": "hidden_baoyulihua", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
+            {"name": "雨廊护卫", "stats": {"hp": 390, "atk": 105, "def": 79, "spd": 76, "crt": 23, "eva": 20}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "听雨使顾寒声", "stats": {"hp": 445, "atk": 111, "def": 84, "spd": 82, "crt": 27, "eva": 22}, "martial_art_id": "short_panguanbi", "neigong_id": "xiantian_qigong", "qinggong_id": "shadow_fragrance"}
           ]
         },
         {
           "id": "3-3", "name": "无相镜阵", "kind": "normal", "recommended_stars": 5.0, "energy_cost": 10, "stat_scale": 0.75,
-          "trait": {"id": "mirror_mist", "name": "镜影迷踪", "description": "双方闪避提高 8 点。", "player": {"stat_additions": {"eva": 8}}, "enemy": {"stat_additions": {"eva": 8}}},
+          "trait": {"id": "mirror_mist", "name": "镜影迷踪", "description": "双方闪避提高 8 点.", "player": {"stat_additions": {"eva": 8}}, "enemy": {"stat_additions": {"eva": 8}}},
+          "encounter": {"description": "四个幻身后藏着阵眼;幻身缠斗超过 10 次行动会强化后续敌人.", "rotate_after": [2, 4], "wave_after": [2, 4]},
+          "star_objectives": ["通关", "击破阵眼", "三人出场,且幻身强化至多触发一次"],
+          "tactics": [
+            {"id": "3-3-discern", "name": "辨影破镜", "description": "针对幻身;敌方闪避降低 10 点,但我方速度降低 5%.", "effect_text": "镜面破绽显露,幻身难以久拖.", "enemy": {"stat_additions": {"eva": -10}}, "player": {"stat_multipliers": {"spd": 0.95}}},
+            {"id": "3-3-center", "name": "守心凝神", "description": "抵御镜阵反噬;我方防御提高 10%,攻击降低 5%.", "effect_text": "守住心神,不受幻影扰乱.", "player": {"stat_multipliers": {"def": 1.10, "atk": 0.95}}}
+          ],
           "first_clear": {"points": 30, "items": []},
           "enemies": [
-            {"name": "镜阵幻身一", "stats": {"hp": 550, "atk": 116, "def": 84, "spd": 87, "crt": 30, "eva": 29}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "golden_wind_record", "qinggong_id": "phantom_lotus"},
-            {"name": "镜阵幻身二", "stats": {"hp": 555, "atk": 118, "def": 85, "spd": 86, "crt": 31, "eva": 30}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
-            {"name": "镜阵守心人", "stats": {"hp": 620, "atk": 123, "def": 94, "spd": 83, "crt": 31, "eva": 27}, "martial_art_id": "palm_crushing_wave", "neigong_id": "evergreen_breath", "qinggong_id": "shadow_fragrance"}
+            {"name": "镜阵幻身一", "stats": {"hp": 330, "atk": 103, "def": 75, "spd": 83, "crt": 25, "eva": 25}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "golden_wind_record", "qinggong_id": "phantom_lotus"},
+            {"name": "镜阵幻身二", "stats": {"hp": 335, "atk": 104, "def": 75, "spd": 84, "crt": 25, "eva": 26}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
+            {"name": "镜阵幻身三", "stats": {"hp": 340, "atk": 105, "def": 77, "spd": 84, "crt": 26, "eva": 26}, "martial_art_id": "sword_falling_plum", "neigong_id": "golden_wind_record", "qinggong_id": "phantom_lotus"},
+            {"name": "镜阵幻身四", "stats": {"hp": 345, "atk": 106, "def": 78, "spd": 85, "crt": 26, "eva": 27}, "martial_art_id": "leg_shadow_whirl", "neigong_id": "biyun_xinfa", "qinggong_id": "shadow_drift"},
+            {"name": "镜阵阵眼", "stats": {"hp": 470, "atk": 114, "def": 89, "spd": 82, "crt": 27, "eva": 24}, "martial_art_id": "palm_crushing_wave", "neigong_id": "evergreen_breath", "qinggong_id": "shadow_fragrance"}
           ]
         },
         {
           "id": "3-4", "name": "藏兵阁", "kind": "normal", "recommended_stars": 5.2, "energy_cost": 10, "stat_scale": 0.75,
-          "trait": {"id": "weapon_cache", "name": "百兵锋芒", "description": "双方攻击提高 12%。", "player": {"stat_multipliers": {"atk": 1.12}}, "enemy": {"stat_multipliers": {"atk": 1.12}}},
+          "trait": {"id": "weapon_cache", "name": "百兵锋芒", "description": "双方攻击提高 12%.", "player": {"stat_multipliers": {"atk": 1.12}}, "enemy": {"stat_multipliers": {"atk": 1.12}}},
+          "encounter": {"description": "六名守卫两人一组,刀阵,枪阵,剑阵依次启动.", "rotate_after": [2, 4], "wave_after": [2, 4]},
+          "star_objectives": ["通关", "至少两人存活", "三人出场,且至少两人存活"],
+          "tactics": [
+            {"id": "3-4-seal", "name": "封锁兵架", "description": "削弱兵器阵势;敌方攻击降低 12%,我方速度降低 6%.", "effect_text": "封住兵架,守卫取械受阻.", "enemy": {"stat_multipliers": {"atk": 0.88}}, "player": {"stat_multipliers": {"spd": 0.94}}},
+            {"id": "3-4-seize", "name": "夺刃抢攻", "description": "以攻破阵;我方攻击提高 10%,敌方攻击提高 6%.", "effect_text": "夺取兵器,双方攻势同时加快.", "player": {"stat_multipliers": {"atk": 1.10}}, "enemy": {"stat_multipliers": {"atk": 1.06}}}
+          ],
           "first_clear": {"points": 30, "items": []},
           "enemies": [
-            {"name": "藏兵刀侍", "stats": {"hp": 585, "atk": 123, "def": 88, "spd": 82, "crt": 32, "eva": 23}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "lightning_flash"},
-            {"name": "藏兵枪侍", "stats": {"hp": 610, "atk": 121, "def": 93, "spd": 78, "crt": 29, "eva": 21}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
-            {"name": "藏兵剑侍", "stats": {"hp": 590, "atk": 127, "def": 90, "spd": 86, "crt": 34, "eva": 25}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "swan_shadow"}
+            {"name": "藏兵刀侍甲", "stats": {"hp": 350, "atk": 108, "def": 80, "spd": 76, "crt": 26, "eva": 19}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "藏兵刀侍乙", "stats": {"hp": 355, "atk": 110, "def": 81, "spd": 77, "crt": 26, "eva": 20}, "martial_art_id": "blade_chengyun", "neigong_id": "hunyuan_qigong", "qinggong_id": "lightning_flash"},
+            {"name": "藏兵枪侍甲", "stats": {"hp": 370, "atk": 108, "def": 84, "spd": 73, "crt": 24, "eva": 18}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "藏兵枪侍乙", "stats": {"hp": 375, "atk": 109, "def": 85, "spd": 74, "crt": 24, "eva": 18}, "martial_art_id": "staff_yuejiaqiang", "neigong_id": "iron_wall_art", "qinggong_id": "earth_root"},
+            {"name": "藏兵剑侍甲", "stats": {"hp": 365, "atk": 113, "def": 82, "spd": 80, "crt": 27, "eva": 21}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "swan_shadow"},
+            {"name": "藏兵剑侍乙", "stats": {"hp": 390, "atk": 116, "def": 85, "spd": 82, "crt": 28, "eva": 22}, "martial_art_id": "sword_ittoryu", "neigong_id": "xiantian_qigong", "qinggong_id": "swan_shadow"}
           ]
         },
         {
           "id": "3-5", "name": "天机三使", "kind": "elite", "recommended_stars": 5.6, "energy_cost": 15, "stat_scale": 0.718,
-          "trait": {"id": "heavenly_agents", "name": "三使同心", "description": "敌方攻击、防御与速度提高 6%。", "enemy": {"stat_multipliers": {"atk": 1.06, "def": 1.06, "spd": 1.06}}},
+          "trait": {"id": "heavenly_agents", "name": "三使同心", "description": "敌方攻击,防御与速度提高 6%.", "enemy": {"stat_multipliers": {"atk": 1.06, "def": 1.06, "spd": 1.06}}},
+          "encounter": {"description": "三名使者各守一关,击败一人后可选择继续战斗或换人.", "rotate_after": [1, 2], "wave_after": [1, 2]},
+          "star_objectives": ["通关", "三人出场", "三名使者分别由不同队员击败"],
+          "tactics": [
+            {"id": "3-5-divide", "name": "分而破之", "description": "瓦解三使配合;敌方防御降低 10%,我方速度降低 5%.", "effect_text": "三使阵势被拆散,各自为战.", "enemy": {"stat_multipliers": {"def": 0.90}}, "player": {"stat_multipliers": {"spd": 0.95}}},
+            {"id": "3-5-pressure", "name": "连环逼战", "description": "抢先压迫各使;我方速度提高 10%,防御降低 6%.", "effect_text": "接战不断,逼得三使无法合阵.", "player": {"stat_multipliers": {"spd": 1.10, "def": 0.94}}}
+          ],
           "first_clear": {"points": 75, "items": [{"item_id": "star_exp_pill_m", "quantity": 1}]},
           "enemies": [
             {"name": "天机日使", "stats": {"hp": 620, "atk": 128, "def": 92, "spd": 88, "crt": 34, "eva": 25}, "martial_art_id": "palm_crushing_wave", "neigong_id": "xiantian_qigong", "qinggong_id": "lightning_flash"},
@@ -264,12 +305,1681 @@
         },
         {
           "id": "3-6", "name": "天机楼主", "kind": "boss", "recommended_stars": 6.0, "energy_cost": 20, "stat_scale": 0.75,
-          "trait": {"id": "heavenly_cycle", "name": "天机回转", "description": "敌方胜者每次接力前恢复最大气血的 8%。", "between_duels": {"side": "enemy", "mode": "heal", "ratio": 0.08}},
+          "trait": {"id": "heavenly_cycle", "name": "天机回转", "description": "同一名楼主拥有护体,压阵,终式三阶段;总气血降至 70% 和 35% 时变招."},
+          "encounter": {"description": "三人接战同一名楼主.单条总血量,70% 和 35% 时转换阶段并可选择是否换人.", "rotate_after": [], "phase_thresholds": [70, 35], "phase_names": ["护体机关", "天机压阵", "终式蓄力"]},
+          "star_objectives": ["通关", "至少两人出场", "三人出场,且击破最终阶段的蓄力绝招"],
+          "tactics": [
+            {"id": "3-6-pierce", "name": "破阵攻心", "description": "降低护体防御,第二阶段承受更强压阵;须在第二阶段 16 次行动内逼出变招以击破终式.", "effect_text": "护体机关被找到破绽."},
+            {"id": "3-6-guard", "name": "结阵护命", "description": "压阵与终式伤害较低,但护体更难突破;须在第二阶段 16 次行动内逼出变招以击破终式.", "effect_text": "众人结阵分担楼主威压."}
+          ],
           "first_clear": {"points": 150, "items": [{"item_id": "martial_token_type", "quantity": 1}]},
           "enemies": [
-            {"name": "护楼剑尊谢无声", "stats": {"hp": 660, "atk": 132, "def": 99, "spd": 91, "crt": 35, "eva": 27}, "martial_art_id": "sword_huashan", "neigong_id": "xiantian_qigong", "qinggong_id": "swan_shadow"},
-            {"name": "执律长老莫玄机", "stats": {"hp": 700, "atk": 130, "def": 108, "spd": 86, "crt": 32, "eva": 24}, "martial_art_id": "short_panguanbi", "neigong_id": "iron_wall_art", "qinggong_id": "shadow_fragrance"},
-            {"name": "天机楼主姬无算", "stats": {"hp": 820, "atk": 142, "def": 116, "spd": 96, "crt": 38, "eva": 30}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "xiantian_qigong", "qinggong_id": "phantom_lotus"}
+            {"name": "天机楼主姬无算", "stats": {"hp": 1700, "atk": 145, "def": 120, "spd": 97, "crt": 38, "eva": 30}, "martial_art_id": "sword_xiaoyaowuxiang", "neigong_id": "xiantian_qigong", "qinggong_id": "phantom_lotus"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_4",
+      "name": "暗账寻盟",
+      "description": "姬无算的残账将劫银指向隐潮盟,漕运与机坊掩着真正的账册.",
+      "chests": [
+        {
+          "stars": 6,
+          "points": 150,
+          "items": []
+        },
+        {
+          "stars": 12,
+          "points": 0,
+          "items": [
+            {
+              "item_id": "martial_token_type",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "stars": 18,
+          "points": 0,
+          "items": [
+            {
+              "item_id": "martial_token_choice",
+              "quantity": 1
+            }
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "id": "4-1",
+          "name": "楼中残账",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.9,
+          "trait": {
+            "id": "encounter_4-1",
+            "name": "楼中残账",
+            "description": "六名清道夫分三波毁账,第三波开始焚毁原账."
+          },
+          "encounter": {
+            "description": "六名清道夫分三波毁账,第三波开始焚毁原账.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ]
+          },
+          "star_objectives": [
+            "通关",
+            "至少两人出场",
+            "三人出场且保住原账"
+          ],
+          "tactics": [
+            {
+              "id": "4-1-guard",
+              "name": "护卷",
+              "description": "焚账窗口延长,我方攻击降低 6%.",
+              "effect_text": "众人护住账卷,火势暂缓.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 0.94
+                }
+              }
+            },
+            {
+              "id": "4-1-rush",
+              "name": "突袭账房",
+              "description": "焚账窗口较短,但我方攻击提高 10%,防御降低 5%.",
+              "effect_text": "突袭直取账房,清道夫阵脚大乱.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 1.1,
+                  "def": 0.95
+                }
+              }
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "清道夫甲",
+              "stats": {
+                "hp": 305,
+                "atk": 104,
+                "def": 78,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "清道夫乙",
+              "stats": {
+                "hp": 317,
+                "atk": 106,
+                "def": 80,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "执火人甲",
+              "stats": {
+                "hp": 329,
+                "atk": 108,
+                "def": 82,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "清道夫丙",
+              "stats": {
+                "hp": 341,
+                "atk": 110,
+                "def": 84,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "清道夫丁",
+              "stats": {
+                "hp": 353,
+                "atk": 112,
+                "def": 86,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "执火账房",
+              "stats": {
+                "hp": 365,
+                "atk": 114,
+                "def": 88,
+                "spd": 93,
+                "crt": 30,
+                "eva": 27
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            }
+          ],
+          "clue": {
+            "id": "silver_rubbing",
+            "name": "银纹拓印",
+            "description": "辨认假库入口上的银纹."
+          }
+        },
+        {
+          "id": "4-2",
+          "name": "漕埠断缆",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.82,
+          "trait": {
+            "id": "encounter_4-2",
+            "name": "漕埠断缆",
+            "description": "七名守卫分三波接战,第三人与第六人登场前预告涨潮."
+          },
+          "encounter": {
+            "description": "七名守卫分三波接战,第三人与第六人登场前预告涨潮.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ]
+          },
+          "star_objectives": [
+            "通关",
+            "至少两人存活",
+            "三人出场且至多承受一次涨潮"
+          ],
+          "tactics": [
+            {
+              "id": "4-2-high",
+              "name": "攀高避潮",
+              "description": "两次涨潮均可避开,我方攻击降低 8%.",
+              "effect_text": "众人攀上高桩,潮水从脚下掠过.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 0.92
+                }
+              }
+            },
+            {
+              "id": "4-2-cable",
+              "name": "斩缆截舟",
+              "description": "取消第二次涨潮,首次涨潮伤害提高;我方攻击提高 7%.",
+              "effect_text": "船缆斩断,后续潮击失去落点.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 1.07
+                }
+              }
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "埠头刀手甲",
+              "stats": {
+                "hp": 310,
+                "atk": 106,
+                "def": 80,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "埠头刀手乙",
+              "stats": {
+                "hp": 322,
+                "atk": 108,
+                "def": 82,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "潮哨",
+              "stats": {
+                "hp": 334,
+                "atk": 110,
+                "def": 84,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "缆工甲",
+              "stats": {
+                "hp": 346,
+                "atk": 112,
+                "def": 86,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "缆工乙",
+              "stats": {
+                "hp": 358,
+                "atk": 114,
+                "def": 88,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "潮卫",
+              "stats": {
+                "hp": 370,
+                "atk": 116,
+                "def": 90,
+                "spd": 93,
+                "crt": 30,
+                "eva": 27
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            },
+            {
+              "name": "押船头目",
+              "stats": {
+                "hp": 382,
+                "atk": 118,
+                "def": 92,
+                "spd": 95,
+                "crt": 31,
+                "eva": 28
+              },
+              "martial_art_id": "zither_duanzhi",
+              "neigong_id": "evergreen_breath",
+              "qinggong_id": "phantom_lotus"
+            }
+          ],
+          "clue": {
+            "id": "boat_manifest",
+            "name": "漕船船单",
+            "description": "记录机坊的供能航线."
+          }
+        },
+        {
+          "id": "4-3",
+          "name": "假库验银",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.95,
+          "trait": {
+            "id": "encounter_4-3",
+            "name": "假库验银",
+            "description": "四名诱敌与账房守假库,拖延会累积假银印记."
+          },
+          "encounter": {
+            "description": "四名诱敌与账房守假库,拖延会累积假银印记.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ],
+            "clue_required": "silver_rubbing",
+            "clue_effect": "银纹拓印揭示账房真身,假银印记上限减少一层."
+          },
+          "star_objectives": [
+            "通关",
+            "假银印记至多两层",
+            "三人出场且假银印记至多一层"
+          ],
+          "tactics": [
+            {
+              "id": "4-3-mark",
+              "name": "验纹识假",
+              "description": "先找到账房,诱敌在场时会继续支援;我方防御降低 5%.",
+              "effect_text": "银纹拓印照出真账房.",
+              "player": {
+                "stat_multipliers": {
+                  "def": 0.95
+                }
+              }
+            },
+            {
+              "id": "4-3-seal",
+              "name": "封库断路",
+              "description": "隔绝假银支援,须先清理诱敌;我方速度降低 5%.",
+              "effect_text": "库门封闭,假银印记难以传递.",
+              "player": {
+                "stat_multipliers": {
+                  "spd": 0.95
+                }
+              }
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "假库诱敌甲",
+              "stats": {
+                "hp": 330,
+                "atk": 108,
+                "def": 82,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "假库诱敌乙",
+              "stats": {
+                "hp": 342,
+                "atk": 110,
+                "def": 84,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "假库诱敌丙",
+              "stats": {
+                "hp": 354,
+                "atk": 112,
+                "def": 86,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "假库诱敌丁",
+              "stats": {
+                "hp": 366,
+                "atk": 114,
+                "def": 88,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "假库账房",
+              "stats": {
+                "hp": 378,
+                "atk": 116,
+                "def": 90,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            }
+          ],
+          "clue": {
+            "id": "vault_route",
+            "name": "真库入口",
+            "description": "指出司库护卫的藏身处."
+          }
+        },
+        {
+          "id": "4-4",
+          "name": "机坊断轮",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.82,
+          "trait": {
+            "id": "encounter_4-4",
+            "name": "机坊断轮",
+            "description": "六名守卫分守三组齿轮,每组过热后发动压制."
+          },
+          "encounter": {
+            "description": "六名守卫分守三组齿轮,每组过热后发动压制.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ],
+            "clue_required": "boat_manifest",
+            "clue_effect": "船单揭示供能路线,每组齿轮蓄力延长."
+          },
+          "star_objectives": [
+            "通关",
+            "至少停止一组齿轮",
+            "三人出场且停止全部三组齿轮"
+          ],
+          "tactics": [
+            {
+              "id": "4-4-wedge",
+              "name": "卡榫",
+              "description": "每组齿轮蓄力延长,我方速度降低 6%.",
+              "effect_text": "卡榫嵌入轮齿,过热被推迟.",
+              "player": {
+                "stat_multipliers": {
+                  "spd": 0.94
+                }
+              }
+            },
+            {
+              "id": "4-4-counter",
+              "name": "借轮反制",
+              "description": "齿轮停转时反伤守卫,我方承受少量反震.",
+              "effect_text": "借轮回旋,守卫受机关反噬."
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "齿轮卫甲",
+              "stats": {
+                "hp": 330,
+                "atk": 111,
+                "def": 84,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "齿轮卫乙",
+              "stats": {
+                "hp": 342,
+                "atk": 113,
+                "def": 86,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "齿轮卫丙",
+              "stats": {
+                "hp": 354,
+                "atk": 115,
+                "def": 88,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "齿轮卫丁",
+              "stats": {
+                "hp": 366,
+                "atk": 117,
+                "def": 90,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "齿轮卫戊",
+              "stats": {
+                "hp": 378,
+                "atk": 119,
+                "def": 92,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "齿轮卫己",
+              "stats": {
+                "hp": 390,
+                "atk": 121,
+                "def": 94,
+                "spd": 93,
+                "crt": 30,
+                "eva": 27
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            }
+          ],
+          "clue": {
+            "id": "gear_map",
+            "name": "机坊图",
+            "description": "标出盟坛粮渠与药渠的开关."
+          }
+        },
+        {
+          "id": "4-5",
+          "name": "三司校账",
+          "kind": "elite",
+          "recommended_stars": 6.0,
+          "energy_cost": 15,
+          "stat_scale": 0.75,
+          "trait": {
+            "id": "encounter_4-5",
+            "name": "三司校账",
+            "description": "两名护卫与账司,印司,令司接战,三司合令会压制全队."
+          },
+          "encounter": {
+            "description": "两名护卫与账司,印司,令司接战,三司合令会压制全队.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ]
+          },
+          "star_objectives": [
+            "通关",
+            "至少两人存活",
+            "三人出场且阻止三司合令"
+          ],
+          "tactics": [
+            {
+              "id": "4-5-seal",
+              "name": "先夺印",
+              "description": "印司提前登场并停止后续支援,首战敌方攻击提高.",
+              "effect_text": "夺印在先,三司失去合令凭证."
+            },
+            {
+              "id": "4-5-ledger",
+              "name": "逐簿推进",
+              "description": "接战压力较低,三司支援维持更久;我方防御提高 7%.",
+              "effect_text": "逐本核对,三司合令不断逼近.",
+              "player": {
+                "stat_multipliers": {
+                  "def": 1.07
+                }
+              }
+            }
+          ],
+          "first_clear": {
+            "points": 90,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "校账护卫甲",
+              "stats": {
+                "hp": 435,
+                "atk": 122,
+                "def": 94,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "校账护卫乙",
+              "stats": {
+                "hp": 447,
+                "atk": 124,
+                "def": 96,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "隐潮账司",
+              "stats": {
+                "hp": 459,
+                "atk": 126,
+                "def": 98,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "隐潮印司",
+              "stats": {
+                "hp": 471,
+                "atk": 128,
+                "def": 100,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "隐潮令司",
+              "stats": {
+                "hp": 483,
+                "atk": 130,
+                "def": 102,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            }
+          ],
+          "clue": {
+            "id": "passphrase",
+            "name": "密盟口令",
+            "description": "提前识破盟誓阵的反击时机."
+          }
+        },
+        {
+          "id": "4-6",
+          "name": "司库焚账",
+          "kind": "boss",
+          "recommended_stars": 6.0,
+          "energy_cost": 20,
+          "stat_scale": 0.8,
+          "trait": {
+            "id": "encounter_4-6",
+            "name": "司库焚账",
+            "description": "四名护卫维持司库护盾,司库半血后预告焚账."
+          },
+          "encounter": {
+            "description": "四名护卫维持司库护盾,司库半血后预告焚账.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ],
+            "phase_thresholds": [
+              50
+            ],
+            "phase_names": [
+              "护账阵",
+              "焚账蓄力"
+            ],
+            "clue_required": "vault_route",
+            "clue_effect": "真库入口让队伍提前切断一层司库护盾."
+          },
+          "star_objectives": [
+            "通关",
+            "保住原账",
+            "保住原账,三人出场且打断焚账"
+          ],
+          "tactics": [
+            {
+              "id": "4-6-save",
+              "name": "救账",
+              "description": "焚账窗口延长,我方攻击降低 7%.",
+              "effect_text": "原账被移离火盆,焚账蓄力变慢.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 0.93
+                }
+              }
+            },
+            {
+              "id": "4-6-fire",
+              "name": "封火",
+              "description": "焚账伤害降低,司库护盾维持更久.",
+              "effect_text": "火道被封,余烬仍护着司库."
+            }
+          ],
+          "first_clear": {
+            "points": 180,
+            "items": [
+              {
+                "item_id": "martial_token_type",
+                "quantity": 1
+              }
+            ]
+          },
+          "enemies": [
+            {
+              "name": "司库护卫甲",
+              "stats": {
+                "hp": 520,
+                "atk": 128,
+                "def": 100,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "司库护卫乙",
+              "stats": {
+                "hp": 565,
+                "atk": 130,
+                "def": 102,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "司库护卫丙",
+              "stats": {
+                "hp": 610,
+                "atk": 132,
+                "def": 104,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            },
+            {
+              "name": "司库护卫丁",
+              "stats": {
+                "hp": 655,
+                "atk": 134,
+                "def": 106,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "zither_duanzhi",
+              "neigong_id": "evergreen_breath",
+              "qinggong_id": "phantom_lotus"
+            },
+            {
+              "name": "司库闻金声",
+              "stats": {
+                "hp": 700,
+                "atk": 136,
+                "def": 108,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "sword_xiaoyaowuxiang",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "phantom_lotus"
+            }
+          ],
+          "clue": {
+            "id": "alliance_ledger",
+            "name": "盟坛总账",
+            "description": "揭露双阙共鸣与盟主三印的来源."
+          }
+        }
+      ]
+    },
+    {
+      "id": "chapter_5",
+      "name": "隐潮盟破局",
+      "description": "沿盟坛总账攻入隐潮盟,破双阙,揭三印,了结镖银旧案.",
+      "chests": [
+        {
+          "stars": 6,
+          "points": 200,
+          "items": []
+        },
+        {
+          "stars": 12,
+          "points": 0,
+          "items": [
+            {
+              "item_id": "martial_token_type",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "stars": 18,
+          "points": 0,
+          "items": [
+            {
+              "item_id": "martial_token_choice",
+              "quantity": 1
+            }
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "id": "5-1",
+          "name": "暗哨林",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.82,
+          "trait": {
+            "id": "encounter_5-1",
+            "name": "暗哨林",
+            "description": "八名哨兵分四波巡防,警戒叠高时援兵齐射."
+          },
+          "encounter": {
+            "description": "八名哨兵分四波巡防,警戒叠高时援兵齐射.",
+            "rotate_after": [
+              2,
+              5
+            ],
+            "wave_after": [
+              2,
+              4,
+              6
+            ]
+          },
+          "star_objectives": [
+            "通关",
+            "警戒至多两层",
+            "三人出场且警戒至多一层"
+          ],
+          "tactics": [
+            {
+              "id": "5-1-quiet",
+              "name": "息声潜行",
+              "description": "警戒增长放缓,我方攻击降低 6%.",
+              "effect_text": "众人隐入林影,哨声难以传递.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 0.94
+                }
+              }
+            },
+            {
+              "id": "5-1-lure",
+              "name": "声东击西",
+              "description": "引走一名哨兵,初始警戒增加一层;我方攻击提高 6%.",
+              "effect_text": "哨兵追向假目标,林中警戒却已抬高.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 1.06
+                }
+              }
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "暗哨甲",
+              "stats": {
+                "hp": 315,
+                "atk": 110,
+                "def": 83,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "暗哨乙",
+              "stats": {
+                "hp": 327,
+                "atk": 112,
+                "def": 85,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "巡林卫甲",
+              "stats": {
+                "hp": 339,
+                "atk": 114,
+                "def": 87,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "巡林卫乙",
+              "stats": {
+                "hp": 351,
+                "atk": 116,
+                "def": 89,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "暗哨丙",
+              "stats": {
+                "hp": 363,
+                "atk": 118,
+                "def": 91,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "暗哨丁",
+              "stats": {
+                "hp": 375,
+                "atk": 120,
+                "def": 93,
+                "spd": 93,
+                "crt": 30,
+                "eva": 27
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            },
+            {
+              "name": "巡林卫丙",
+              "stats": {
+                "hp": 387,
+                "atk": 122,
+                "def": 95,
+                "spd": 95,
+                "crt": 31,
+                "eva": 28
+              },
+              "martial_art_id": "zither_duanzhi",
+              "neigong_id": "evergreen_breath",
+              "qinggong_id": "phantom_lotus"
+            },
+            {
+              "name": "林口哨长",
+              "stats": {
+                "hp": 399,
+                "atk": 124,
+                "def": 97,
+                "spd": 97,
+                "crt": 32,
+                "eva": 29
+              },
+              "martial_art_id": "sword_xiaoyaowuxiang",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "phantom_lotus"
+            }
+          ]
+        },
+        {
+          "id": "5-2",
+          "name": "双渠断供",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.82,
+          "trait": {
+            "id": "encounter_5-2",
+            "name": "双渠断供",
+            "description": "六名守卫保护粮渠与药渠,后段敌人获得未关闭渠道的支援."
+          },
+          "encounter": {
+            "description": "六名守卫保护粮渠与药渠,后段敌人获得未关闭渠道的支援.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ],
+            "clue_required": "gear_map",
+            "clue_effect": "机坊图标明双渠开关,提前关闭第一条渠道."
+          },
+          "star_objectives": [
+            "通关",
+            "第二段前关闭一渠",
+            "第二段前关闭双渠且至少两人存活"
+          ],
+          "tactics": [
+            {
+              "id": "5-2-food",
+              "name": "先断粮",
+              "description": "先关闭粮渠,抑制后段攻势;药渠恢复持续更久.",
+              "effect_text": "粮渠先断,后段敌人失去攻势补给."
+            },
+            {
+              "id": "5-2-medicine",
+              "name": "先断药",
+              "description": "先关闭药渠,抑制后段恢复;粮渠攻势持续更久.",
+              "effect_text": "药渠先断,后段敌人难以恢复."
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "粮渠卫甲",
+              "stats": {
+                "hp": 340,
+                "atk": 114,
+                "def": 86,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "药渠卫甲",
+              "stats": {
+                "hp": 352,
+                "atk": 116,
+                "def": 88,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "粮渠卫乙",
+              "stats": {
+                "hp": 364,
+                "atk": 118,
+                "def": 90,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "药渠卫乙",
+              "stats": {
+                "hp": 376,
+                "atk": 120,
+                "def": 92,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "渠口刀手",
+              "stats": {
+                "hp": 388,
+                "atk": 122,
+                "def": 94,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "渠口总管",
+              "stats": {
+                "hp": 400,
+                "atk": 124,
+                "def": 96,
+                "spd": 93,
+                "crt": 30,
+                "eva": 27
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            }
+          ]
+        },
+        {
+          "id": "5-3",
+          "name": "血契牢",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.82,
+          "trait": {
+            "id": "encounter_5-3",
+            "name": "血契牢",
+            "description": "五名狱卒与狱长接战,证人有独立保护进度."
+          },
+          "encounter": {
+            "description": "五名狱卒与狱长接战,证人有独立保护进度.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ]
+          },
+          "star_objectives": [
+            "通关",
+            "证人存活",
+            "证人存活且三人出场"
+          ],
+          "tactics": [
+            {
+              "id": "5-3-protect",
+              "name": "护证",
+              "description": "证人受到的威胁减半,我方攻击降低 7%.",
+              "effect_text": "侠客护住证人,狱卒难以逼近.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 0.93
+                }
+              }
+            },
+            {
+              "id": "5-3-key",
+              "name": "夺钥",
+              "description": "提前阻断一名狱卒的威胁,首波敌方攻击提高.",
+              "effect_text": "夺钥成功,但首波狱卒拼死反扑."
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "血契狱卒甲",
+              "stats": {
+                "hp": 345,
+                "atk": 116,
+                "def": 87,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "血契狱卒乙",
+              "stats": {
+                "hp": 357,
+                "atk": 118,
+                "def": 89,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "血契狱卒丙",
+              "stats": {
+                "hp": 369,
+                "atk": 120,
+                "def": 91,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "血契狱卒丁",
+              "stats": {
+                "hp": 381,
+                "atk": 122,
+                "def": 93,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "血契狱卒戊",
+              "stats": {
+                "hp": 393,
+                "atk": 124,
+                "def": 95,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            },
+            {
+              "name": "血契狱长",
+              "stats": {
+                "hp": 405,
+                "atk": 126,
+                "def": 97,
+                "spd": 93,
+                "crt": 30,
+                "eva": 27
+              },
+              "martial_art_id": "short_panguanbi",
+              "neigong_id": "xiantian_qigong",
+              "qinggong_id": "shadow_fragrance"
+            }
+          ]
+        },
+        {
+          "id": "5-4",
+          "name": "盟誓阵",
+          "kind": "normal",
+          "recommended_stars": 6.0,
+          "energy_cost": 10,
+          "stat_scale": 0.87,
+          "trait": {
+            "id": "encounter_5-4",
+            "name": "盟誓阵",
+            "description": "四名誓卫与阵主接战,誓印层数触发反击."
+          },
+          "encounter": {
+            "description": "四名誓卫与阵主接战,誓印层数触发反击.",
+            "rotate_after": [
+              2,
+              4
+            ],
+            "wave_after": [
+              2,
+              4
+            ],
+            "clue_required": "passphrase",
+            "clue_effect": "密盟口令让反击提前预告,誓印初始层数降低."
+          },
+          "star_objectives": [
+            "通关",
+            "誓印至多两层",
+            "三人出场且誓印至多一层"
+          ],
+          "tactics": [
+            {
+              "id": "5-4-flags",
+              "name": "毁旗",
+              "description": "清除誓印,放弃借咒反击;我方速度降低 6%.",
+              "effect_text": "誓旗被毁,誓印迅速消散.",
+              "player": {
+                "stat_multipliers": {
+                  "spd": 0.94
+                }
+              }
+            },
+            {
+              "id": "5-4-curse",
+              "name": "借咒",
+              "description": "誓印反伤敌人,我方同时承受少量伤害.",
+              "effect_text": "引誓反噬,敌我皆受咒印冲击."
+            }
+          ],
+          "first_clear": {
+            "points": 35,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "盟誓卫甲",
+              "stats": {
+                "hp": 365,
+                "atk": 120,
+                "def": 90,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "盟誓卫乙",
+              "stats": {
+                "hp": 377,
+                "atk": 122,
+                "def": 92,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            },
+            {
+              "name": "盟誓卫丙",
+              "stats": {
+                "hp": 389,
+                "atk": 124,
+                "def": 94,
+                "spd": 87,
+                "crt": 27,
+                "eva": 24
+              },
+              "martial_art_id": "staff_yuejiaqiang",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "earth_root"
+            },
+            {
+              "name": "盟誓卫丁",
+              "stats": {
+                "hp": 401,
+                "atk": 126,
+                "def": 96,
+                "spd": 89,
+                "crt": 28,
+                "eva": 25
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            },
+            {
+              "name": "盟誓阵主",
+              "stats": {
+                "hp": 413,
+                "atk": 128,
+                "def": 98,
+                "spd": 91,
+                "crt": 29,
+                "eva": 26
+              },
+              "martial_art_id": "leg_shadow_whirl",
+              "neigong_id": "golden_wind_record",
+              "qinggong_id": "swan_shadow"
+            }
+          ]
+        },
+        {
+          "id": "5-5",
+          "name": "双阙守门",
+          "kind": "elite",
+          "recommended_stars": 6.0,
+          "energy_cost": 15,
+          "stat_scale": 0.76,
+          "trait": {
+            "id": "encounter_5-5",
+            "name": "双阙守门",
+            "description": "两名首领轮番接战,各保留血量;场外首领支援并积蓄共鸣."
+          },
+          "encounter": {
+            "description": "两名首领轮番接战,各保留血量;场外首领支援并积蓄共鸣.",
+            "rotate_after": [],
+            "wave_after": [],
+            "phase_thresholds": [
+              65,
+              30
+            ],
+            "phase_names": [
+              "双阙试探",
+              "双阙合势",
+              "双阙决战"
+            ],
+            "clue_required": "alliance_ledger",
+            "clue_effect": "盟坛总账揭示共鸣节拍,首次合击蓄力延长."
+          },
+          "star_objectives": [
+            "通关",
+            "打断一次合击",
+            "三人出场且分别打断两名首领的合击"
+          ],
+          "tactics": [
+            {
+              "id": "5-5-cut",
+              "name": "断联",
+              "description": "共鸣蓄力放缓,我方攻击降低 7%.",
+              "effect_text": "双阙联系被截断,合击蓄力变慢.",
+              "player": {
+                "stat_multipliers": {
+                  "atk": 0.93
+                }
+              }
+            },
+            {
+              "id": "5-5-turn",
+              "name": "借势",
+              "description": "打断合击可反伤首领,但我方承受场外压制.",
+              "effect_text": "共鸣反噬双阙,场外压制也落在我方."
+            }
+          ],
+          "first_clear": {
+            "points": 90,
+            "items": []
+          },
+          "enemies": [
+            {
+              "name": "铜阙罗铸",
+              "stats": {
+                "hp": 1160,
+                "atk": 139,
+                "def": 110,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "sword_huashan",
+              "neigong_id": "hunyuan_qigong",
+              "qinggong_id": "cloud_step"
+            },
+            {
+              "name": "水阙苏观澜",
+              "stats": {
+                "hp": 1172,
+                "atk": 141,
+                "def": 112,
+                "spd": 85,
+                "crt": 26,
+                "eva": 23
+              },
+              "martial_art_id": "blade_chengyun",
+              "neigong_id": "iron_wall_art",
+              "qinggong_id": "lightning_flash"
+            }
+          ]
+        },
+        {
+          "id": "5-6",
+          "name": "盟主陆沉舟",
+          "kind": "boss",
+          "recommended_stars": 6.0,
+          "energy_cost": 20,
+          "stat_scale": 0.76,
+          "trait": {
+            "id": "encounter_5-6",
+            "name": "盟主陆沉舟",
+            "description": "一名盟主共用一条血量,75%,45%,15% 时暴露财,机,誓三印."
+          },
+          "encounter": {
+            "description": "一名盟主共用一条血量,75%,45%,15% 时暴露财,机,誓三印.",
+            "rotate_after": [],
+            "wave_after": [],
+            "phase_thresholds": [
+              75,
+              45,
+              15
+            ],
+            "phase_names": [
+              "财印",
+              "机印",
+              "誓印",
+              "盟主终式"
+            ],
+            "clue_required": "alliance_ledger",
+            "clue_effect": "盟坛总账标出三印位置,各印击破窗口延长."
+          },
+          "star_objectives": [
+            "通关",
+            "击破至少两道盟印",
+            "三名队员各击破一道盟印并通关"
+          ],
+          "tactics": [
+            {
+              "id": "5-6-wealth",
+              "name": "断财",
+              "description": "前两印更易击破,终段绝招伤害更高.",
+              "effect_text": "断财破机,前两道盟印显露裂痕."
+            },
+            {
+              "id": "5-6-oath",
+              "name": "破誓",
+              "description": "终段防护增强,前两印窗口较短.",
+              "effect_text": "破誓护身,终段绝招受到压制."
+            }
+          ],
+          "first_clear": {
+            "points": 180,
+            "items": [
+              {
+                "item_id": "martial_token_type",
+                "quantity": 1
+              }
+            ]
+          },
+          "enemies": [
+            {
+              "name": "隐潮盟主陆沉舟",
+              "stats": {
+                "hp": 2100,
+                "atk": 150,
+                "def": 120,
+                "spd": 83,
+                "crt": 25,
+                "eva": 22
+              },
+              "martial_art_id": "hidden_baoyulihua",
+              "neigong_id": "biyun_xinfa",
+              "qinggong_id": "shadow_drift"
+            }
           ]
         }
       ]

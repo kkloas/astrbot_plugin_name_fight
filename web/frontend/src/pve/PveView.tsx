@@ -30,6 +30,10 @@ type Stage = {
   recommendedStars: number;
   energyCost: number;
   trait: { id: string; name: string; description: string };
+  encounter?: { description: string; rotate_after?: number[]; wave_after?: number[]; phase_thresholds?: number[]; phase_names?: string[]; clue_required?: string; clue_effect?: string; clue_active?: boolean };
+  clue?: { id: string; name: string; description: string };
+  tactics: { id: string; name: string; description: string; effect_text: string }[];
+  starObjectives: string[];
   firstClear: { points: number; items: RewardItem[] };
   enemies: Fighter[];
   unlocked: boolean;
@@ -58,6 +62,7 @@ export type PveState = {
   profile: PveProfile;
   team: Fighter[];
   chapters: Chapter[];
+  intel: ({ id: string; name: string; description: string; sourceStageId: string })[];
   nextStageId: string;
   hasRequiredRoster: boolean;
 };
@@ -69,9 +74,16 @@ type Duel = ReplayBattle & {
   displayLogs: string[];
   playerTeam: Fighter[];
   enemyTeam: Fighter[];
+  opening?: string;
+  phase?: number;
+  bossHp?: number | null;
+  wave?: number;
 };
 
 type ChallengeResult = {
+  status?: 'pending' | 'complete';
+  attemptId?: string;
+  switchPrompt?: { currentIndex: number; availableIndexes: number[]; reason: string; decisionCount: number };
   stage: Stage;
   victory: boolean;
   stars: number;
@@ -80,6 +92,7 @@ type ChallengeResult = {
   reward: Reward;
   profile: PveProfile;
   duels: Duel[];
+  objectiveResults?: { description: string; met: boolean }[];
   playerTeam: Fighter[];
   enemyTeam: Fighter[];
   pve: PveState;
@@ -115,14 +128,21 @@ export function PveView({
   const [selectedChapterId, setSelectedChapterId] = useState('');
   const [selectedStageId, setSelectedStageId] = useState('');
   const [teamSlots, setTeamSlots] = useState<number[]>([]);
+  const [selectedTacticId, setSelectedTacticId] = useState('');
   const [challenge, setChallenge] = useState<ChallengeResult | null>(null);
+  const [playStartIndex, setPlayStartIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loadedAt, setLoadedAt] = useState(Date.now());
   const [, setClock] = useState(0);
 
   async function load() {
     const next = await request('/api/pve');
+    const pending: ChallengeResult | null = await request('/api/pve/attempt');
     setPve(next);
+    if (pending) {
+      setChallenge(pending);
+      setPlayStartIndex(0);
+    }
     setLoadedAt(Date.now());
     setTeamSlots(next.profile.team_slots || []);
     const nextStageId = next.nextStageId || next.chapters[0]?.stages[0]?.id || '';
@@ -158,6 +178,7 @@ export function PveView({
 
   const chapter = pve?.chapters.find((entry) => entry.id === selectedChapterId) || pve?.chapters[0];
   const selectedStage = chapter?.stages.find((entry) => entry.id === selectedStageId) || chapter?.stages[0];
+  const tacticId = selectedStage?.tactics?.some((tactic) => tactic.id === selectedTacticId) ? selectedTacticId : selectedStage?.tactics?.[0]?.id;
   const fighterBySlot = new Map(fighters.map((fighter) => [Number(fighter.slotIndex), fighter]));
 
   function selectChapter(next: Chapter) {
@@ -198,11 +219,50 @@ export function PveView({
     try {
       if (teamSlots.length !== 3) throw new Error('请选择三名出战角色');
       if (teamSlots.join(',') !== (pve?.profile.team_slots || []).join(',')) await saveTeam();
-      const result: ChallengeResult = await request(`/api/pve/stages/${encodeURIComponent(selectedStage.id)}/challenge`, { method: 'POST' });
+      const result: ChallengeResult = await request(`/api/pve/stages/${encodeURIComponent(selectedStage.id)}/challenge`, { method: 'POST', body: JSON.stringify({ tacticId }) });
+      setChallenge(result);
+      setPlayStartIndex(0);
+      setPve(result.pve);
+      setLoadedAt(Date.now());
+      if (result.status !== 'pending') onNotice(result.victory ? `通关成功,获得 ${result.stars} 星` : '挑战失败,调整阵容后再试');
+      await onRefreshGame();
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function chooseFighter(fighterIndex: number) {
+    if (!challenge?.attemptId || !challenge.switchPrompt) return;
+    setBusy(true);
+    try {
+      const previousDuels = challenge.duels.length;
+      const result: ChallengeResult = await request(`/api/pve/attempts/${encodeURIComponent(challenge.attemptId)}/switch`, {
+        method: 'POST', body: JSON.stringify({ decisionCount: challenge.switchPrompt.decisionCount, fighterIndex }),
+      });
+      setPlayStartIndex(previousDuels);
       setChallenge(result);
       setPve(result.pve);
       setLoadedAt(Date.now());
-      onNotice(result.victory ? `通关成功，获得 ${result.stars} 星` : '挑战失败，调整阵容后再试');
+      if (result.status !== 'pending') onNotice(result.victory ? `通关成功,获得 ${result.stars} 星` : '挑战失败,调整阵容后再试');
+      await onRefreshGame();
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function abandonChallenge() {
+    if (!challenge?.attemptId) return;
+    setBusy(true);
+    try {
+      const next: PveState = await request(`/api/pve/attempts/${encodeURIComponent(challenge.attemptId)}/abandon`, { method: 'POST' });
+      setChallenge(null);
+      setPve(next);
+      setLoadedAt(Date.now());
+      onNotice('本次挑战已放弃,体力不返还');
       await onRefreshGame();
     } catch (error) {
       onNotice(error instanceof Error ? error.message : String(error));
@@ -239,7 +299,7 @@ export function PveView({
 
   if (!pve || !chapter || !selectedStage) return <div className="pve-loading">正在展开江湖舆图...</div>;
   if (challenge) {
-    return <TeamBattleReplay result={challenge} onBack={() => setChallenge(null)} onNext={openNextStage} onRetry={beginChallenge} busy={busy} />;
+    return <TeamBattleReplay result={challenge} startIndex={playStartIndex} onSwitch={chooseFighter} onAbandon={abandonChallenge} onBack={() => setChallenge(null)} onNext={openNextStage} onRetry={beginChallenge} busy={busy} />;
   }
 
   return <div className="pve-view">
@@ -260,10 +320,18 @@ export function PveView({
       </button>)}
     </section>
 
+    {(chapter.id === 'chapter_4' || chapter.id === 'chapter_5') && <section className="pve-intel"><strong>已获线索</strong>{pve.intel.length ? pve.intel.map((clue) => <span key={clue.id}>{clue.name} <small>来自 {clue.sourceStageId}</small></span>) : <span>首通第四章关卡后取得线索</span>}</section>}
+
     <div className="pve-preparation">
       <section className="pve-stage-detail">
         <div className="pve-stage-title"><span>{kindLabels[selectedStage.kind]}</span><h3>{selectedStage.name}</h3><b>推荐 {selectedStage.recommendedStars} 星</b></div>
-        <p className="pve-trait"><strong>{selectedStage.trait.name}</strong>{selectedStage.trait.description}</p>
+        <p className="pve-encounter">敌方 {selectedStage.enemies.length} 人{selectedStage.encounter?.wave_after?.length ? ` / ${selectedStage.encounter.wave_after.length + 1} 波` : ''}</p>
+        {selectedStage.trait.description !== selectedStage.encounter?.description && <p className="pve-trait"><strong>{selectedStage.trait.name}</strong>{selectedStage.trait.description}</p>}
+        {selectedStage.encounter && <p className="pve-encounter">{selectedStage.encounter.description}</p>}
+        {selectedStage.encounter?.phase_names && <div className="pve-boss-phases">{selectedStage.encounter.phase_names.map((name, index) => <span key={name}><b>{index + 1}</b>{name}{selectedStage.encounter?.phase_thresholds?.[index] !== undefined && <small>{selectedStage.encounter.phase_thresholds[index]}%</small>}</span>)}</div>}
+        {selectedStage.encounter?.clue_required && <p className="pve-clue-effect"><strong>{selectedStage.encounter.clue_active ? '情报生效' : '待获情报'}</strong>{selectedStage.encounter.clue_effect}</p>}
+        {selectedStage.clue && <p className="pve-clue-effect"><strong>{selectedStage.clearCount ? '已取得线索' : '首通线索'}</strong>{selectedStage.clue.name}: {selectedStage.clue.description}</p>}
+        {(selectedStage.starObjectives || []).length > 0 && <div className="pve-objectives"><strong>星级目标</strong>{selectedStage.starObjectives.map((goal, index) => <span key={goal}>{index + 1} 星: {goal}</span>)}</div>}
         <div className="pve-enemies">
           {selectedStage.enemies.map((enemy, index) => <div key={enemy.name}>
             <span>{index + 1}</span><strong>{enemy.name}</strong><small>{enemy.martialArt.name} / {enemy.neigong?.name}</small>
@@ -291,6 +359,7 @@ export function PveView({
             return <div key={slot}><b>{index + 1}</b><span>{fighter?.name || `空槽位 ${slot}`}</span><button onClick={() => moveSlot(index, -1)} disabled={index === 0}>←</button><button onClick={() => moveSlot(index, 1)} disabled={index === teamSlots.length - 1}>→</button></div>;
           })}
         </div>
+        {(selectedStage.tactics || []).length > 0 && <div className="pve-tactics"><strong>战前战术</strong>{selectedStage.tactics.map((tactic) => <button key={tactic.id} type="button" className={tactic.id === tacticId ? 'selected' : ''} onClick={() => setSelectedTacticId(tactic.id)}><b>{tactic.name}</b><span>{tactic.description}</span></button>)}</div>}
         <button className="pve-challenge" disabled={busy || !selectedStage.unlocked || teamSlots.length !== 3 || estimatedEnergy < selectedStage.energyCost} onClick={beginChallenge}>
           {busy ? '结算中...' : `挑战关卡 · ${selectedStage.energyCost} 体力`}
         </button>
@@ -306,19 +375,25 @@ export function PveView({
   </div>;
 }
 
-function TeamBattleReplay({ result, onBack, onNext, onRetry, busy }: { result: ChallengeResult; onBack: () => void; onNext: () => void; onRetry: () => void; busy: boolean }) {
-  const [duelIndex, setDuelIndex] = useState(0);
+function TeamBattleReplay({ result, startIndex, onSwitch, onAbandon, onBack, onNext, onRetry, busy }: {
+  result: ChallengeResult; startIndex: number; onSwitch: (index: number) => void; onAbandon: () => void;
+  onBack: () => void; onNext: () => void; onRetry: () => void; busy: boolean;
+}) {
+  const [duelIndex, setDuelIndex] = useState(startIndex);
   const [intermission, setIntermission] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
   const [syncedDuel, setSyncedDuel] = useState<Duel | null>(null);
   const duel = result.duels[duelIndex] || null;
+  const nextDuel = result.duels[duelIndex + 1] || null;
   const playback = useBattlePlayback(duel);
   const replayState = duel ? stateAt(duel, playback.time) : null;
 
   useEffect(() => {
-    setDuelIndex(0);
+    setDuelIndex(startIndex);
     setIntermission(false);
     setShowSummary(false);
+    setShowPrompt(false);
   }, [result]);
 
   useEffect(() => {
@@ -327,9 +402,9 @@ function TeamBattleReplay({ result, onBack, onNext, onRetry, busy }: { result: C
   }, [duel]);
 
   useEffect(() => {
-    if (!duel || syncedDuel !== duel || showSummary || playback.playing || playback.time < playback.duration) return;
+    if (!duel || syncedDuel !== duel || showSummary || showPrompt || playback.playing || playback.time < playback.duration) return;
     if (duelIndex >= result.duels.length - 1) {
-      const timer = window.setTimeout(() => setShowSummary(true), 900);
+      const timer = window.setTimeout(() => result.status === 'pending' ? setShowPrompt(true) : setShowSummary(true), 900);
       return () => window.clearTimeout(timer);
     }
     setIntermission(true);
@@ -338,23 +413,37 @@ function TeamBattleReplay({ result, onBack, onNext, onRetry, busy }: { result: C
       setDuelIndex((value) => value + 1);
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [duelIndex, duel, syncedDuel, playback.playing, playback.time, playback.duration, result.duels.length, showSummary]);
+  }, [duelIndex, duel, syncedDuel, playback.playing, playback.time, playback.duration, result.duels.length, result.status, showSummary, showPrompt]);
 
   function replayAll() {
     setShowSummary(false);
+    setShowPrompt(false);
     setIntermission(false);
     setDuelIndex(0);
     if (duelIndex === 0) playback.replay();
   }
 
+  if (showPrompt && result.switchPrompt) return <section className="pve-switch-prompt">
+    <span>接战选择</span><h2>{result.switchPrompt.reason}</h2>
+    <p>当前角色可以继续战斗,也可以换任一存活队友.已出场角色保留气血; 出场人数会影响星级目标.</p>
+    <div className="pve-switch-options">{result.switchPrompt.availableIndexes.map((index) => {
+      const fighter = result.playerTeam[index];
+      return <button key={index} type="button" disabled={busy} onClick={() => onSwitch(index)}>
+        <strong>{index === result.switchPrompt?.currentIndex ? `继续使用 ${fighter.name}` : `换成 ${fighter.name}`}</strong>
+        <span>气血 {fighter.currentHp ?? fighter.stats.hp}/{fighter.stats.hp}</span>
+      </button>;
+    })}</div>
+    <button type="button" className="pve-abandon" disabled={busy} onClick={onAbandon}>放弃挑战 (体力不返还)</button>
+  </section>;
   if (showSummary || !duel) return <BattleSummary result={result} onBack={onBack} onNext={onNext} onRetry={onRetry} replayAll={replayAll} busy={busy} />;
 
   return <div className="team-replay">
-    <header className="team-replay-heading"><div><span>{result.stage.name}</span><strong>第 {duelIndex + 1}/{result.duels.length} 场</strong></div><button onClick={() => setShowSummary(true)}>跳至结算</button></header>
+    <header className="team-replay-heading"><div><span>{result.stage.name}</span><strong>第 {duelIndex + 1}/{result.duels.length} 场</strong>{duel.phase ? <small>{duel.defender.name} 第 {duel.phase} 阶段 · 气血 {duel.bossHp}/{duel.defender.stats.hp}</small> : duel.wave ? <small>第 {duel.wave} 波</small> : null}</div><button onClick={() => result.status === 'pending' ? setShowPrompt(true) : setShowSummary(true)}>{result.status === 'pending' ? '跳至切人选择' : '跳至结算'}</button></header>
+    {duel.opening && <div className={`pve-replay-event${duel.phase ? ' boss' : ''}`}>{duel.opening}</div>}
     <TeamRail label="我方" fighters={duel.playerTeam} activeName={duel.attacker.name} activeHp={replayState?.hp.a} />
     <BattleView battle={duel} playback={playback} startBattle={() => playback.replay()} showResult={false} />
     <TeamRail label="敌方" fighters={duel.enemyTeam} activeName={duel.defender.name} activeHp={replayState?.hp.b} />
-    {intermission && <div className="team-intermission"><strong>换人</strong><span>{duel.transition || '下一场即将开始'}</span></div>}
+    {intermission && <div className="team-intermission"><strong>{result.stage.id === '5-5' && nextDuel?.defender.name !== duel.defender.name ? '双阙轮换' : nextDuel?.phase && nextDuel.phase !== duel.phase ? '阶段转换' : nextDuel?.attacker.name !== duel.attacker.name ? '换人' : nextDuel?.wave !== duel.wave ? '下一波' : '续战'}</strong><span>{duel.transition || '下一场即将开始'}</span></div>}
   </div>;
 }
 
@@ -371,8 +460,10 @@ function BattleSummary({ result, onBack, onNext, onRetry, replayAll, busy }: { r
     <span className="pve-summary-mark">{result.victory ? '胜' : '败'}</span>
     <h2>{result.victory ? '历练告捷' : '暂且退守'}</h2>
     <p>{result.stage.name} · {result.victory ? starText(result.stars) : '未能通关'}</p>
+    {result.objectiveResults && <div className="pve-objective-results">{result.objectiveResults.map((entry, index) => <div key={entry.description} className={entry.met ? 'met' : ''}><b>{entry.met ? '达成' : '未达成'}</b><span>{index + 1} 星: {entry.description}</span></div>)}</div>}
     <div className="pve-summary-grid"><div><span>历史最佳</span><strong>{starText(result.bestStars)}</strong></div><div><span>获得奖励</span><strong>{result.victory ? rewardText(result.reward) : '无'}</strong></div><div><span>剩余体力</span><strong>{result.profile.energy}/{result.profile.maximum_energy}</strong></div></div>
     {result.firstClear && <p className="pve-first-clear">首次通关奖励已发放</p>}
+    {result.firstClear && result.stage.clue && <p className="pve-first-clear">取得线索: {result.stage.clue.name}</p>}
     <div className="pve-summary-actions"><button onClick={onBack}>返回关卡</button><button onClick={replayAll}>整场重播</button>{hasNextStage && <button onClick={onNext}>下一关</button>}<button disabled={busy || result.profile.energy < result.stage.energyCost} onClick={onRetry}>{busy ? '结算中...' : '再次挑战'}</button></div>
   </section>;
 }

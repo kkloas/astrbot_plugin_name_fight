@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from database import MAX_FIGHTERS_PER_USER, FighterRepository  # noqa: E402
+from database import MAX_FIGHTERS_PER_USER, STAR_EXP_REQUIREMENTS, FighterRepository  # noqa: E402
 from engine import CombatEngine  # noqa: E402
 from pve import PveService  # noqa: E402
 from text_resources import compact_battle_logs  # noqa: E402
@@ -72,6 +72,14 @@ class ChoiceRequest(BaseModel):
     choiceId: str
 
 
+class SummonPreviewRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=32)
+
+
+class SummonConfirmRequest(BaseModel):
+    replaceSlot: int | None = None
+
+
 class DuelRequest(BaseModel):
     attackerName: str | None = None
     defenderName: str | None = None
@@ -79,6 +87,15 @@ class DuelRequest(BaseModel):
 
 class PveTeamRequest(BaseModel):
     slots: list[int]
+
+
+class PveChallengeRequest(BaseModel):
+    tacticId: str | None = None
+
+
+class PveSwitchRequest(BaseModel):
+    decisionCount: int
+    fighterIndex: int
 
 
 def _fighter_payload(fighter: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -92,6 +109,7 @@ def _fighter_payload(fighter: dict[str, Any] | None) -> dict[str, Any] | None:
         "baseStarRating": float(fighter.get("base_star_rating", fighter.get("star_rating", 3.0))),
         "starExp": int(fighter.get("star_exp", 0) or 0),
         "breakthroughStage": int(fighter.get("breakthrough_stage", 0) or 0),
+        "nextStarExp": STAR_EXP_REQUIREMENTS.get(float(fighter.get("star_rating", 3.0))),
         "wins": int(fighter.get("wins", 0) or 0),
         "battles": int(fighter.get("battles", 0) or 0),
         "stats": dict(fighter["stats"]),
@@ -127,6 +145,8 @@ def _state_payload() -> dict[str, Any]:
         "activeFighter": _fighter_payload(active),
         "wallet": repo.get_user_wallet(DEFAULT_USER_ID),
         "items": repo.get_user_items(DEFAULT_USER_ID),
+        "pendingChoice": repo.get_web_loadout_choice(DEFAULT_USER_ID),
+        "pendingSummon": _fighter_payload(repo.get_web_summon_preview(DEFAULT_USER_ID)),
         "shop": repo.get_shop_items(),
         "leaderboard": repo.get_group_leaderboard(DEFAULT_GROUP_ID, limit=10),
         "worldBoss": _world_boss_payload(),
@@ -245,6 +265,24 @@ def buy_item(payload: BuyItemRequest) -> dict[str, Any]:
         raise _api_error(exc)
 
 
+@app.post("/api/summon/preview")
+def create_summon_preview(payload: SummonPreviewRequest) -> dict[str, Any]:
+    try:
+        fighter = repo.create_web_summon_preview(DEFAULT_USER_ID, payload.name)
+        return {"fighter": _fighter_payload(fighter), "state": _state_payload()}
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
+@app.post("/api/summon/confirm")
+def confirm_summon(payload: SummonConfirmRequest) -> dict[str, Any]:
+    try:
+        replaced, fighter = repo.commit_web_summon_preview(DEFAULT_USER_ID, payload.replaceSlot)
+        return {"fighter": _fighter_payload(fighter), "replaced": replaced, "state": _state_payload()}
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
 @app.post("/api/items/use")
 def use_item(payload: UseItemRequest) -> dict[str, Any]:
     try:
@@ -280,6 +318,10 @@ def breakthrough_fighter(name: str) -> dict[str, Any]:
 @app.post("/api/fighters/{name}/reroll")
 def reroll_fighter(name: str, payload: RerollRequest) -> dict[str, Any]:
     try:
+        if payload.itemId == "martial_token_basic" and payload.category != "martial_art":
+            raise ValueError("洗髓符只能更换武功")
+        if payload.itemId == "martial_token_type" and payload.category not in ("neigong", "qinggong"):
+            raise ValueError("换宗令只能更换内功或轻功")
         result = repo.reroll_loadout_random(DEFAULT_USER_ID, name, payload.category, payload.itemId)
         return {"result": result, "state": _state_payload()}
     except ValueError as exc:
@@ -289,7 +331,9 @@ def reroll_fighter(name: str, payload: RerollRequest) -> dict[str, Any]:
 @app.post("/api/fighters/{name}/choices")
 def create_choice_options(name: str, payload: RerollRequest) -> dict[str, Any]:
     try:
-        result = repo.create_loadout_choice_options(DEFAULT_USER_ID, name, payload.category)
+        if payload.itemId != "martial_token_choice":
+            raise ValueError("该道具不能生成天机候选")
+        result = repo.create_web_loadout_choice(DEFAULT_USER_ID, name, payload.category)
         return {"result": result, "state": _state_payload()}
     except ValueError as exc:
         raise _api_error(exc)
@@ -298,8 +342,17 @@ def create_choice_options(name: str, payload: RerollRequest) -> dict[str, Any]:
 @app.post("/api/fighters/{name}/choices/apply")
 def apply_choice(name: str, payload: ChoiceRequest) -> dict[str, Any]:
     try:
-        result = repo.apply_loadout_choice(DEFAULT_USER_ID, name, payload.category, payload.choiceId)
+        result = repo.apply_web_loadout_choice(DEFAULT_USER_ID, name, payload.category, payload.choiceId)
         return {"result": result, "state": _state_payload()}
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
+@app.post("/api/fighters/choices/abandon")
+def abandon_choice() -> dict[str, Any]:
+    try:
+        repo.abandon_web_loadout_choice(DEFAULT_USER_ID)
+        return {"state": _state_payload()}
     except ValueError as exc:
         raise _api_error(exc)
 
@@ -343,9 +396,30 @@ def set_pve_team(payload: PveTeamRequest) -> dict[str, Any]:
 
 
 @app.post("/api/pve/stages/{stage_id}/challenge")
-def challenge_pve_stage(stage_id: str) -> dict[str, Any]:
+def challenge_pve_stage(stage_id: str, payload: PveChallengeRequest | None = None) -> dict[str, Any]:
     try:
-        return pve.challenge(DEFAULT_USER_ID, stage_id)
+        return pve.start_interactive(DEFAULT_USER_ID, stage_id, payload.tacticId if payload else None)
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
+@app.get("/api/pve/attempt")
+def get_pve_attempt() -> dict[str, Any] | None:
+    return pve.get_interactive(DEFAULT_USER_ID)
+
+
+@app.post("/api/pve/attempts/{attempt_id}/switch")
+def switch_pve_fighter(attempt_id: str, payload: PveSwitchRequest) -> dict[str, Any]:
+    try:
+        return pve.continue_interactive(DEFAULT_USER_ID, attempt_id, payload.decisionCount, payload.fighterIndex)
+    except ValueError as exc:
+        raise _api_error(exc)
+
+
+@app.post("/api/pve/attempts/{attempt_id}/abandon")
+def abandon_pve_attempt(attempt_id: str) -> dict[str, Any]:
+    try:
+        return pve.abandon_interactive(DEFAULT_USER_ID, attempt_id)
     except ValueError as exc:
         raise _api_error(exc)
 

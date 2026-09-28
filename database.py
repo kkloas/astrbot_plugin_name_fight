@@ -385,6 +385,9 @@ class FighterRepository:
                     "price": int(data.get("price", 0)),
                     "quantity": int(row["quantity"]),
                     "category": str(data.get("category", "unknown")),
+                    "description": str(data.get("description", "")),
+                    "star_exp": int(data.get("star_exp", 0)),
+                    "energy_restore": int(data.get("energy_restore", 0)),
                 }
             )
         return items
@@ -703,6 +706,91 @@ class FighterRepository:
             })
         return {"points": points, "wallet_points": wallet_points, "items": granted_items}
 
+    def get_pve_session(self, user_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT session_id, stage_id, tactic_id, seed, team_json, enemies_json, decisions_json, status, settlement_json "
+                "FROM pve_sessions WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "session_id": str(row["session_id"]),
+            "stage_id": str(row["stage_id"]),
+            "tactic_id": str(row["tactic_id"]),
+            "seed": int(row["seed"]),
+            "team": json.loads(row["team_json"]),
+            "enemies": json.loads(row["enemies_json"]),
+            "decisions": json.loads(row["decisions_json"]),
+            "status": str(row["status"]),
+            "settlement": json.loads(row["settlement_json"]) if row["settlement_json"] else None,
+        }
+
+    def create_pve_session(self, user_id: str, session_id: str, stage_id: str, tactic_id: str,
+                           seed: int, team: list[dict[str, Any]], enemies: list[dict[str, Any]],
+                           energy_cost: int, maximum_energy: int = 100,
+                           recovery_seconds: int = 360) -> None:
+        timestamp = int(time.time())
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT status FROM pve_sessions WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            if existing is not None and existing["status"] == "pending":
+                raise ValueError("请先完成或放弃当前 PVE 挑战")
+            profile = self._ensure_pve_profile(connection, user_id, maximum_energy, timestamp)
+            profile = self._refresh_pve_energy(connection, profile, maximum_energy, recovery_seconds, timestamp)
+            if int(profile["energy"]) < energy_cost:
+                raise ValueError("体力不足")
+            connection.execute("UPDATE pve_profiles SET energy = energy - ? WHERE user_id = ?",
+                               (energy_cost, user_id))
+            connection.execute(
+                "INSERT INTO pve_sessions (user_id, session_id, stage_id, tactic_id, seed, team_json, enemies_json, "
+                "decisions_json, status, settlement_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, '[]', 'pending', NULL, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET session_id = excluded.session_id, stage_id = excluded.stage_id, "
+                "tactic_id = excluded.tactic_id, seed = excluded.seed, team_json = excluded.team_json, "
+                "enemies_json = excluded.enemies_json, decisions_json = '[]', status = 'pending', "
+                "settlement_json = NULL, created_at = excluded.created_at",
+                (user_id, session_id, stage_id, tactic_id, seed, json.dumps(team, ensure_ascii=False),
+                 json.dumps(enemies, ensure_ascii=False), timestamp),
+            )
+            connection.commit()
+
+    def append_pve_switch(self, user_id: str, session_id: str, expected_count: int, choice: int) -> None:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT decisions_json, status FROM pve_sessions WHERE user_id = ? AND session_id = ?",
+                (user_id, session_id),
+            ).fetchone()
+            if row is None or row["status"] != "pending":
+                raise ValueError("当前 PVE 挑战不存在")
+            choices = json.loads(row["decisions_json"])
+            if len(choices) != expected_count:
+                raise ValueError("切人选择已更新,请刷新挑战")
+            choices.append(choice)
+            connection.execute(
+                "UPDATE pve_sessions SET decisions_json = ? WHERE user_id = ? AND session_id = ?",
+                (json.dumps(choices), user_id, session_id),
+            )
+            connection.commit()
+
+    def abandon_pve_session(self, user_id: str, session_id: str) -> None:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT status FROM pve_sessions WHERE user_id = ? AND session_id = ?",
+                (user_id, session_id),
+            ).fetchone()
+            if row is None or row["status"] != "pending":
+                raise ValueError("当前 PVE 挑战不存在")
+            connection.execute(
+                "UPDATE pve_sessions SET status = 'abandoned' WHERE user_id = ? AND session_id = ?",
+                (user_id, session_id),
+            )
+            connection.commit()
+
     def settle_pve_attempt(
         self,
         user_id: str,
@@ -715,18 +803,27 @@ class FighterRepository:
         maximum_energy: int = 100,
         recovery_seconds: int = 360,
         now: int | None = None,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
         timestamp = int(time.time()) if now is None else int(now)
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             profile = self._ensure_pve_profile(connection, user_id, maximum_energy, timestamp)
             profile = self._refresh_pve_energy(connection, profile, maximum_energy, recovery_seconds, timestamp)
-            if int(profile["energy"]) < int(energy_cost):
-                raise ValueError("体力不足")
-            connection.execute(
-                "UPDATE pve_profiles SET energy = energy - ? WHERE user_id = ?",
-                (int(energy_cost), user_id),
-            )
+            if session_id is not None:
+                session = connection.execute(
+                    "SELECT status FROM pve_sessions WHERE user_id = ? AND session_id = ? AND stage_id = ?",
+                    (user_id, session_id, stage_id),
+                ).fetchone()
+                if session is None or session["status"] != "pending":
+                    raise ValueError("当前 PVE 挑战无法结算")
+            else:
+                if int(profile["energy"]) < int(energy_cost):
+                    raise ValueError("体力不足")
+                connection.execute(
+                    "UPDATE pve_profiles SET energy = energy - ? WHERE user_id = ?",
+                    (int(energy_cost), user_id),
+                )
             progress = connection.execute(
                 """
                 SELECT best_stars, clear_count, first_cleared_at
@@ -769,16 +866,22 @@ class FighterRepository:
                 """,
                 (user_id,),
             ).fetchone()
+            settlement = {
+                "first_clear": first_clear,
+                "best_stars": best_stars,
+                "clear_count": clear_count,
+                "reward": reward_payload,
+                "profile": self._pve_profile_payload(profile, maximum_energy, recovery_seconds, timestamp),
+            }
+            if session_id is not None:
+                connection.execute(
+                    "UPDATE pve_sessions SET status = 'complete', settlement_json = ? WHERE user_id = ? AND session_id = ?",
+                    (json.dumps(settlement, ensure_ascii=False), user_id, session_id),
+                )
             connection.commit()
         if profile is None:
             raise RuntimeError("PVE settlement profile missing")
-        return {
-            "first_clear": first_clear,
-            "best_stars": best_stars,
-            "clear_count": clear_count,
-            "reward": reward_payload,
-            "profile": self._pve_profile_payload(profile, maximum_energy, recovery_seconds, timestamp),
-        }
+        return settlement
 
     def claim_pve_chapter_reward(
         self,
@@ -952,6 +1055,27 @@ class FighterRepository:
             )
             connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS web_loadout_choices (
+                    user_id TEXT PRIMARY KEY,
+                    fighter_name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    old_entry_id TEXT NOT NULL,
+                    option_ids_json TEXT NOT NULL,
+                    created_at INTEGER NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS web_summon_previews (
+                    user_id TEXT PRIMARY KEY,
+                    fighter_json TEXT NOT NULL,
+                    created_at INTEGER NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS weekly_settlements (
                     group_id TEXT NOT NULL,
                     board_type TEXT NOT NULL,
@@ -1053,6 +1177,23 @@ class FighterRepository:
                     first_cleared_at INTEGER DEFAULT NULL,
                     last_cleared_at INTEGER DEFAULT NULL,
                     PRIMARY KEY (user_id, stage_id)
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pve_sessions (
+                    user_id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    stage_id TEXT NOT NULL,
+                    tactic_id TEXT NOT NULL,
+                    seed INTEGER NOT NULL,
+                    team_json TEXT NOT NULL,
+                    enemies_json TEXT NOT NULL,
+                    decisions_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    settlement_json TEXT,
+                    created_at INTEGER NOT NULL
                 )
                 """
             )
@@ -2802,6 +2943,122 @@ class FighterRepository:
     def create_martial_choice_options(self, user_id: str, fighter_name: str) -> dict[str, Any]:
         return self.create_loadout_choice_options(user_id, fighter_name, "martial_art")
 
+    def _choice_catalog(self, category: str) -> dict[str, dict[str, Any]]:
+        catalogs = {
+            "martial_art": self.martial_arts_map,
+            "neigong": self.neigong_map,
+            "qinggong": self.qinggong_map,
+        }
+        if category not in catalogs:
+            raise ValueError("未知的替换类型")
+        return catalogs[category]
+
+    def get_web_loadout_choice(self, user_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT fighter_name, category, old_entry_id, option_ids_json FROM web_loadout_choices WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        category = str(row["category"])
+        catalog = self._choice_catalog(category)
+        return {
+            "fighter_name": str(row["fighter_name"]),
+            "category": category,
+            "target_label": {"martial_art": "武功", "neigong": "内功", "qinggong": "轻功"}[category],
+            "old_entry": catalog[str(row["old_entry_id"])],
+            "options": [catalog[item_id] for item_id in json.loads(row["option_ids_json"])],
+            "item_id": "martial_token_choice",
+            "item_name": ITEM_CATALOG["martial_token_choice"]["name"],
+        }
+
+    def create_web_loadout_choice(self, user_id: str, fighter_name: str, category: str) -> dict[str, Any]:
+        fighter = self.get_user_fighter_by_name(user_id, fighter_name)
+        if fighter is None:
+            raise ValueError("你名下没有这个角色")
+        self._choice_catalog(category)
+        pool = self._random_pool_for_category(fighter, category)
+        options = random.sample(pool, min(3, len(pool)))
+        old_entry_id = str(fighter[category]["id"])
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if connection.execute("SELECT 1 FROM web_loadout_choices WHERE user_id = ?", (user_id,)).fetchone():
+                raise ValueError("请先完成或放弃当前天机候选")
+            if not connection.execute(
+                "SELECT 1 FROM user_fighters WHERE user_id = ? AND fighter_name = ?", (user_id, fighter_name)
+            ).fetchone():
+                raise ValueError("你名下没有这个角色")
+            current = connection.execute(
+                f"SELECT {category}_id FROM fighters WHERE name = ?", (fighter_name,)
+            ).fetchone()
+            if current is None or str(current[0]) != old_entry_id:
+                raise ValueError("角色功法已变化, 请重新打开背包")
+            self._change_item_quantity(connection, user_id, "martial_token_choice", -1)
+            connection.execute(
+                "INSERT INTO web_loadout_choices (user_id, fighter_name, category, old_entry_id, option_ids_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (user_id, fighter_name, category, old_entry_id,
+                 json.dumps([str(option["id"]) for option in options]), int(time.time())),
+            )
+            connection.commit()
+        return self.get_web_loadout_choice(user_id)
+
+    def apply_web_loadout_choice(self, user_id: str, fighter_name: str, category: str, choice_id: str) -> dict[str, Any]:
+        self._choice_catalog(category)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT fighter_name, category, old_entry_id, option_ids_json FROM web_loadout_choices WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+            if row is None or row["fighter_name"] != fighter_name or row["category"] != category:
+                raise ValueError("当前没有该角色的天机候选")
+            if choice_id not in json.loads(row["option_ids_json"]):
+                raise ValueError("只能选择本次生成的候选")
+            if not connection.execute(
+                "SELECT 1 FROM user_fighters WHERE user_id = ? AND fighter_name = ?", (user_id, fighter_name)
+            ).fetchone():
+                raise ValueError("你名下没有这个角色")
+            record_row = connection.execute("SELECT * FROM fighters WHERE name = ?", (fighter_name,)).fetchone()
+            if record_row is None or str(record_row[f"{category}_id"]) != str(row["old_entry_id"]):
+                raise ValueError("角色功法已变化, 请放弃旧候选后重新使用")
+            record = dict(record_row)
+            martial = self.martial_arts_map[str(record["martial_art_id"])]
+            neigong = self.neigong_map[str(record["neigong_id"])]
+            qinggong = self.qinggong_map[str(record["qinggong_id"])]
+            raw_stats = self._resolve_raw_stats(record, martial, neigong, qinggong)
+            next_ids = {key: str(record[f"{key}_id"]) for key in ("martial_art", "neigong", "qinggong")}
+            next_ids[category] = choice_id
+            stats = self._recalculate_final_stats(
+                raw_stats, float(record["star_rating"]), int(record.get("breakthrough_stage") or 0),
+                self.martial_arts_map[next_ids["martial_art"]], self.neigong_map[next_ids["neigong"]],
+                self.qinggong_map[next_ids["qinggong"]],
+            )
+            connection.execute(
+                "UPDATE fighters SET hp = ?, atk = ?, def = ?, spd = ?, crt = ?, eva = ?, "
+                "martial_art_id = ?, neigong_id = ?, qinggong_id = ?, "
+                "raw_hp = ?, raw_atk = ?, raw_def = ?, raw_spd = ?, raw_crt = ?, raw_eva = ?, "
+                "martial_reroll_count = martial_reroll_count + ? WHERE name = ?",
+                (stats["hp"], stats["atk"], stats["def"], stats["spd"], stats["crt"], stats["eva"],
+                 next_ids["martial_art"], next_ids["neigong"], next_ids["qinggong"],
+                 raw_stats["hp"], raw_stats["atk"], raw_stats["def"], raw_stats["spd"], raw_stats["crt"],
+                 raw_stats["eva"], 1 if category == "martial_art" else 0, fighter_name),
+            )
+            connection.execute("DELETE FROM web_loadout_choices WHERE user_id = ?", (user_id,))
+            connection.commit()
+        return {"fighter": self.get_user_fighter_by_name(user_id, fighter_name), "category": category,
+                "target_label": {"martial_art": "武功", "neigong": "内功", "qinggong": "轻功"}[category],
+                "new_entry": self._choice_catalog(category)[choice_id]}
+
+    def abandon_web_loadout_choice(self, user_id: str) -> None:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if not connection.execute("SELECT 1 FROM web_loadout_choices WHERE user_id = ?", (user_id,)).fetchone():
+                raise ValueError("当前没有天机候选")
+            connection.execute("DELETE FROM web_loadout_choices WHERE user_id = ?", (user_id,))
+            connection.commit()
+
     def apply_loadout_choice(self, user_id: str, fighter_name: str, category: str, choice_id: str) -> dict[str, Any]:
         kwargs = {category + "_id": choice_id} if category in ("neigong", "qinggong") else {"martial_art_id": choice_id}
         updated = self._update_fighter_loadout(
@@ -2894,6 +3151,107 @@ class FighterRepository:
             "qinggong": qinggong,
         }
 
+
+    def get_web_summon_preview(self, user_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT fighter_json FROM web_summon_previews WHERE user_id = ?", (user_id,)
+            ).fetchone()
+        return json.loads(str(row["fighter_json"])) if row else None
+
+    def create_web_summon_preview(self, user_id: str, fighter_name: str) -> dict[str, Any]:
+        name = fighter_name.strip()
+        if not name:
+            raise ValueError("角色名不能为空")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if connection.execute(
+                "SELECT 1 FROM web_summon_previews WHERE user_id = ?", (user_id,)
+            ).fetchone():
+                raise ValueError("请先确认已有的召唤预览")
+            if connection.execute("SELECT 1 FROM fighters WHERE name = ?", (name,)).fetchone():
+                raise ValueError("角色名已存在: " + name)
+            owned = connection.execute(
+                "SELECT quantity FROM user_items WHERE user_id = ? AND item_id = ?",
+                (user_id, "special_summon_token"),
+            ).fetchone()
+            if owned is None or int(owned["quantity"]) < 1:
+                raise ValueError("特殊召唤令数量不足")
+            base_star = 6.0 if random.random() < 0.10 else 5.0
+            fighter = self._build_generated_fighter(name, forced_base_star=base_star)
+            connection.execute(
+                "INSERT INTO web_summon_previews (user_id, fighter_json, created_at) VALUES (?, ?, ?)",
+                (user_id, json.dumps(fighter, ensure_ascii=False), int(time.time())),
+            )
+            connection.commit()
+        return fighter
+
+    def commit_web_summon_preview(self, user_id: str, replace_slot: int | None = None) -> tuple[str | None, dict[str, Any]]:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            pending = connection.execute(
+                "SELECT fighter_json FROM web_summon_previews WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            if pending is None:
+                raise ValueError("没有待确认的召唤预览")
+            fighter = json.loads(str(pending["fighter_json"]))
+            name = str(fighter["name"])
+            if connection.execute("SELECT 1 FROM fighters WHERE name = ?", (name,)).fetchone():
+                raise ValueError("角色名已存在: " + name)
+            roster = connection.execute(
+                "SELECT fighter_name, slot_index FROM user_fighters WHERE user_id = ? ORDER BY slot_index",
+                (user_id,),
+            ).fetchall()
+            old_name: str | None = None
+            if len(roster) >= MAX_FIGHTERS_PER_USER:
+                old = next((row for row in roster if int(row["slot_index"]) == replace_slot), None)
+                if old is None:
+                    raise ValueError("角色栏已满, 请选择要替换的角色")
+                old_name = str(old["fighter_name"])
+                slot_index = int(old["slot_index"])
+            else:
+                if replace_slot is not None:
+                    raise ValueError("角色栏未满, 无需替换角色")
+                used = {int(row["slot_index"]) for row in roster}
+                slot_index = next(index for index in range(1, MAX_FIGHTERS_PER_USER + 1) if index not in used)
+            if old_name is not None:
+                connection.execute(
+                    "DELETE FROM user_fighters WHERE user_id = ? AND fighter_name = ?", (user_id, old_name)
+                )
+                connection.execute("DELETE FROM fighters WHERE name = ?", (old_name,))
+                connection.execute("DELETE FROM fighter_scores WHERE fighter_name = ?", (old_name,))
+            raw_stats = fighter["raw_stats"]
+            connection.execute(
+                """
+                INSERT INTO fighters (
+                    name, hp, atk, def, spd, crt, eva,
+                    martial_art_id, neigong_id, qinggong_id, star_rating,
+                    base_star_rating, star_exp, breakthrough_stage, martial_reroll_count,
+                    raw_hp, raw_atk, raw_def, raw_spd, raw_crt, raw_eva, avatar_path
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    name, fighter["stats"]["hp"], fighter["stats"]["atk"], fighter["stats"]["def"],
+                    fighter["stats"]["spd"], fighter["stats"]["crt"], fighter["stats"]["eva"],
+                    fighter["martial_art_id"], fighter["neigong_id"], fighter["qinggong_id"],
+                    fighter["star_rating"], fighter["base_star_rating"], fighter["star_exp"],
+                    fighter["breakthrough_stage"], fighter["martial_reroll_count"],
+                    raw_stats["hp"], raw_stats["atk"], raw_stats["def"], raw_stats["spd"],
+                    raw_stats["crt"], raw_stats["eva"], fighter.get("avatar_path"),
+                ),
+            )
+            connection.execute("UPDATE user_fighters SET is_active = 0 WHERE user_id = ?", (user_id,))
+            connection.execute(
+                "INSERT INTO user_fighters (user_id, fighter_name, slot_index, is_active) VALUES (?, ?, ?, 1)",
+                (user_id, name, slot_index),
+            )
+            self._change_item_quantity(connection, user_id, "special_summon_token", -1)
+            connection.execute("DELETE FROM web_summon_previews WHERE user_id = ?", (user_id,))
+            connection.commit()
+        bound = self.get_user_fighter_by_name(user_id, name)
+        if bound is None:
+            raise RuntimeError("summoned fighter lookup failed")
+        return old_name, bound
 
     def special_summon_preview_fighter(self, user_id: str, fighter_name: str) -> dict[str, Any]:
         item_id = "special_summon_token"
