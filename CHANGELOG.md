@@ -1,6 +1,7 @@
-# 1.3.0 - Plugin release hardening
+# 1.4.1 - 2026-10-12 - Plugin release hardening
 
 - Publish the AstrBot plugin separately from the Web application.
+- Use version 1.4.1 after the existing v1.4.0 tag and document branch purposes.
 - Require trusted administrators for boss and leaderboard management.
 - Settle yesterday and the previous ISO week in Asia/Shanghai only.
 - Commit settlement rewards, items and records atomically.
@@ -13,6 +14,18 @@
 - Exclude Web assets, temporary media and development artifacts from distribution.
 
 # Changelog
+
+## 1.4.0 - 2026-04-14
+
+### Added
+
+- Added a group-scoped two-phase world boss activity with open, fight, rank, close, and settle commands
+- Added shared phase-2 HP tracking, contribution ranking, daily attempt limits, and kill settlement rewards
+- Added world boss message templates and repository tests covering activity lifecycle and settlement
+
+### Fixed
+
+- Fixed user-facing world boss text and metadata output to avoid mojibake in the released package
 
 ## 1.2.1 - 2026-04-02
 

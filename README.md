@@ -3,10 +3,26 @@
 本分支是 AstrBot 插件独立发布版, 不提供 Web 应用或网页登录入口。
 Bot 的 GIF 回放仍使用 `web_animation/` 中随包提供的共享动画, 不需要 Node 或前端构建。
 
+## 分支与版本
+
+本分支的插件版本为 `1.4.1`, 对应版本标签为 `v1.4.1`。
+分支表示开发用途, 标签标记固定提交; 分支名不代替插件版本号。
+
+| 分支 | 用途 |
+| --- | --- |
+| `release-plugin-1-4-1` | 1.4.1 插件独立发布版, 用于 AstrBot 安装与提交 |
+| `dev-web` | Web 开发线, 包含 Bot 和 Web 代码 |
+| `archive-bot-baseline-20260922` | 2026-09-22 的旧 Bot 基线, 保留供历史对照 |
+| `main` | 默认分支, 保留此前 Bot/Web 混合代码 |
+
+历史标签 `v1.2.1` 和 `v1.4.0` 保留原提交。
+`main` 和旧开发线中的 `1.2.1` 元数据是历史遗留值, 不代表其代码早于 `v1.4.0`。
+本次发布使用 `1.4.1`, 高于已有的 `1.4.0`, 不再使用准备阶段的 `1.3.0` 编号。
+
 ## 安装与配置
 
 - 支持 OneBot v11 (`aiocqhttp`), 本次框架兼容基线为 AstrBot 4.23.2, Python 3.12。
-- 从插件仓库分支安装: `https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-3-0`。
+- 从插件仓库分支安装: `https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-4-1`。
 - 安装插件后打开配置面板。`boss_admin_user_ids` 非空时只允许名单中的用户操作 BOSS 和榜单结算; 空名单时允许 AstrBot 管理员或可信 QQ 群管理员。
 - `enable_gif` 控制动画开关。GIF 需要本机 Chrome 或 Chromium, 可用 `NAME_FIGHT_CHROME` 指定路径; 不可用或超时时回退文字。
 - `render_concurrency` 默认为 1, `render_timeout` 默认为 120 秒, `broadcast_delay` 默认为 1.6 秒。
