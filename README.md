@@ -1,8 +1,33 @@
 # Name Fight
 
-Web 和 AstrBot 现已共用 `web_animation/battle/` 的动作和特效实现.
-Web 可通过 `web/dev.bat` 启动, 动作预览在 `/motion-preview.html`.
-同步架构、测试和 Linux Bot 更新步骤见 [两端兼容说明](SHARED_ANIMATION.md).
+本分支是 AstrBot 插件独立发布版, 不提供 Web 应用或网页登录入口。
+Bot 的 GIF 回放仍使用 `web_animation/` 中随包提供的共享动画, 不需要 Node 或前端构建。
+
+## 安装与配置
+
+- 支持 OneBot v11 (`aiocqhttp`), 本次框架兼容基线为 AstrBot 4.23.2, Python 3.12。
+- 从插件仓库分支安装: `https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-3-0`。
+- 安装插件后打开配置面板。`boss_admin_user_ids` 非空时只允许名单中的用户操作 BOSS 和榜单结算; 空名单时允许 AstrBot 管理员或可信 QQ 群管理员。
+- `enable_gif` 控制动画开关。GIF 需要本机 Chrome 或 Chromium, 可用 `NAME_FIGHT_CHROME` 指定路径; 不可用或超时时回退文字。
+- `render_concurrency` 默认为 1, `render_timeout` 默认为 120 秒, `broadcast_delay` 默认为 1.6 秒。
+- `avatar_max_mb` 默认为 5 MiB。头像只接受实际图片消息, 公网 HTTP/HTTPS 地址或 AstrBot 临时目录中的文件; 不允许内网地址、重定向或任意本地路径。
+- 角色名限制为 1 到 32 个可打印字符。
+
+## 存档与更新
+
+存档保存在 AstrBot 数据目录的 `name_fight_data/`, 与插件代码分离。
+升级前使用 SQLite backup API 备份 `fighters.db`, 同时备份其旁边的 `avatars/`。
+原有存档路径保留兼容, 不需要重建玩家账号。卡图和 GIF 临时输出写入 AstrBot 临时目录, 发送后清理。
+本发布分支不修改正在运行的 Bot 或 Web 服务。
+
+## 管理权限与结算
+
+BOSS 开启、关闭、结算以及日榜、周榜结算只允许授权管理员操作。
+结算日期统一使用 `Asia/Shanghai`。
+`/daysettle [1v1|3v3|all]` 只结算昨天; `/weeksettle [1v1|3v3|all]` 只结算已经结束的上一周。
+不支持任意历史日期补结算。排行榜是累计 Elo 榜, 奖励按结算时排名计算, 不提供历史排名回溯。
+同群、同榜、同周期只发一次, 奖励和结算记录使用同一事务提交, 失败会整体回滚。
+积分商店价格和对战收益保持原值。普通对战没有新增每日积分上限。
 
 ![Name Fight Logo](./logo.png)
 
@@ -38,7 +63,7 @@ Name Fight 是一个基于姓名生成角色的 AstrBot 群聊武侠对战插件
 - `/use 角色名`
 - `/profile [角色名]`
 
-每位玩家当前最多持有 3 个角色。如果已经满员, 再创建角色时会进入候选替换流程, 然后通过 `/choose 序号` 选择要顶替的旧角色栏位。
+每位玩家当前最多持有 5 个角色。如果已经满员, 再创建角色时会进入候选替换流程, 然后通过 `/choose 序号` 选择要顶替的旧角色栏位。
 
 ### 2. 通过正常挑战获取积分
 
@@ -143,7 +168,7 @@ Name Fight 是一个基于姓名生成角色的 AstrBot 群聊武侠对战插件
 
 ### 星级与成长
 
-- 角色初始星级在 `1.0` 到 `5.0` 星之间
+- 角色通常初始为 `1.0` 到 `5.0` 星, 普通创建有 0.3% 概率获得天然六星; 特殊召唤为 90% 五星 / 10% 六星
 - 星级越高, 初始资质越高
 - 低星可通过星经验一路补到 `5.0` 星
 - 补到 `5.0` 星后, 与先天 `5.0` 星等价
@@ -175,7 +200,7 @@ Name Fight 是一个基于姓名生成角色的 AstrBot 群聊武侠对战插件
 - 第 2 至 3 名: `300` 积分 + 中级洗练道具
 - 第 4 至 10 名: `150` 积分
 
-同一群、同一周、同一榜单只能结算一次。
+同一群、同一周、同一榜单只能结算一次, 由授权管理员结算上一周。
 
 ### 世界 BOSS
 
@@ -194,7 +219,7 @@ Name Fight 是一个基于姓名生成角色的 AstrBot 群聊武侠对战插件
 - 只有成功进入二阶段后的伤害，才会计入群共享血量和贡献榜
 - 默认每人每天 `3` 次挑战次数
 - 击杀后按贡献榜发放积分奖励
-- 如果活动未击杀就关闭，则不会发放击杀奖励
+- 如果活动未击杀就关闭, 不发击杀参与奖, 但可由管理员结算未击杀版贡献排名奖励
 
 ### 1v1、3v3 与强制战斗的区别
 
@@ -215,7 +240,7 @@ Name Fight 是一个基于姓名生成角色的 AstrBot 群聊武侠对战插件
 ### 角色管理
 
 - `/fhelp`
-- `/guide`
+- `/fguide`
 - `/create 角色名`
 - `/choose 序号`
 - `/roster`
@@ -287,4 +312,11 @@ Name Fight 是一个基于姓名生成角色的 AstrBot 群聊武侠对战插件
 - 武学洗练
 - 周榜奖励结算
 
-如果群友已经不知道现在该先做什么, 直接让他先看 `/guide` 即可。
+如果群友已经不知道现在该先做什么, 直接让他先看 `/fguide` 即可。
+
+## 发布验证
+
+安装测试依赖后运行 `python -m unittest discover`。所有存储回归使用临时数据库。
+`python verify_bot_gif.py` 使用真实 Chrome 生成回放, 输出到被 Git 忽略的 `output/`。
+发布包使用 `git archive --format=zip` 构建; `.gitattributes` 排除测试和开发资料, ZIP 必须小于 16MB。
+字体和资源说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

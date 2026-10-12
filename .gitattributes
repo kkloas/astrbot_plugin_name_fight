@@ -1,0 +1,13 @@
+.gitattributes export-ignore
+.gitignore export-ignore
+.github export-ignore
+test_* export-ignore
+verify_* export-ignore
+simulate.py export-ignore
+run_*.bat export-ignore
+render_preview.py export-ignore
+BALANCE_MODEL.md export-ignore
+BALANCE_RANKINGS.md export-ignore
+COMBAT_FLOW.md export-ignore
+FORMAT_REQUIREMENTS.md export-ignore
+SHARED_ANIMATION.md export-ignore

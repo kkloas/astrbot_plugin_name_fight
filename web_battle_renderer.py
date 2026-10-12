@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 import socket
+import struct
 import subprocess
 import tempfile
 import time
@@ -141,9 +142,18 @@ def _browser():
             stderr=subprocess.DEVNULL,
         )
         try:
-            with connect(
-                _devtools_endpoint(port), max_size=50_000_000, open_timeout=10
-            ) as ws:
+            endpoint = _devtools_endpoint(port)
+            # Keep local pixel traffic off environment-configured HTTP proxies.
+            with (
+                socket.create_connection(("127.0.0.1", port), timeout=10) as transport,
+                connect(
+                    endpoint,
+                    sock=transport,
+                    max_size=50_000_000,
+                    open_timeout=10,
+                    compression=None,
+                ) as ws,
+            ):
                 state = {"id": 0}
                 _cdp_call(ws, state, "Page.enable")
                 yield ws, state
@@ -185,19 +195,76 @@ def _capture_frames(
     background = result["result"]["data"]
     _evaluate(ws, state, f"window.initializeExport({json.dumps(background)})")
     offsets = []
+    previous = None
     for frame_time in times:
-        data = base64.b64decode(
-            _evaluate(ws, state, f"window.exportFrame({frame_time})")
-        )
+        raw = _evaluate(ws, state, f"window.exportRawFrame({frame_time})")
+        previous = _apply_frame_patch(previous, raw)
+        if raw["patchWidth"] == 0:
+            offsets.append(offsets[-1])
+            continue
+        data = b"NFR1" + struct.pack("<II", *previous.size) + previous.tobytes()
         offsets.append((spool.tell(), len(data)))
         spool.write(data)
     return offsets
 
 
+def _apply_frame_patch(
+    previous: Image.Image | None, raw: dict[str, Any]
+) -> Image.Image:
+    values = [
+        raw[key] for key in ("width", "height", "x", "y", "patchWidth", "patchHeight")
+    ]
+    if any(type(value) is not int for value in values):
+        raise ValueError("Invalid raw frame dimensions")
+    width, height, x, y, patch_width, patch_height = values
+    if not (0 < width <= 720 and 0 < height <= 2048):
+        raise ValueError("Raw frame exceeds export bounds")
+    if not (
+        0 <= x <= width
+        and 0 <= y <= height
+        and 0 <= patch_width <= width - x
+        and 0 <= patch_height <= height - y
+    ):
+        raise ValueError("Raw frame patch is outside the canvas")
+    if (patch_width == 0) != (patch_height == 0):
+        raise ValueError("Invalid empty raw frame patch")
+    pixels = base64.b64decode(raw["data"], validate=True)
+    if len(pixels) != patch_width * patch_height * 4:
+        raise ValueError("Truncated raw frame patch")
+    if previous is None:
+        if (x, y, patch_width, patch_height) != (0, 0, width, height):
+            raise ValueError("First raw frame must cover the full canvas")
+        previous = Image.new("RGBA", (width, height))
+    elif previous.size != (width, height):
+        raise ValueError("Raw frame canvas changed within a bout")
+    if patch_width:
+        patch = Image.frombytes("RGBA", (patch_width, patch_height), pixels)
+        previous.paste(patch, (x, y))
+    return previous
+
+
 def _read_frame(spool: Any, offset: tuple[int, int]) -> Image.Image:
     spool.seek(offset[0])
-    with Image.open(BytesIO(spool.read(offset[1]))) as frame:
+    data = spool.read(offset[1])
+    if data[:4] == b"NFR1":
+        width, height = _frame_size(data[:12])
+        if len(data) != 12 + width * height * 4:
+            raise ValueError("Truncated raw frame")
+        return Image.frombytes("RGBA", (width, height), data[12:]).convert("RGB")
+    with Image.open(BytesIO(data)) as frame:
         return frame.convert("RGB")
+
+
+def _frame_size(header: bytes) -> tuple[int, int]:
+    if header[:4] == b"NFR1":
+        if len(header) < 12:
+            raise ValueError("Truncated raw frame header")
+        width, height = struct.unpack("<II", header[4:12])
+        if not (0 < width <= 720 and 0 < height <= 2048):
+            raise ValueError("Invalid raw frame size")
+        return width, height
+    with Image.open(BytesIO(header)) as frame:
+        return frame.size
 
 
 def _write_gif(
@@ -215,19 +282,41 @@ def _write_gif(
     contact = Image.new("RGB", (240 * count, 180), "white")
     for index, frame in enumerate(samples):
         contact.paste(frame, (index * 240, 0))
-    palette = contact.quantize(
-        colors=127, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
+    # Reserve palette capacity for colored effects instead of the gray background.
+    base_count = 95
+    effect_count = 32
+    base = contact.quantize(
+        colors=base_count, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
     )
-    colors = palette.getpalette()[:381]
-    colors += [0] * (381 - len(colors))
-    # Pad unused slots with a duplicate color, keeping all opaque indices below 127.
+    colorful = [
+        pixel
+        for pixel in contact.getdata()
+        if max(pixel) - min(pixel) >= 35 and max(pixel) >= 70
+    ]
+    if colorful:
+        effects = Image.new("RGB", (len(colorful), 1))
+        effects.putdata(colorful)
+        effects = effects.quantize(
+            colors=effect_count,
+            method=Image.Quantize.MEDIANCUT,
+            dither=Image.Dither.NONE,
+        )
+        colors = (
+            base.getpalette()[: base_count * 3]
+            + effects.getpalette()[: effect_count * 3]
+        )
+    else:
+        colors = contact.quantize(
+            colors=127, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
+        ).getpalette()[:381]
+    palette = Image.new("P", (1, 1))
     palette.putpalette(colors + colors[:3] * 129)
     # Different bouts can wrap their HUD text to different heights.
     width = height = 0
     for position, length in offsets:
         spool.seek(position)
-        with Image.open(BytesIO(spool.read(min(length, 128)))) as frame:
-            width, height = max(width, frame.width), max(height, frame.height)
+        frame_width, frame_height = _frame_size(spool.read(min(length, 128)))
+        width, height = max(width, frame_width), max(height, frame_height)
     previous = None
     pending = None
     pending_duration = 0

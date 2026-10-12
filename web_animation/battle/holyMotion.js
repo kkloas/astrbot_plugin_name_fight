@@ -37,10 +37,10 @@ export function holyMotion(event,time,travel){
 // Tapered ink feather with broken shaft highlights and asymmetric flame barbs.
 export function drawCalligraphicFeather(ctx,x,y,length,angle,curvature,coreColor,accentColor,alpha=1){
  if(length<=.1||alpha<=0)return;
- ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.globalAlpha=alpha;
+ ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha)), .65) * 1.15);
  const spine=u=>[length*u,Math.sin(u*Math.PI)*length*curvature];
  const width=u=>Math.pow(Math.sin(Math.PI*u),.85)*length*.135;
- ctx.fillStyle=accentColor;ctx.globalAlpha=alpha*.34;
+ ctx.fillStyle=accentColor;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha*.34)), .65) * 1.15);
  ctx.beginPath();ctx.moveTo(0,0);
  for(let j=1;j<=20;j++){const u=j/20,p=spine(u);ctx.lineTo(p[0],p[1]-width(u)*(1+.12*Math.sin(u*25)));}
  for(let j=19;j>=0;j--){const u=j/20,p=spine(u);ctx.lineTo(p[0],p[1]+width(u)*.8);}
@@ -48,14 +48,14 @@ export function drawCalligraphicFeather(ctx,x,y,length,angle,curvature,coreColor
  ctx.lineCap='round';
  for(let side=-1;side<=1;side+=2)for(let j=1;j<=9;j++){
  const u=.12+j*.076,a=spine(u-.065),b=spine(u+.045);
- ctx.globalAlpha=alpha*(j%3===0?.78:.57);ctx.strokeStyle=j%3===0?coreColor:accentColor;ctx.lineWidth=.65+(1-u)*.8;
+ ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha*(j%3===0?.78:.57))), .65) * 1.15);ctx.strokeStyle=j%3===0?coreColor:accentColor;ctx.lineWidth=.65+(1-u)*.8;
  ctx.beginPath();ctx.moveTo(...a);ctx.quadraticCurveTo(length*u,b[1]+side*width(u)*.55,b[0],b[1]+side*width(u)*(side===1?.82:1.1));ctx.stroke();
  }
- ctx.strokeStyle=coreColor;ctx.globalAlpha=alpha*.75;ctx.lineWidth=1.35;
+ ctx.strokeStyle=coreColor;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha*.75)), .65) * 1.15);ctx.lineWidth=1.35;
  ctx.beginPath();ctx.moveTo(-length*.13,0);for(let j=0;j<=22;j++)ctx.lineTo(...spine(j/22));ctx.stroke();
  // Separate pale strokes leave visible gaps rather than a solid neon shaft.
- for(let j=0;j<6;j++){ctx.strokeStyle=j%2?'#f6d174':'#fff0b7';ctx.globalAlpha=alpha*.95;ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(...spine(.06+j*.15));ctx.lineTo(...spine(.13+j*.15));ctx.stroke();}
- const tip=spine(.94);ctx.fillStyle=accentColor;ctx.globalAlpha=alpha;ctx.beginPath();ctx.arc(tip[0],tip[1],.9,0,Math.PI*2);ctx.fill();ctx.restore();
+ for(let j=0;j<6;j++){ctx.strokeStyle=j%2?'#f9b710':'#f9c810';ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha*.95)), .65) * 1.15);ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(...spine(.06+j*.15));ctx.lineTo(...spine(.13+j*.15));ctx.stroke();}
+ const tip=spine(.94);ctx.fillStyle=accentColor;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha)), .65) * 1.15);ctx.beginPath();ctx.arc(tip[0],tip[1],.9,0,Math.PI*2);ctx.fill();ctx.restore();
 }
 function shatteredPlumes(ctx,origin,age,count,dir,alpha,large=false){
  const duration=large?610:400;if(age<0||age>duration)return;
@@ -65,15 +65,15 @@ function shatteredPlumes(ctx,origin,age,count,dir,alpha,large=false){
  const x=origin[0]+dir*Math.cos(a)*r,y=origin[1]+Math.sin(a)*r*.78+p*p*24;
  const angle=Math.atan2(Math.sin(a),dir*Math.cos(a))+.18*Math.sin(i+p*3);
  const length=(large?23+(i%4)*6:14+(i%3)*4)*appear*(1-p*.36);
- drawCalligraphicFeather(ctx,x,y,length,angle,(i%2?1:-1)*(.12+(i%3)*.035),'#5a3924',i%3===0?'#c75d2e':'#dda23a',fade*(.7+(i%3)*.1));
+ drawCalligraphicFeather(ctx,x,y,length,angle,(i%2?1:-1)*(.12+(i%3)*.035),'#d65705',i%3===0?'#d64505':'#d68a05',fade*(.7+(i%3)*.1));
  // Gold dust takes over as the plume breaks up.
- if(p>.35){ctx.save();ctx.globalAlpha=alpha*(1-p)*.75;ctx.fillStyle='#d6a354';for(let j=0;j<3;j++){ctx.beginPath();ctx.arc(x-dir*Math.cos(a)*(j+1)*5,y-Math.sin(a)*(j+1)*5,1-j*.2,0,Math.PI*2);ctx.fill();}ctx.restore();}
+ if(p>.35){ctx.save();ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha*(1-p)*.75)), .65) * 1.15);ctx.fillStyle='#d68405';for(let j=0;j<3;j++){ctx.beginPath();ctx.arc(x-dir*Math.cos(a)*(j+1)*5,y-Math.sin(a)*(j+1)*5,1-j*.2,0,Math.PI*2);ctx.fill();}ctx.restore();}
  }
 }
 export function holyEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
  const index=names.indexOf(event.move);if(index<0||time<360||time>1680)return;
- const fade=1-ease((time-1190)/450),red='#b74730',gold='#d6a354',white='#fff3c4';
- const line=(pts,color,width,alpha)=>{ctx.globalAlpha=fade*alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()};
+ const fade=1-ease((time-1190)/450),red='#d62905',gold='#d68405',white='#f9ca10';
+ const line=(pts,color,width,alpha)=>{ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (fade*alpha)), .65) * 1.15);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()};
  const spark=(origin,age,count,spread=80)=>{if(age<0||age>430)return;const p=age/430;for(let i=0;i<count;i++){const a=i*2.399,r=(12+(i%7)*spread/7)*p;const x=origin[0]+Math.cos(a)*r,y=origin[1]+Math.sin(a)*r+p*p*20;line([[x-Math.cos(a)*(3+6*(1-p)),y-Math.sin(a)*5],[x,y]],i%3?gold:white,i%4?1:2.2,(1-p)*.85)}};
  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
  // Both trails are sampled from the two actual held tokens, including rolls and turns.
@@ -83,13 +83,13 @@ export function holyEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
  const around=index===7&&time>730,ghostDir=around?(j%2?dir:-dir):dir*(frame.pose.facing||1);
  const ghostX=around?target[0]-ghostDir*(82+j*5):frame.x;
  const ghostLift=frame.lift-(around?(j%3)*9:0);
- ctx.save();ctx.globalAlpha=fade;
+ ctx.save();ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (fade)), .65) * 1.15);
  drawCurvedFigure(ctx,ghostX,ghostDir,frame.pose,at,'tokens',(.22-j*.025)*(index===7?1.35:1),ghostLift,false,'short_shenghuoling');
  ctx.restore();
  if(around){const hand=frame.pose.points[6],angle=frame.pose.sword;
  const tip=[ghostX+ghostDir*(hand[0]+Math.cos(angle)*43),324+ghostLift+hand[1]+Math.sin(angle)*43];
  line([[tip[0]-ghostDir*17,tip[1]-10],tip],red,5,.18);line([[tip[0]-ghostDir*17,tip[1]-10],tip],gold,1,.35);
- drawCalligraphicFeather(ctx,tip[0]-ghostDir*20,tip[1],24,Math.atan2(-.3,-ghostDir),j%2?.15:-.15,'#64462c','#d7aa51',fade*.36);}}}
+ drawCalligraphicFeather(ctx,tip[0]-ghostDir*20,tip[1],24,Math.atan2(-.3,-ghostDir),j%2?.15:-.15,'#d66605','#d69005',fade*.36);}}}
  if(index===1){const clash=sampleAt(610),origin=[(clash.tip[0]+clash.rearTip[0])/2,(clash.tip[1]+clash.rearTip[1])/2];spark(origin,time-610,45,105);shatteredPlumes(ctx,origin,time-610,6,dir,fade);}
  if(index===2&&time>770&&time<1160){const p=(time-770)/390;const pts=[];for(let i=0;i<=36;i++){const a=i/36*Math.PI*1.65+p*2;pts.push([now.tip[0]+Math.cos(a)*18,now.tip[1]+Math.sin(a)*10])}line(pts,gold,2,.8);if(hit)spark(target,impactAge,18,35);}
  if(index===4||index===7){for(const rear of [false,true]){const pts=[];for(let j=0;j<24;j++){const at=time-j*9;if(at<585||at>1020)continue;pts.push(sampleAt(at)[rear?'rearTip':'tip'])}if(pts.length>1){line(pts,red,15,.09);line(pts,gold,1.4,.8)}}}
@@ -101,7 +101,7 @@ export function holyEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
  const tip=sampleAt(at)[which],past=sampleAt(at-24)[which];
  const angle=Math.atan2(tip[1]-past[1],tip[0]-past[0])+Math.PI;
  const alpha=fade*ease((time-625)/80)*(1-ease((time-1020)/150))*(.84-j*.15);
- drawCalligraphicFeather(ctx,tip[0]+Math.cos(angle)*9,tip[1]+Math.sin(angle)*9,38-j*6,angle,(j%2?1:-1)*.2,'#62392c',j===1?'#c66530':'#dfa936',alpha);
+ drawCalligraphicFeather(ctx,tip[0]+Math.cos(angle)*9,tip[1]+Math.sin(angle)*9,38-j*6,angle,(j%2?1:-1)*.2,'#d63805',j===1?'#d64f05':'#d69305',alpha);
  }
  }
   if(index===7&&hit){
@@ -109,12 +109,12 @@ export function holyEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
  shatteredPlumes(ctx,[target[0],target[1]-6],impactAge-95,12,-dir,fade*.8);
  if(impactAge>70&&impactAge<630){
  const p=(impactAge-70)/560;
- ctx.save();ctx.fillStyle='#d7ae58';ctx.globalAlpha=fade*(1-p)*.7;
+ ctx.save();ctx.fillStyle='#d69305';ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (fade*(1-p)*.7)), .65) * 1.15);
  for(let j=0;j<38;j++){const a=j*2.399,r=24+p*(62+j%7*9);ctx.beginPath();ctx.arc(target[0]+Math.cos(a)*r,target[1]+Math.sin(a)*r*.8-p*22,.6+j%3*.4,0,Math.PI*2);ctx.fill();}
  ctx.restore();
  }
  }
- if(hit&&impactAge>=0){spark(target,impactAge,index===7?60:index===1?42:28,index===7?120:75);if(index===7){const p=clamp(impactAge/360);for(let j=0;j<3;j++){ctx.globalAlpha=fade*(1-p)*.6;ctx.strokeStyle=j%2?gold:red;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(target[0],target[1],12+p*(62+j*12),18+p*(85+j*9),j*.5,0,Math.PI*2);ctx.stroke()}}}
+ if(hit&&impactAge>=0){spark(target,impactAge,index===7?60:index===1?42:28,index===7?120:75);if(index===7){const p=clamp(impactAge/360);for(let j=0;j<3;j++){ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (fade*(1-p)*.6)), .65) * 1.15);ctx.strokeStyle=j%2?gold:red;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(target[0],target[1],12+p*(62+j*12),18+p*(85+j*9),j*.5,0,Math.PI*2);ctx.stroke()}}}
  ctx.restore();
 }
 

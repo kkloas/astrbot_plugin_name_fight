@@ -1,0 +1,32 @@
+{
+  "boss_admin_user_ids": {
+    "description": "Authorized administrator user IDs. An explicit list takes precedence over platform administrators.",
+    "type": "list",
+    "default": []
+  },
+  "broadcast_delay": {
+    "description": "Delay between battle messages in seconds (0 to 10).",
+    "type": "float",
+    "default": 1.6
+  },
+  "enable_gif": {
+    "description": "Enable GIF battle replays. Requires Chrome or Chromium; unavailable rendering falls back to text.",
+    "type": "bool",
+    "default": true
+  },
+  "render_concurrency": {
+    "description": "Maximum simultaneous GIF render workers (1 to 4).",
+    "type": "int",
+    "default": 1
+  },
+  "render_timeout": {
+    "description": "GIF rendering timeout in seconds (5 to 300).",
+    "type": "int",
+    "default": 120
+  },
+  "avatar_max_mb": {
+    "description": "Maximum avatar download size in MiB (1 to 20).",
+    "type": "int",
+    "default": 5
+  }
+}

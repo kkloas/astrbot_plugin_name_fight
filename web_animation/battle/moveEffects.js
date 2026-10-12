@@ -9,7 +9,7 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
     const strength = (.75 + impact.force * .7) * p.amplitude;
     const color = themeColors[p.theme];
     ctx.save();
-    ctx.globalAlpha = fade * .8;
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .8)), .65) * 1.15);
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
     ctx.lineCap = 'round';
@@ -29,7 +29,7 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(i + life * 5);
-            ctx.globalAlpha = fade * (.3 + .6 * n);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (.3 + .6 * n))), .65) * 1.15);
             if (p.theme === 'snow') {
                 ctx.lineWidth = 1;
                 for (let j = 0; j < 3; j++) {
@@ -53,9 +53,9 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
     if (p.theme === 'cloud' || p.theme === 'mist' || p.theme === 'wind') {
         for (let i = 0; i < 6; i++) {
             const x = tip[0] - dir * (20 + i * 17 + life * 30), y = tip[1] + Math.sin(life * 6 + i) * 24;
-            ctx.globalAlpha = fade * (.16 - i * .018);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (.16 - i * .018))), .65) * 1.15);
             curve(x, y, 48 + life * 32, 13 + i * 3, 8 - i);
-            ctx.globalAlpha = fade * .32;
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .32)), .65) * 1.15);
             curve(x, y, 48 + life * 32, 13 + i * 3, 1);
         }
     }
@@ -65,16 +65,16 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
             const radius = (p.style === 'coil' ? 1 - life * .55 : .5 + life * .5) * (28 + i * 13);
             const x = tip[0] - dir * i * 13;
             ctx.lineWidth = 2;
-            ctx.globalAlpha = fade * (.6 - i * .1);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (.6 - i * .1))), .65) * 1.15);
             ctx.beginPath();
             ctx.ellipse(x, tip[1], radius * .6, radius, dir * life, life * 5 + i, life * 5 + i + Math.PI * 1.3);
             ctx.stroke();
         }
     }
     if (p.theme === 'ink' || p.theme === 'vermilion' || p.style === 'hook') {
-        ctx.globalAlpha = fade * .7;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .7)), .65) * 1.15);
         curve(tip[0], tip[1], 30 + 25 * p.amplitude, 22 + p.variation * 6, 4);
-        ctx.fillStyle = p.style === 'hook' ? '#9f433c' : color;
+        ctx.fillStyle = p.style === 'hook' ? '#d61405' : color;
         for (let i = 0; i < 12; i++) {
             ctx.beginPath();
             ctx.ellipse(tip[0] + dir * (noise(i + 9) - .7) * 95, tip[1] + (noise(i + 38) - .5) * 60, 1 + noise(i) * 3, 1 + noise(i + 4) * 2, i, 0, Math.PI * 2);
@@ -82,14 +82,14 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
         }
     }
     if (p.theme === 'gold' || p.theme === 'silver') {
-        ctx.globalAlpha = fade * .65;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .65)), .65) * 1.15);
         const length = (p.style === 'draw' ? 145 : 95) * strength;
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(tip[0] - dir * length, tip[1] + 3);
         ctx.lineTo(tip[0] + dir * 22, tip[1]);
         ctx.stroke();
-        ctx.strokeStyle = '#f7f8ef';
+        ctx.strokeStyle = '#dff910';
         ctx.lineWidth = 1.6;
         ctx.stroke();
         ctx.strokeStyle = color;
@@ -103,7 +103,7 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
         for (let i = 0; i < count; i++) {
             const progress = unit(phase - i * .095), x = tip[0] + (target[0] - tip[0]) * progress;
             const radius = (25 + i * 5) * strength;
-            ctx.globalAlpha = fade * (1 - i / (count + 1)) * .75;
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (1 - i / (count + 1)) * .75)), .65) * 1.15);
             ctx.lineWidth = i === 0 ? 4 : 1.5;
             ctx.beginPath();
             ctx.moveTo(x - dir * 10, tip[1] - radius);
@@ -112,7 +112,7 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
         }
     }
     if ((p.style === 'palm' || p.style === 'shock') && age > -100) {
-        ctx.globalAlpha = fade * .6;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .6)), .65) * 1.15);
         for (let i = 0; i < 3; i++) {
             const radius = (25 + life * 65 + i * 12) * strength;
             ctx.lineWidth = 3 - i * .7;
@@ -124,7 +124,7 @@ export function drawMoveTheme(ctx, p, tip, target, dir, age, impact) {
     // Decorative motion can play on misses. A contact burst requires actual damage.
     if (impact.hit && age >= 0 && age < 310) {
         const progress = age / 310;
-        ctx.globalAlpha = (1 - progress) * .75;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, ((1 - progress) * .75)), .65) * 1.15);
         ctx.strokeStyle = color;
         for (let i = 0; i < Math.round(10 + impact.force * 14); i++) {
             const angle = i * 2.399, reach = (18 + noise(i + 11) * 36) * strength * progress;

@@ -4,6 +4,15 @@ __pycache__/
 *.pyd
 name_fight_data/
 *.db
+*.db-*
 *.sqlite3
+*.sqlite3-*
 .DS_Store
 Thumbs.db
+.ruff_cache/
+.vscode/
+.playwright-mcp/
+output/
+data/tmp_*
+data/cmd_config.json
+data/t2i_templates/

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import os
@@ -15,7 +15,7 @@ except AttributeError:
 
 def _find_font(data_dir: str, name: str, fallbacks: list[str]) -> str | None:
     """优先从 data 目录找字体，再找系统路径"""
-    bundled = os.path.join(data_dir, name)
+    bundled = os.path.join(data_dir, "NotoSansSC.ttf")
     if os.path.exists(bundled):
         return bundled
     for fb in fallbacks:
@@ -79,13 +79,15 @@ def get_stat_color(stat: str, value: float) -> tuple[int, int, int]:
     return colors[0]
 
 
-def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
+def render_star_card(
+    fighter: dict[str, Any], data_dir: str, output_dir: str | None = None
+) -> str | None:
     """
     根据角色星级渲染 5 星或 6 星的角色立绘面板。
     返回生成图片的本地保存路径，不满足条件时返回 None。
     """
-    rating = float(fighter.get('star_rating', 0))
-    breakthrough = int(fighter.get('breakthrough_stage', 0) or 0)
+    rating = float(fighter.get("star_rating", 0))
+    breakthrough = int(fighter.get("breakthrough_stage", 0) or 0)
 
     if rating >= 6.0 or breakthrough > 0:
         template_name = "6star_template.jpg"
@@ -98,26 +100,46 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
         return None
 
     output_filename = f"tmp_card_{uuid.uuid4().hex[:8]}.jpg"
-    output_path = os.path.join(data_dir, output_filename)
+    output_path = os.path.join(output_dir or data_dir, output_filename)
+    os.makedirs(output_dir or data_dir, exist_ok=True)
 
     img = Image.open(template_path).convert("RGBA")
     _paste_avatar(img, fighter)
     draw = ImageDraw.Draw(img)
 
-    title_path = _find_font(data_dir, "STXINGKA.TTF", [
-        r"C:\Windows\Fonts\STXINGKA.TTF",
-    ])
-    normal_path = _find_font(data_dir, "STKAITI.TTF", [
-        r"C:\Windows\Fonts\STKAITI.TTF",
-    ])
+    title_path = _find_font(
+        data_dir,
+        "STXINGKA.TTF",
+        [
+            r"C:\Windows\Fonts\STXINGKA.TTF",
+        ],
+    )
+    normal_path = _find_font(
+        data_dir,
+        "STKAITI.TTF",
+        [
+            r"C:\Windows\Fonts\STKAITI.TTF",
+        ],
+    )
 
     try:
-        font_title = ImageFont.truetype(title_path, 64) if title_path else ImageFont.load_default()
-        font_normal = ImageFont.truetype(normal_path, 32) if normal_path else ImageFont.load_default()
-        font_skill = ImageFont.truetype(normal_path, 34) if normal_path else ImageFont.load_default()
-        font_number = ImageFont.truetype(normal_path, 36) if normal_path else ImageFont.load_default()
+        font_title = (
+            ImageFont.truetype(title_path, 64)
+            if title_path
+            else ImageFont.load_default()
+        )
+        font_skill = (
+            ImageFont.truetype(normal_path, 34)
+            if normal_path
+            else ImageFont.load_default()
+        )
+        font_number = (
+            ImageFont.truetype(normal_path, 36)
+            if normal_path
+            else ImageFont.load_default()
+        )
     except IOError:
-        font_title = font_normal = font_skill = font_number = ImageFont.load_default()
+        font_title = font_skill = font_number = ImageFont.load_default()
 
     fighter_name = str(fighter.get("name", "未知"))
     martial_art = fighter.get("martial_art", {})
@@ -151,15 +173,39 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
     bbox = draw.textbbox((0, 0), fighter_name, font=font_title)
     name_w = bbox[2] - bbox[0]
     draw.text(
-        (name_center_x - name_w / 2, name_y), fighter_name,
-        font=font_title, fill=color_name,
-        stroke_width=2, stroke_fill=(30, 20, 10)
+        (name_center_x - name_w / 2, name_y),
+        fighter_name,
+        font=font_title,
+        fill=color_name,
+        stroke_width=2,
+        stroke_fill=(30, 20, 10),
     )
 
     skill_x = 450
-    draw.text((skill_x, 385), martial_name, font=font_skill, fill=color_skill, stroke_width=1, stroke_fill=(40, 30, 20))
-    draw.text((skill_x, 475), neigong_name, font=font_skill, fill=color_skill, stroke_width=1, stroke_fill=(40, 30, 20))
-    draw.text((skill_x, 565), qinggong_name, font=font_skill, fill=color_skill, stroke_width=1, stroke_fill=(40, 30, 20))
+    draw.text(
+        (skill_x, 385),
+        martial_name,
+        font=font_skill,
+        fill=color_skill,
+        stroke_width=1,
+        stroke_fill=(40, 30, 20),
+    )
+    draw.text(
+        (skill_x, 475),
+        neigong_name,
+        font=font_skill,
+        fill=color_skill,
+        stroke_width=1,
+        stroke_fill=(40, 30, 20),
+    )
+    draw.text(
+        (skill_x, 565),
+        qinggong_name,
+        font=font_skill,
+        fill=color_skill,
+        stroke_width=1,
+        stroke_fill=(40, 30, 20),
+    )
 
     left_center = 330
     right_center = 630
@@ -171,16 +217,20 @@ def render_star_card(fighter: dict[str, Any], data_dir: str) -> str | None:
         box = draw.textbbox((0, 0), text, font=font_number)
         w = box[2] - box[0]
         draw.text(
-            (cx - w / 2, y), text, font=font_number, fill=color,
-            stroke_width=3, stroke_fill=(40, 30, 20),
+            (cx - w / 2, y),
+            text,
+            font=font_number,
+            fill=color,
+            stroke_width=3,
+            stroke_fill=(40, 30, 20),
         )
 
-    draw_centered(left_center,  row1_y, hp,  get_stat_color('hp',  hp_val))
-    draw_centered(left_center,  row2_y, atk, get_stat_color('atk', atk_val))
-    draw_centered(left_center,  row3_y, dfn, get_stat_color('def', dfn_val))
-    draw_centered(right_center, row1_y, spd, get_stat_color('spd', spd_val))
-    draw_centered(right_center, row2_y, crt, get_stat_color('crt', crt_val))
-    draw_centered(right_center, row3_y, eva, get_stat_color('eva', eva_val))
+    draw_centered(left_center, row1_y, hp, get_stat_color("hp", hp_val))
+    draw_centered(left_center, row2_y, atk, get_stat_color("atk", atk_val))
+    draw_centered(left_center, row3_y, dfn, get_stat_color("def", dfn_val))
+    draw_centered(right_center, row1_y, spd, get_stat_color("spd", spd_val))
+    draw_centered(right_center, row2_y, crt, get_stat_color("crt", crt_val))
+    draw_centered(right_center, row3_y, eva, get_stat_color("eva", eva_val))
 
     out_img = img.convert("RGB")
     out_img.save(output_path, quality=95)

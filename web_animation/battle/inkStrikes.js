@@ -1,5 +1,5 @@
 import { unit, ease } from './choreography.js';
-const ink = (t) => t.color || (t.flourish === 'crimson' ? '#873a30' : t.flourish === 'phantom' ? '#3c5558' : '#303d38');
+const ink = (t) => t.color || (t.flourish === 'crimson' ? '#d61d05' : t.flourish === 'phantom' ? '#05bfd6' : '#05d686');
 function stroke(ctx, a, b, color, width) {
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
@@ -61,7 +61,7 @@ export function drawPreparation(ctx, t, x, dir, local, ranged) {
         return;
     const phase = unit((local - 140) / 610), fade = Math.sin(phase * Math.PI);
     ctx.save();
-    ctx.globalAlpha = fade * (t.weight >= 1.5 ? .55 : .22);
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (t.weight >= 1.5 ? .55 : .22))), .65) * 1.15);
     ctx.strokeStyle = ink(t);
     ctx.lineWidth = 1;
     for (let i = 0; i < 7; i++) {
@@ -89,7 +89,7 @@ export function drawTechnique(ctx, t, weapon, origin, target, dir, age, force = 
     const color = ink(t), weight = t.weight * (1 + force * .3);
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.globalAlpha = fade;
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade)), .65) * 1.15);
     if (weapon === 'needles') {
         const rain = t.pattern === 'rain', focus = t.pattern === 'focus';
         const count = focus ? 1 : Math.round(weight * (rain ? 15 : 8));
@@ -109,7 +109,7 @@ export function drawTechnique(ctx, t, weapon, origin, target, dir, age, force = 
             stroke(ctx, [px - Math.cos(angle) * (len + 30), py - Math.sin(angle) * (len + 30)], [px - Math.cos(angle) * len, py - Math.sin(angle) * len], 'rgba(55,75,68,.24)', 1);
         }
         if (age >= 400) {
-            ctx.globalAlpha = fade * unit((630 - age) / 230) * .55;
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * unit((630 - age) / 230) * .55)), .65) * 1.15);
             for (let i = 0; i < Math.min(count, 18); i++) {
                 const drift = (age - 400) / 8;
                 const x = target[0] + dir * drift * (.5 + i % 3), y = target[1] + (i - count / 2) * 3 + drift * drift * .03;
@@ -192,7 +192,7 @@ export function drawTechnique(ctx, t, weapon, origin, target, dir, age, force = 
         ctx.restore();
     }
     if (t.flourish || t.trail === 'dust' || t.weight >= 1.5) {
-        ctx.globalAlpha = fade * .6;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .6)), .65) * 1.15);
         for (let i = 0; i < 14; i++) {
             const a = i * 2.399, r = 18 + p * 60;
             const x = target[0] + Math.cos(a) * r + dir * p * 20;
@@ -211,8 +211,8 @@ export function drawImpact(ctx, x, y, dir, age, impact, seed) {
     const p = unit(age / 650), burst = ease(age / 150), fade = Math.pow(1 - p, 1.5);
     ctx.save();
     ctx.translate(x, y);
-    ctx.globalAlpha = fade;
-    const force = impact.force, color = impact.heavy ? '#813c30' : '#35453d';
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade)), .65) * 1.15);
+    const force = impact.force, color = impact.heavy ? '#d62405' : '#05d66e';
     const count = Math.round(9 + force * 19);
     for (let i = 0; i < count; i++) {
         const a = i * 2.399 + seed, r = (14 + burst * (34 + force * 70)) * (.45 + (i % 5) / 7);
@@ -250,20 +250,20 @@ export function drawSampleAccent(ctx, kind, tip, target, dir, age, impact) {
     ctx.save();
     ctx.translate(...tip);
     ctx.scale(dir, 1);
-    ctx.globalAlpha = fade * .7;
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .7)), .65) * 1.15);
     ctx.fillStyle = snow ? 'rgba(116,196,224,.48)' : 'rgba(71,91,84,.3)';
     ctx.beginPath();
     ctx.moveTo(16 * charge, 0);
     ctx.bezierCurveTo(-length * .25, -13 * power, -length * .65, -8 * power, -length, 1);
     ctx.bezierCurveTo(-length * .55, 11 * power, -length * .2, 7 * power, 16 * charge, 0);
     ctx.fill();
-    ctx.shadowColor = snow ? '#b8edff' : '#e4eadc';
+    ctx.shadowColor = snow ? '#10bef9' : '#95f910';
     ctx.shadowBlur = snow ? 10 : 3;
-    stroke(ctx, [-length * .8, 1], [14 * charge, 0], snow ? '#f1fcff' : '#f0f0df', 2.5 * power);
+    stroke(ctx, [-length * .8, 1], [14 * charge, 0], snow ? '#f1fcff' : '#f9f910', 2.5 * power);
     ctx.shadowBlur = 0;
     if (kind !== 'sword') {
         for (let i = 0; i < 3; i++) {
-            ctx.globalAlpha = fade * (.38 - i * .08);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (.38 - i * .08))), .65) * 1.15);
             ctx.beginPath();
             ctx.strokeStyle = '#70867d';
             ctx.lineWidth = 2 - i * .4;
@@ -278,9 +278,9 @@ export function drawSampleAccent(ctx, kind, tip, target, dir, age, impact) {
             const x = -length * seed + drift * (i % 2 ? 1 : -1);
             const y = Math.sin(i * 2.399) * (12 + seed * 30) + Math.sin(age / 130 + i) * 8 + drift * .45;
             const radius = 2.2 + (i % 4) * 1.1;
-            ctx.globalAlpha = fade * (.4 + (i % 3) * .2) * charge;
-            ctx.strokeStyle = i % 3 ? '#eefbff' : '#70b7d0';
-            ctx.fillStyle = '#eefbff';
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (.4 + (i % 3) * .2) * charge)), .65) * 1.15);
+            ctx.strokeStyle = i % 3 ? '#10c2f9' : '#05a0d6';
+            ctx.fillStyle = '#10c2f9';
             ctx.lineWidth = 1;
             if (i % 3 === 0) {
                 ctx.save();
@@ -288,7 +288,7 @@ export function drawSampleAccent(ctx, kind, tip, target, dir, age, impact) {
                 ctx.rotate(i + age / 650);
                 for (let ray = 0; ray < 3; ray++) {
                     const a = ray * Math.PI / 3;
-                    stroke(ctx, [-Math.cos(a) * radius, -Math.sin(a) * radius], [Math.cos(a) * radius, Math.sin(a) * radius], i % 2 ? '#effcff' : '#70b7d0', 1);
+                    stroke(ctx, [-Math.cos(a) * radius, -Math.sin(a) * radius], [Math.cos(a) * radius, Math.sin(a) * radius], i % 2 ? '#10cdf9' : '#05a0d6', 1);
                 }
                 ctx.restore();
             }
@@ -306,8 +306,8 @@ export function drawSampleAccent(ctx, kind, tip, target, dir, age, impact) {
     ctx.save();
     ctx.translate(...target);
     ctx.scale(dir, 1);
-    ctx.globalAlpha = hitFade * .65;
-    ctx.strokeStyle = snow ? '#98d9ec' : '#72877d';
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (hitFade * .65)), .65) * 1.15);
+    ctx.strokeStyle = snow ? '#10c4f9' : '#72877d';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.ellipse(5 + burst * 16, 0, 8 + burst * 18, (16 + burst * 35) * power, 0, -1.25, 1.25);
@@ -316,7 +316,7 @@ export function drawSampleAccent(ctx, kind, tip, target, dir, age, impact) {
         const a = (i * .61803398875 % 1) * Math.PI * 2, r = (10 + burst * (35 + i % 5 * 9)) * power;
         const x = Math.cos(a) * r, y = Math.sin(a) * r * .7 + age * age * .00015;
         const size = (snow ? 2.5 : 1.5) + i % 3;
-        ctx.fillStyle = snow ? (i % 3 ? '#e8faff' : '#7ebfd4') : '#657b70';
+        ctx.fillStyle = snow ? (i % 3 ? '#10c6f9' : '#10c0f9') : '#657b70';
         ctx.beginPath();
         ctx.moveTo(x, y - size);
         ctx.lineTo(x + size * .55, y);

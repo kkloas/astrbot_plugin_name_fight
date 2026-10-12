@@ -10,31 +10,31 @@ import { heavyMotion, heavyEffects } from './heavyMotion.js';
 const m = (name, style, power, angle, lift = 0, strokes = 1, accent = 'edge') =>
     ({ name, style, power, angle, lift, strokes, accent, ultimate: name.startsWith('绝技') });
 export const expandedArts = {
-    staff_bainiaochaofeng: { name: '百鸟朝凤枪', type: 'staff', weapon: 'spear', color: '#b99b4c', moves: [
+    staff_bainiaochaofeng: { name: '百鸟朝凤枪', type: 'staff', weapon: 'spear', color: '#d69c05', moves: [
         m('凤点头', 'thrust', .9, -.22), m('穿林打叶', 'sweep', .85, .15, 0, 2, 'feather'),
         m('鸟鸣涧', 'rise', 1, -.35), m('百鸟入林', 'flurry', .85, -.1, 0, 3, 'feather'),
         m('有凤来仪', 'dive', 1.1, .45, 64, 1, 'feather'), m('乱花迷眼', 'flurry', .85, -.25, 0, 4, 'spark'),
         m('凤翔九天', 'rise', 1.2, -.58, 35, 2, 'feather'), m('绝技·百鸟朝凤', 'flurry', 1.35, -.08, 28, 5, 'phoenix'),
     ] },
-    short_shenghuoling: { name: '圣火令', type: 'short_weapon', weapon: 'tokens', color: '#ca6035', moves: [
+    short_shenghuoling: { name: '圣火令', type: 'short_weapon', weapon: 'tokens', color: '#d64205', moves: [
         m('诡步欺身', 'blink', .95, .35, 12), m('火树银花', 'cross', 1.05, -.15, 0, 2, 'spark'),
         m('夺刃式', 'hook', .8, -.65), m('影不留踪', 'blink', .95, -.3, 40),
         m('焚心似火', 'dive', .85, .3, 38, 1, 'fire'), m('绊马索', 'sweep', .85, .62),
         m('圣火燎原', 'cross', 1.1, .2, 20, 3, 'fire'), m('绝技·明王降世', 'dive', 1.35, .38, 72, 3, 'fire'),
     ] },
-    sword_xuantie: { name: '玄铁重剑', type: 'sword', weapon: 'heavy_sword', color: '#525f6a', moves: [
+    sword_xuantie: { name: '玄铁重剑', type: 'sword', weapon: 'heavy_sword', color: '#0576d6', moves: [
         m('举重若轻', 'rise', 1.1, -.3), m('大巧不工', 'crush', 1.08, .08),
         m('铁锁横江', 'sweep', 1.08, .02), m('拍击', 'crush', 1.15, .36, 12, 1, 'stone'),
         m('顺水推舟', 'thrust', 1.12, -.05), m('泰山压顶', 'dive', 1.15, .56, 43, 1, 'stone'),
         m('横扫千军', 'sweep', 1.2, .18, 0, 2, 'stone'), m('绝技·破天', 'dive', 1.3, .36, 65, 1, 'rift'),
     ] },
-    fist_qishang: { name: '七伤拳', type: 'unarmed', weapon: 'unarmed', color: '#95788f', moves: [
+    fist_qishang: { name: '七伤拳', type: 'unarmed', weapon: 'unarmed', color: '#d605ab', moves: [
         m('损心诀', 'punch', .9, -.08, 0, 1, 'pulse'), m('伤肺诀', 'cross', 1, -.2, 0, 2, 'pulse'),
         m('摧肝肠诀', 'hook', 1.05, .18, 0, 2, 'pulse'), m('藏离诀', 'blink', 1, .22, 15, 1, 'pulse'),
         m('精失诀', 'punch', 1.1, .48, 0, 1, 'pulse'), m('意恍惚诀', 'hook', 1.05, -.4, 0, 3, 'pulse'),
         m('气浮躁诀', 'flurry', 1.1, -.15, 0, 4, 'pulse'), m('绝技·七者皆伤', 'punch', 1.12, 0, 0, 7, 'seven'),
     ] },
-    whip_baimang: { name: '白蟒软鞭', type: 'flexible_weapon', weapon: 'whip', color: '#a9bdb5', moves: [
+    whip_baimang: { name: '白蟒软鞭', type: 'flexible_weapon', weapon: 'whip', color: '#10f99c', moves: [
         m('银蛇吐信', 'lash', .72, -.18), m('灵蛇缠腕', 'bind', .76, -.25),
         m('毒龙卷柱', 'sweep', .8, .55, 0, 1, 'coil'), m('鳞片倒割', 'hook', .86, .12, 0, 2),
         m('狂蟒翻江', 'lash', .82, -.3, 20, 3), m('千丝万缕', 'lash', .9, -.12, 0, 5),
@@ -145,7 +145,7 @@ export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, im
     for (let i = 0; i < (move.ultimate ? 18 : 11); i++) {
         const t = local - i * 12, a = sampleAt(t), b = sampleAt(t - 12);
         if (t < 560 || t > 1130) continue;
-        ctx.globalAlpha = fade * (1 - i / 20) * .45;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (1 - i / 20) * .45)), .65) * 1.15);
         ctx.lineWidth = (1 - i / 21) * 5 * strength;
         ctx.beginPath(); ctx.moveTo(...a.tip); ctx.lineTo(...b.tip); ctx.stroke();
     }
@@ -157,7 +157,7 @@ export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, im
         const f = age / 510, angle = i * 2.399;
         const x = source.tip[0] + dir * f * (30 + i % 5 * 10);
         const y = source.tip[1] + Math.sin(angle) * (12 + f * 30) - Math.sin(f * Math.PI) * 18;
-        ctx.globalAlpha = fade * (1 - f) * .75;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (1 - f) * .75)), .65) * 1.15);
         ctx.fillStyle = art.color; ctx.strokeStyle = art.color; ctx.lineWidth = 1.3;
         ctx.beginPath();
         if (art.weapon === 'spear') {
@@ -170,7 +170,7 @@ export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, im
     // Impact-only rings do not appear on misses or before the recorded hit.
     if (hit && impactAge >= 0 && impactAge < 500) {
         const f = impactAge / 500;
-        ctx.globalAlpha = (1 - f) * .7;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, ((1 - f) * .7)), .65) * 1.15);
         const rings = move.accent === 'seven' ? 7 : move.ultimate ? 4 : art.weapon === 'unarmed' ? 3 : 1;
         for (let i = 0; i < rings; i++) {
             const radius = 10 + f * (30 + i * 8) + i * 4;
@@ -183,7 +183,7 @@ export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, im
             ctx.stroke();
         }
         if (move.accent === 'coil') {
-            ctx.strokeStyle = '#b7c5bb'; ctx.lineWidth = 2.3 * (1 - f);
+            ctx.strokeStyle = '#10f953'; ctx.lineWidth = 2.3 * (1 - f);
             for (let i = 0; i < (move.ultimate ? 4 : 2); i++) {
                 ctx.beginPath();
                 ctx.ellipse(target[0], target[1] - 12 + i * 15, 22 + f * 25, 8, -.25, f * 4, f * 4 + Math.PI * 1.7);

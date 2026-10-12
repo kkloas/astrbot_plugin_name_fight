@@ -1,6 +1,6 @@
 import {twoBone} from './sampleMotion.js';
 export const names=['损心诀','伤肺诀','摧肝肠诀','藏离诀','精失诀','意恍惚诀','气浮躁诀','绝技·七者皆伤'];
-export const colors=['#286775','#9bafa5','#b58927','#547f58','#c65d30','#80529d','#399aa4'];
+export const colors=['#05b0d6','#05d66e','#d69505','#05d619','#d64405','#8505d6','#05c2d6'];
 export const notes=['阴水先行 / 吞吐三拳 / 水纹暗涌','拔身进步 / 四拳交错 / 银白爆风','避锋转腰 / 反手钻拳 / 金风螺旋','绕背潜身 / 一推一送 / 延迟暗劲','拳骨凝光 / 双拳破罡 / 再进寸劲','上下虚晃 / 紫影换线 / 斜切灵台','交步压进 / 八拳骤雨 / 双拳终击','七色分流 / 拧合实拳 / 七层内震'];
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{x=clamp(x);return x*x*(3-2*x)},mix=(a,b,u)=>a+(b-a)*u;
 export const beats=[[1020,1390,1800],[900,1190,1500,1800],[1100,1430,1800],[1310,1800],[1240,1800],[880,1110,1340,1570,1800],[820,960,1100,1240,1380,1520,1660,1800],[800,935,1070,1205,1340,1475,1610,1800]];
@@ -26,9 +26,9 @@ export function qishangMotion(event,time,travel){
  return {x,lift,opacity,blink:0,pose:{points:[[neck[0],neck[1]-21],neck,hip,be,bh,fe,fh,bk,bf,fk,ff],shoulders,sword:0,lean:0,facing}};
 }
 function fist(ctx,x,y,angle,size,color,alpha){
- ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(size,size);ctx.globalAlpha=alpha;ctx.fillStyle=color;
+ ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(size,size);ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha)), .65) * 1.15);ctx.fillStyle=color;
  ctx.beginPath();ctx.moveTo(-19,-5);ctx.lineTo(-7,-6);ctx.lineTo(-4,-10);ctx.lineTo(7,-10);ctx.lineTo(12,-6);ctx.lineTo(12,3);ctx.lineTo(6,9);ctx.lineTo(-7,7);ctx.lineTo(-19,5);ctx.closePath();ctx.fill();
- ctx.strokeStyle='#eee7d2';ctx.lineWidth=.8;ctx.globalAlpha=alpha*.7;for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(-1+j*4,-8);ctx.lineTo(j*4,-2);ctx.stroke();}ctx.restore();
+ ctx.strokeStyle='#f9bf10';ctx.lineWidth=.8;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (alpha*.7)), .65) * 1.15);for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(-1+j*4,-8);ctx.lineTo(j*4,-2);ctx.stroke();}ctx.restore();
 }
 // Same roll, lean and facing transforms as drawCurvedFigure, sampled this frame.
 export function qishangBody(frame,dir){
@@ -44,7 +44,7 @@ export function qishangEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit,
  const seed=n=>{const x=Math.sin(n*127.1+i*19.7)*43758.54;return x-Math.floor(x)},fade=1-ease((time-2310)/450),grow=ease((time-470)/250),color=colors[i]||colors[0];
  const hands=t=>{const frame=sampleAt(t).frame,d=dir*(frame.pose.facing||1);return {front:[frame.x+d*frame.pose.points[6][0],324+frame.lift+frame.pose.points[6][1]],rear:[frame.x+d*frame.pose.points[4][0],324+frame.lift+frame.pose.points[4][1]],frame,d};};
  const now=hands(time),origin=now.front,d=now.d;
- const line=(pts,c,w,a)=>{ctx.globalAlpha=clamp(a);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();};
+ const line=(pts,c,w,a)=>{ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (clamp(a))), .65) * 1.15);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();};
  const stream=(from,to,kind,c,alpha,phase,width=1)=>{
   for(let j=0;j<(kind===6?13:kind===1?9:7);j++){const pts=[],offset=(j-3)*4;
    for(let k=0;k<=32;k++){const q=k/32,s=Math.sin(q*Math.PI),x=mix(from[0],to[0],q);let y=mix(from[1],to[1],q)+offset*s;
@@ -58,7 +58,7 @@ export function qishangEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit,
    if(j%3===0){
     line(pts,c,width*9,alpha*.09);
     for(let n=1;n<pts.length;n++)line([pts[n-1],pts[n]],c,width*(1+Math.sin(n/32*Math.PI)*3.8),alpha*.3);
-    line(pts.slice(9,22),'#313e38',width*.75,alpha*.26);
+    line(pts.slice(9,22),'#05d676',width*.75,alpha*.26);
    }
    line(pts,c,width*(j%3===0?2.3:1),alpha*(j%3===0?.8:.42));
   }
@@ -77,7 +77,7 @@ export function qishangEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit,
  if(i===0&&time<1810){const early=ease((time-500)/420);stream(origin,[mix(origin[0],target[0],early),target[1]],0,color,grow*fade*.5,time*.002);}
  if(i===2&&time>700&&time<2020){for(let j=0;j<3;j++){const pts=[];for(let n=0;n<=60;n++){const a=n/60*Math.PI*4+time*.008+j*2.1,r=6+n*.4;pts.push([target[0]-d*38+Math.cos(a)*r*.7,target[1]+Math.sin(a)*r]);}line(pts,color,1.3,fade*.25);}}
  if(i===3&&time>860&&time<2100){stream(now.rear,[target[0],target[1]+10],3,color,fade*.35,time*.001);}
- if(i===4){const charge=(1-ease((time-1780)/100))*grow;for(const hand of [now.front,now.rear]){ctx.globalAlpha=charge*.22;ctx.fillStyle=color;ctx.beginPath();ctx.arc(...hand,13+Math.sin(time*.025)*2,0,Math.PI*2);ctx.fill();}}
+ if(i===4){const charge=(1-ease((time-1780)/100))*grow;for(const hand of [now.front,now.rear]){ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (charge*.22)), .65) * 1.15);ctx.fillStyle=color;ctx.beginPath();ctx.arc(...hand,13+Math.sin(time*.025)*2,0,Math.PI*2);ctx.fill();}}
  if(i===5){for(let j=0;j<6;j++){const a=j*1.1+time*.004,r=30+j*4;fist(ctx,target[0]-dir*(45+Math.cos(a)*r),target[1]+Math.sin(a)*r,-Math.sin(a)*.3,1.1,color,grow*fade*.14);}}
  // Seven strands stay distinct until the final convergence at the real fist.
  if(i===7&&time>760&&time<2090){const converge=ease((time-1480)/320);for(let j=0;j<7;j++){
@@ -105,7 +105,7 @@ export function qishangEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit,
    // Expanding water rings, pressure fans, vortices or fractured arcs per force.
    for(let ring=0;ring<3;ring++){const r=(8+ring*9+36*p),pts=[];for(let n=0;n<=42;n++){const t=n/42*Math.PI*(kind===1?1.35:1.8)+ring*.9+age*.004,rough=kind===4?Math.sin(n*2.4)*3:0;pts.push([Math.cos(t)*(r+rough),Math.sin(t)*(r*.64+rough)]);}line(pts,c,ring===0?1.6:.8,a*(kind===3?.18:.4));}
    for(let n=0;n<(i===7?16:30);n++){const angle=n*2.399+j*.7,r=(12+seed(n+j*40)*47)*p,x=Math.cos(angle)*r,y=Math.sin(angle)*r+p*p*15;
-    if(kind===0||kind===3){ctx.globalAlpha=a*.65;ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x,y,1.2+seed(n)*1.4,2.5,angle,0,Math.PI*2);ctx.fill();}
+    if(kind===0||kind===3){ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (a*.65)), .65) * 1.15);ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x,y,1.2+seed(n)*1.4,2.5,angle,0,Math.PI*2);ctx.fill();}
     else if(kind===4){line([[x-2,y+3],[x+3,y],[x-1,y-3]],c,1.3,a*.8);}
     else line([[x,y],[x+Math.cos(angle)*6,y+Math.sin(angle)*6]],c,1,a*.7);
    }

@@ -88,7 +88,7 @@ window.initializeExport = async (source) => {
     exportContext.scale(scale, scale);
     document.getElementById('export-hide').remove();
 };
-window.exportFrame = (time) => {
+const composeExportFrame = (time) => {
     renderFrame(time);
     const out = exportContext;
     out.drawImage(exportBackground, 0, 0);
@@ -151,5 +151,43 @@ window.exportFrame = (time) => {
         const y = rect.y - exportOrigin.y + (rect.height - ascent - descent) / 2 + ascent;
         out.fillText(element.textContent, x, y);
     }
+};
+window.exportFrame = (time) => {
+    composeExportFrame(time);
     return exportCanvas.toDataURL('image/png').split(',')[1];
+};
+let previousPixels = null;
+window.exportRawFrame = async (time) => {
+    composeExportFrame(time);
+    const pixels = exportContext.getImageData(0, 0, exportCanvas.width, exportCanvas.height).data;
+    const width = exportCanvas.width, height = exportCanvas.height;
+    const words = new Uint32Array(pixels.buffer, pixels.byteOffset, pixels.byteLength / 4);
+    let left = width, top = height, right = 0, bottom = 0;
+    if (previousPixels && previousPixels.length === words.length) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x;
+                if (words[i] !== previousPixels[i]) {
+                    left = Math.min(left, x); right = Math.max(right, x + 1);
+                    top = Math.min(top, y); bottom = y + 1;
+                }
+            }
+        }
+    } else { left = 0; top = 0; right = width; bottom = height; }
+    // Compare exact RGBA words; no color reduction occurs during transport.
+    previousPixels = words;
+    if (right === 0) return {width, height, x: 0, y: 0, patchWidth: 0, patchHeight: 0, data: ''};
+    const patchWidth = right - left, patchHeight = bottom - top;
+    const patch = new Uint8Array(patchWidth * patchHeight * 4);
+    for (let y = 0; y < patchHeight; y++) {
+        const start = ((top + y) * width + left) * 4;
+        patch.set(pixels.subarray(start, start + patchWidth * 4), y * patchWidth * 4);
+    }
+    const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(new Blob([patch]));
+    });
+    return {width, height, x: left, y: top, patchWidth, patchHeight, data};
 };

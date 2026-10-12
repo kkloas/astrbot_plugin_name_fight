@@ -5,18 +5,17 @@ import asyncio
 import hashlib
 import os
 import re
-import shutil
 import time
 from copy import deepcopy
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
-from urllib.request import urlopen
+from zoneinfo import ZoneInfo
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
+from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
 
 try:
     from .database import BATTLE_POINT_REWARDS, FighterRepository, MAX_FIGHTERS_PER_USER, TEAM3_TEAM_SIZE
@@ -90,6 +89,11 @@ except ImportError:
         team3_leaderboard_message,
         wallet_message,
     )
+
+try:
+    from .avatar_storage import save_avatar
+except ImportError:
+    from avatar_storage import save_avatar
 
 PENDING_CREATE_TIMEOUT = 60.0
 CHALLENGE_TIMEOUT = 120.0
@@ -192,28 +196,10 @@ def _extract_numeric_tail(value: Any) -> str | None:
 
 
 def extract_user_id(event: AstrMessageEvent) -> str:
-    direct_keys = ('sender_id', 'user_id', 'from_user_id', 'qq', 'uid', 'userId', 'senderId')
-    for root in (
-        event,
-        getattr(event, 'sender', None),
-        _safe_call(event, 'get_sender'),
-        _safe_call(event, 'get_platform_event'),
-        _safe_call(event, 'get_message_obj'),
-        getattr(event, 'message_obj', None),
-        getattr(event, 'raw_message', None),
-    ):
-        value = _dig_value(root, direct_keys)
-        if value not in (None, ''):
-            return str(value)
-    for name in ('get_sender_id', 'get_user_id'):
-        value = _safe_call(event, name)
-        if value not in (None, ''):
-            return str(value)
-    for attr in ('session_id', 'sid', 'conversation_id', 'session', 'unified_msg_origin'):
-        numeric = _extract_numeric_tail(getattr(event, attr, None))
-        if numeric is not None:
-            return numeric
-    raise RuntimeError('\u65e0\u6cd5\u8bc6\u522b\u5f53\u524d\u7528\u6237ID')
+    value = _safe_call(event, "get_sender_id")
+    if value not in (None, ""):
+        return str(value)
+    raise RuntimeError("Cannot identify the message sender")
 
 
 def extract_user_label(event: AstrMessageEvent) -> str:
@@ -234,22 +220,10 @@ def extract_user_label(event: AstrMessageEvent) -> str:
 
 
 def extract_group_id(event: AstrMessageEvent) -> str:
-    group_keys = ('group_id', 'room_id', 'channel_id', 'groupId')
-    for root in (
-        event,
-        getattr(event, 'message_obj', None),
-        getattr(event, 'raw_message', None),
-        _safe_call(event, 'get_platform_event'),
-        _safe_call(event, 'get_message_obj'),
-    ):
-        value = _dig_value(root, group_keys)
-        if value not in (None, ''):
-            return str(value)
-    for attr in ('session_id', 'sid', 'conversation_id', 'session', 'unified_msg_origin'):
-        numeric = _extract_numeric_tail(getattr(event, attr, None))
-        if numeric is not None:
-            return numeric
-    return 'default_group'
+    value = _safe_call(event, "get_group_id")
+    if value not in (None, "", "0", 0):
+        return str(value)
+    raise RuntimeError("Please use this command in a group")
 
 
 def _walk_nested(root: Any, depth: int = 0, seen: set[int] | None = None):
@@ -308,61 +282,45 @@ def _image_ref_from_mapping(data: dict[str, Any]) -> str | None:
 
 
 def extract_first_image_ref(event: AstrMessageEvent) -> str | None:
-    roots = (
-        event,
-        getattr(event, 'message_obj', None),
-        getattr(event, 'raw_message', None),
-        _safe_call(event, 'get_platform_event'),
-        _safe_call(event, 'get_message_obj'),
-    )
-    for root in roots:
-        for node in _walk_nested(root):
-            if isinstance(node, dict):
-                node_type = str(node.get('type', '')).lower()
-                data = node.get('data', {}) if isinstance(node.get('data', {}), dict) else {}
-                if node_type == 'image':
-                    ref = _image_ref_from_mapping(data) or _image_ref_from_mapping(node)
-                    if ref:
-                        return ref
-                ref = _image_ref_from_mapping(node)
-                if ref:
-                    return ref
+    messages = _safe_call(event, "get_messages") or []
+    for node in messages:
+        if isinstance(node, dict):
+            if str(node.get("type", "")).lower() != "image":
                 continue
-            node_type = str(getattr(node, 'type', '')).lower()
-            if node_type != 'image':
-                continue
-            data = getattr(node, 'data', None)
+            data = node.get("data")
             if isinstance(data, dict):
                 ref = _image_ref_from_mapping(data)
                 if ref:
                     return ref
-            for attr in ('file_path', 'path', 'local_path', 'url', 'file_url', 'src', 'file', 'image'):
+        elif (
+            str(
+                getattr(getattr(node, "type", ""), "value", getattr(node, "type", ""))
+            ).lower()
+            == "image"
+        ):
+            for attr in ("url", "file", "path"):
                 value = getattr(node, attr, None)
-                if value not in (None, ''):
+                if value:
                     return str(value)
-    message_text = str(getattr(event, 'message_str', '') or '')
-    match = re.search(r'\[CQ:image,([^\]]+)\]', message_text)
-    if not match:
-        return None
-    payload = match.group(1)
-    parts: dict[str, str] = {}
-    for item in payload.split(','):
-        if '=' not in item:
-            continue
-        key, value = item.split('=', 1)
-        parts[key.strip()] = value.strip()
-    return parts.get('url') or parts.get('file')
+    return None
 
 
-@register('astrbot_plugin_name_fight', 'Codex', '\u6587\u5b57\u683c\u6597\u5f15\u64ce', '1.2.1')
+@register('astrbot_plugin_name_fight', 'kkloas', 'Name Fight', '1.3.0')
 class Main(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         self.config = config or {}
         self.repo = FighterRepository()
         self.engine = CombatEngine()
-        self.broadcast_delay = float(self.config.get('broadcast_delay', 1.6))
-        self.is_battling = False
+        self.broadcast_delay = max(
+            0.0, min(10.0, float(self.config.get("broadcast_delay", 1.6)))
+        )
+        self._battling_groups: set[str] = set()
+        self._battle_tasks: set[asyncio.Task] = set()
+        self._render_slots = asyncio.Semaphore(
+            max(1, min(4, int(self.config.get("render_concurrency", 1))))
+        )
+        self._render_tasks: set[asyncio.Task] = set()
         self.pending_challenges: dict[str, dict[str, Any]] = {}
         self.pending_creations: dict[str, dict[str, Any]] = {}
         self.pending_team3_challenges: dict[str, dict[str, Any]] = {}
@@ -370,7 +328,23 @@ class Main(Star):
         self.pending_avatar_uploads: dict[str, dict[str, Any]] = {}
         self._daily_settlement_task: asyncio.Task | None = None
         self._ensure_daily_settlement_task()
-        logger.info('[name_fight] plugin loaded')
+        logger.info("[name_fight] plugin loaded")
+
+    async def terminate(self) -> None:
+        tasks = set(self._battle_tasks)
+        if self._daily_settlement_task is not None:
+            tasks.add(self._daily_settlement_task)
+        tasks.discard(asyncio.current_task())
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._battling_groups.clear()
+        self.pending_challenges.clear()
+        self.pending_team3_challenges.clear()
+        self.pending_creations.clear()
+        self.pending_martial_choices.clear()
+        self.pending_avatar_uploads.clear()
 
     def _ensure_daily_settlement_task(self) -> None:
         task = self._daily_settlement_task
@@ -384,29 +358,37 @@ class Main(Star):
 
     async def _daily_settlement_loop(self) -> None:
         while True:
-            now = datetime.now()
-            next_midnight = datetime.combine((now + timedelta(days=1)).date(), datetime.min.time())
+            now = datetime.now(ZoneInfo("Asia/Shanghai"))
+            next_midnight = datetime.combine(
+                (now + timedelta(days=1)).date(), datetime.min.time(), tzinfo=now.tzinfo
+            )
             wait_seconds = max(1.0, (next_midnight - now).total_seconds())
             try:
                 await asyncio.sleep(wait_seconds)
-                day_key = (date.today() - timedelta(days=1)).isoformat()
+                day_key = (
+                    datetime.now(ZoneInfo("Asia/Shanghai")).date() - timedelta(days=1)
+                ).isoformat()
                 await self._run_daily_settlements(day_key)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                logger.warning(f'[name_fight] daily settlement failed: {exc!r}')
+                logger.warning(f"[name_fight] daily settlement failed: {exc!r}")
                 await asyncio.sleep(5.0)
 
     async def _run_daily_settlements(self, day_key: str) -> None:
         total_rewards = 0
-        for board in ('1v1', '3v3'):
+        for board in ("1v1", "3v3"):
             for group_id in self.repo.get_tracked_group_ids(board):
                 try:
-                    result = self.repo.settle_daily_leaderboard(group_id, board, day_key)
+                    result = await asyncio.to_thread(
+                        self.repo.settle_daily_leaderboard, group_id, board, day_key
+                    )
                 except ValueError:
                     continue
-                total_rewards += len(result.get('rewards', []))
-        logger.info(f'[name_fight] daily settlements finished: day={day_key}, rewards={total_rewards}')
+                total_rewards += len(result.get("rewards", []))
+        logger.info(
+            f"[name_fight] daily settlements finished: day={day_key}, rewards={total_rewards}"
+        )
 
     def _consume_pending_creation(self, user_id: str) -> dict[str, Any] | None:
         pending = self.pending_creations.get(user_id)
@@ -469,31 +451,26 @@ class Main(Star):
         configured = self._boss_admin_ids()
         if configured:
             return user_id in configured
-        admin_flags = ('is_admin', 'admin', 'is_owner', 'owner')
-        roots = (
-            event,
-            getattr(event, 'sender', None),
-            getattr(event, 'message_obj', None),
-            getattr(event, 'raw_message', None),
-            _safe_call(event, 'get_platform_event'),
-            _safe_call(event, 'get_message_obj'),
+        if _safe_call(event, "is_admin") is True:
+            return True
+        if _safe_call(event, "get_platform_name") != "aiocqhttp":
+            return False
+        message = getattr(event, "message_obj", None)
+        raw = getattr(message, "raw_message", None)
+        if not isinstance(raw, dict):
+            return False
+        sender = raw.get("sender")
+        return (
+            isinstance(sender, dict)
+            and str(sender.get("user_id", "")) == user_id
+            and str(raw.get("group_id", "")) == str(_safe_call(event, "get_group_id"))
+            and sender.get("role") in {"admin", "owner"}
         )
-        for root in roots:
-            for flag in admin_flags:
-                value = _dig_value(root, (flag,))
-                if isinstance(value, bool) and value:
-                    return True
-                if str(value).strip().lower() in {'1', 'true', 'admin', 'owner'}:
-                    return True
-            role = _dig_value(root, ('role', 'sender_role', 'permission'))
-            if str(role).strip().lower() in {'admin', 'owner', 'group_admin', 'group_owner'}:
-                return True
-        return True
 
     async def _require_boss_admin(self, event: AstrMessageEvent, user_id: str) -> bool:
         if self._is_boss_admin(event, user_id):
             return True
-        await event.send(event.plain_result('只有管理员可以操作世界BOSS命令。'))
+        await event.send(event.plain_result('只有授权管理员可以操作管理命令。'))
         event.stop_event()
         return False
 
@@ -569,55 +546,56 @@ class Main(Star):
         avatar_dir.mkdir(parents=True, exist_ok=True)
         return avatar_dir
 
-    def _avatar_target_path(self, fighter_name: str) -> Path:
-        digest = hashlib.sha256(fighter_name.strip().casefold().encode('utf-8')).hexdigest()[:24]
-        return self._avatar_dir() / f'{digest}.img'
+    def _avatar_target_path(self, user_id: str, fighter_name: str) -> Path:
+        digest = hashlib.sha256(
+            f"{user_id}:{fighter_name}".encode("utf-8")
+        ).hexdigest()[:24]
+        return self._avatar_dir() / f"{digest}.img"
 
-    def _resolve_local_image_path(self, image_ref: str) -> Path | None:
-        parsed = urlparse(str(image_ref))
-        if parsed.scheme in ('http', 'https'):
-            return None
-        candidate = str(image_ref)
-        if parsed.scheme == 'file':
-            candidate = unquote(parsed.path or '')
-            if re.match(r'^/[A-Za-z]:/', candidate):
-                candidate = candidate[1:]
-            elif parsed.netloc:
-                candidate = f'//{parsed.netloc}{candidate}'
-        candidate = candidate.strip().strip('"')
-        if not candidate:
-            return None
-        path = Path(candidate)
-        return path if path.exists() else None
+    async def _write_avatar_image(self, image_ref: str, target_path: Path) -> None:
+        await save_avatar(
+            image_ref,
+            target_path,
+            allowed_roots=[Path(get_astrbot_temp_path())],
+            maximum_bytes=max(1, min(20, int(self.config.get("avatar_max_mb", 5))))
+            * 1024
+            * 1024,
+        )
 
-    def _write_avatar_image(self, image_ref: str, target_path: Path) -> None:
-        local_path = self._resolve_local_image_path(image_ref)
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        if local_path is not None:
-            shutil.copyfile(local_path, target_path)
-            return
-        parsed = urlparse(str(image_ref))
-        if parsed.scheme not in ('http', 'https'):
-            raise ValueError('\u672a\u68c0\u6d4b\u5230\u53ef\u8bfb\u53d6\u7684\u56fe\u7247\uff0c\u8bf7\u628a\u56fe\u7247\u548c\u6307\u4ee4\u653e\u5728\u540c\u4e00\u6761\u6d88\u606f\u91cc\u3002')
-        with urlopen(str(image_ref), timeout=15) as response:
-            data = response.read()
-        if not data:
-            raise ValueError('\u56fe\u7247\u4e0b\u8f7d\u5931\u8d25\uff0c\u8bf7\u6362\u4e00\u5f20\u56fe\u7247\u518d\u8bd5\u3002')
-        target_path.write_bytes(data)
-
-    def _save_fighter_avatar(self, user_id: str, fighter_name: str, image_ref: str) -> dict[str, Any]:
+    async def _save_fighter_avatar(
+        self, user_id: str, fighter_name: str, image_ref: str
+    ) -> dict[str, Any]:
         fighter = self.repo.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
-            raise ValueError('\u4f60\u540d\u4e0b\u6ca1\u6709\u8fd9\u4e2a\u89d2\u8272\u3002')
-        target_path = self._avatar_target_path(fighter_name)
-        old_path = Path(str(fighter.get('avatar_path') or '')) if fighter.get('avatar_path') else None
-        self._write_avatar_image(image_ref, target_path)
-        if old_path and old_path != target_path and old_path.exists():
-            try:
-                old_path.unlink()
-            except OSError:
-                logger.warning(f'[name_fight] failed to remove old avatar: {old_path}')
-        return self.repo.set_fighter_avatar_path(user_id, fighter_name, str(target_path))
+            raise ValueError(
+                "\u4f60\u540d\u4e0b\u6ca1\u6709\u8fd9\u4e2a\u89d2\u8272\u3002"
+            )
+        target_path = self._avatar_target_path(user_id, fighter_name)
+        old_path = (
+            Path(str(fighter.get("avatar_path") or ""))
+            if fighter.get("avatar_path")
+            else None
+        )
+        await self._write_avatar_image(image_ref, target_path)
+        updated = self.repo.set_fighter_avatar_path(
+            user_id, fighter_name, str(target_path)
+        )
+        if (
+            old_path
+            and old_path != target_path
+            and old_path.resolve().parent == self._avatar_dir().resolve()
+        ):
+            with self.repo._connect() as connection:
+                referenced = connection.execute(
+                    "SELECT 1 FROM fighters WHERE avatar_path = ? LIMIT 1",
+                    (str(old_path),),
+                ).fetchone()
+            if referenced is None:
+                try:
+                    old_path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("[name_fight] failed to remove old avatar")
+        return updated
 
     def _remember_group_user_label(self, event: AstrMessageEvent, group_id: str) -> None:
         try:
@@ -631,9 +609,9 @@ class Main(Star):
         return f'{group_id}:{defender_user_id}'
 
     def _current_week_key(self) -> str:
-        today = date.today()
+        today = datetime.now(ZoneInfo("Asia/Shanghai")).date() - timedelta(days=7)
         iso_year, iso_week, _iso_weekday = today.isocalendar()
-        return f'{iso_year}-W{iso_week:02d}'
+        return f"{iso_year}-W{iso_week:02d}"
 
     def _rank_reward_bonus(self, mode: str, winner_before: float, loser_before: float) -> int:
         diff = loser_before - winner_before
@@ -883,11 +861,13 @@ class Main(Star):
         reward_enabled: bool = False,
         elo_scale: float = 1.0,
     ) -> None:
-        if self.is_battling:
+        if group_id in self._battling_groups:
             await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
+        battle_task = asyncio.current_task()
+        self._battle_tasks.add(battle_task)
         try:
             await event.send(event.plain_result(opener))
             await asyncio.sleep(self.broadcast_delay)
@@ -935,7 +915,8 @@ class Main(Star):
                     f'{defender_label} +{gain_d} ({reward_detail_d}\uff0c\u73b0\u6709 {defender_points})'
                 ))
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
+            self._battle_tasks.discard(battle_task)
             event.stop_event()
 
     def _battle_team_vs_boss(
@@ -1073,11 +1054,13 @@ class Main(Star):
         activity: dict[str, Any],
         attempt_info: dict[str, int],
     ) -> None:
-        if self.is_battling:
+        if group_id in self._battling_groups:
             await event.send(event.plain_result('当前已有战斗正在进行, 请稍后再试。'))
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
+        battle_task = asyncio.current_task()
+        self._battle_tasks.add(battle_task)
         try:
             phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
             await self._send_text_safe(event, f"【世界BOSS挑战开始】{user_label} 向 {activity['boss_name']} 发起挑战。")
@@ -1153,12 +1136,13 @@ class Main(Star):
                 result_payload['total_damage'] = int(contribution['total_damage'])
                 result_payload['is_killed'] = bool(damage_result['is_killed'])
                 if damage_result['is_killed']:
-                    self.repo.settle_group_boss(group_id, activity['boss_id'])
+                    await asyncio.to_thread(self.repo.settle_group_boss, group_id, activity['boss_id'])
 
             await asyncio.sleep(self.broadcast_delay)
             await self._send_text_safe(event, boss_fight_result_message(result_payload))
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
+            self._battle_tasks.discard(battle_task)
             event.stop_event()
 
     async def _start_world_boss_fight_quick(
@@ -1171,11 +1155,13 @@ class Main(Star):
         activity: dict[str, Any],
         attempt_info: dict[str, int],
     ) -> None:
-        if self.is_battling:
+        if group_id in self._battling_groups:
             await event.send(event.plain_result('当前已有战斗正在进行, 请稍后再试。'))
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
+        battle_task = asyncio.current_task()
+        self._battle_tasks.add(battle_task)
         try:
             phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
             await self._send_text_safe(event, f"【世界BOSS挑战开始】{user_label} 向 {activity['boss_name']} 发起挑战。")
@@ -1251,12 +1237,13 @@ class Main(Star):
                 result_payload['total_damage'] = int(contribution['total_damage'])
                 result_payload['is_killed'] = bool(damage_result['is_killed'])
                 if damage_result['is_killed']:
-                    self.repo.settle_group_boss(group_id, activity['boss_id'])
+                    await asyncio.to_thread(self.repo.settle_group_boss, group_id, activity['boss_id'])
 
             await asyncio.sleep(self.broadcast_delay)
             await self._send_text_safe(event, boss_fight_result_message(result_payload))
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
+            self._battle_tasks.discard(battle_task)
             event.stop_event()
 
     async def _try_consume_avatar_upload(self, event: AstrMessageEvent) -> bool:
@@ -1273,7 +1260,7 @@ class Main(Star):
         if pending is None:
             return False
         try:
-            fighter = self._save_fighter_avatar(user_id, pending['fighter_name'], image_ref)
+            fighter = await self._save_fighter_avatar(user_id, pending['fighter_name'], image_ref)
         except ValueError as exc:
             await event.send(event.plain_result(str(exc)))
             event.stop_event()
@@ -1314,25 +1301,36 @@ class Main(Star):
             if index + 1 < len(lines):
                 await asyncio.sleep(self.broadcast_delay)
 
-    async def _send_fighter_summary_safe(self, event: AstrMessageEvent, fighter: dict, created: bool = False, prefix_lines: list[str] | None = None, suffix_lines: list[str] | None = None) -> None:
+    async def _send_fighter_summary_safe(
+        self,
+        event: AstrMessageEvent,
+        fighter: dict,
+        created: bool = False,
+        prefix_lines: list[str] | None = None,
+        suffix_lines: list[str] | None = None,
+    ) -> None:
         import os
-        
-        rating_raw = float(fighter.get('star_rating', 3.0))
-        breakthrough = int(fighter.get('breakthrough_stage', 0) or 0)
-        
+
+        rating_raw = float(fighter.get("star_rating", 3.0))
+        breakthrough = int(fighter.get("breakthrough_stage", 0) or 0)
+
         # 5 鏄熷強浠ヤ笂瑙掕壊锛氬彂鍥剧墖 + 鍓嶅悗闄勫甫鏂囧瓧
         if rating_raw >= 5.0 or breakthrough > 0:
-            data_dir = os.path.join(os.path.dirname(__file__), "data")
+            data_dir = str(Path(__file__).parent / "data")
             image_path = None
             try:
                 from .render_profile import render_star_card
-                image_path = render_star_card(fighter, data_dir)
+
+                image_path = await asyncio.to_thread(
+                    render_star_card, fighter, data_dir, get_astrbot_temp_path()
+                )
             except Exception as e:
                 logger.error(f"[name_fight] render star card failed: {e}")
-                
+
             if image_path and os.path.exists(image_path):
                 try:
                     from astrbot.api.message_components import Image
+
                     # 鍏堝彂鍓嶇紑鏂囧瓧锛堝鏋滄湁锛?
                     if prefix_lines:
                         await self._send_text_safe(event, join_lines(prefix_lines))
@@ -1345,15 +1343,18 @@ class Main(Star):
                         await self._send_text_safe(event, join_lines(suffix_lines))
                     return
                 except Exception as e:
-                    logger.warning(f"[name_fight] Failed to send image, fallback to text: {e}")
-        
+                    logger.warning(
+                        f"[name_fight] Failed to send image, fallback to text: {e}"
+                    )
+                finally:
+                    Path(image_path).unlink(missing_ok=True)
+
         # 4星及以下，或图片发送失败时：回退纯文字
         lines = list(prefix_lines) if prefix_lines else []
         lines.extend(fighter_summary_lines(fighter, created))
         if suffix_lines:
             lines.extend(suffix_lines)
         await self._send_text_safe(event, join_lines(lines))
-
 
     async def _send_image_path_safe(self, event: AstrMessageEvent, image_path: str) -> bool:
         if not image_path or not os.path.exists(image_path):
@@ -1376,7 +1377,7 @@ class Main(Star):
         replay_state: dict[str, Any],
         title: str = "江湖对决回放",
     ) -> bool:
-        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        data_dir = get_astrbot_temp_path()
         try:
             from .web_battle_renderer import render_battle_animation
         except ImportError:
@@ -1397,25 +1398,46 @@ class Main(Star):
         segments: list[dict[str, Any]],
         title: str = "江湖对决回放",
     ) -> bool:
-        data_dir = os.path.join(os.path.dirname(__file__), "data")
-        try:
-            from .web_battle_renderer import render_battle_sequence
-        except ImportError:
-            from web_battle_renderer import render_battle_sequence
-        return await self._render_and_send_battle(
-            event,
-            render_battle_sequence,
-            segments,
-            data_dir,
-            title,
-        )
+        if not segments:
+            return False
+        for index, segment in enumerate(segments, 1):
+            attacker = segment["fighter_a"]
+            defender = segment["fighter_b"]
+            result = segment["result"]
+            label = (
+                f"{title} - 第 {index}/{len(segments)} 场\n"
+                f"{attacker['name']} vs {defender['name']}"
+            )
+            await event.send(event.plain_result(label))
+            sent = await self._send_battle_animation_safe(
+                event, attacker, defender, result, label
+            )
+            if not sent:
+                # Only replay the failed bout as text; earlier GIFs were delivered.
+                await self._send_lines(event, compact_battle_logs(result["logs"]))
+        # Every bout is handled, including any per-bout text fallback.
+        return True
 
     async def _render_and_send_battle(
         self, event: AstrMessageEvent, renderer: Any, *args: Any
     ) -> bool:
+        if not self.config.get("enable_gif", True):
+            return False
+        try:
+            await asyncio.wait_for(self._render_slots.acquire(), timeout=5)
+        except TimeoutError:
+            return False
         image_path = None
         started = time.perf_counter()
         render_task = asyncio.create_task(asyncio.to_thread(renderer, *args))
+
+        self._render_tasks.add(render_task)
+
+        def release_slot(task: asyncio.Task) -> None:
+            self._render_slots.release()
+            self._render_tasks.discard(task)
+
+        render_task.add_done_callback(release_slot)
 
         def discard_result(task: asyncio.Task) -> None:
             if not task.cancelled():
@@ -1430,8 +1452,13 @@ class Main(Star):
 
         try:
             try:
-                image_path = await asyncio.shield(render_task)
-            except asyncio.CancelledError:
+                image_path = await asyncio.wait_for(
+                    asyncio.shield(render_task),
+                    timeout=max(
+                        5, min(300, float(self.config.get("render_timeout", 120)))
+                    ),
+                )
+            except (asyncio.CancelledError, TimeoutError):
                 # Threads finish independently; remove a late output after cancellation.
                 render_task.add_done_callback(discard_result)
                 raise
@@ -1482,11 +1509,13 @@ class Main(Star):
         reward_labels: tuple[str, str] | None = None,
         elo_scale: float = 1.0,
     ) -> None:
-        if self.is_battling:
+        if group_id in self._battling_groups:
             await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
+        battle_task = asyncio.current_task()
+        self._battle_tasks.add(battle_task)
         try:
             await event.send(event.plain_result(opener))
             await asyncio.sleep(self.broadcast_delay)
@@ -1540,7 +1569,8 @@ class Main(Star):
                     f'{defender_label} +{gain_d} ({reward_detail_d}\uff0c\u73b0\u6709 {defender_points})'
                 ))
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
+            self._battle_tasks.discard(battle_task)
             event.stop_event()
 
     @filter.command('fhelp', alias={'帮助'})
@@ -1722,7 +1752,7 @@ class Main(Star):
         image_ref = extract_first_image_ref(event)
         if image_ref:
             try:
-                fighter = self._save_fighter_avatar(user_id, fighter_name, image_ref)
+                fighter = await self._save_fighter_avatar(user_id, fighter_name, image_ref)
             except ValueError as exc:
                 await event.send(event.plain_result(str(exc)))
                 event.stop_event()
@@ -1754,7 +1784,7 @@ class Main(Star):
         user_id = await self._require_user_id(event)
         if user_id is None:
             return
-        today = date.today().isoformat()
+        today = datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
         try:
             wallet = self.repo.claim_daily_signin(user_id, today)
         except ValueError as exc:
@@ -2556,7 +2586,7 @@ class Main(Star):
             await event.send(event.plain_result('【世界BOSS】当前群还没有正在进行的世界BOSS活动。'))
             event.stop_event()
             return
-        used_attempts = self.repo.get_group_boss_attempt_usage(activity['boss_id'], group_id, user_id, date.today().isoformat())
+        used_attempts = self.repo.get_group_boss_attempt_usage(activity['boss_id'], group_id, user_id, datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat())
         remaining_attempts = max(0, WORLD_BOSS_DAILY_LIMIT - int(used_attempts))
         entries = self.repo.get_group_boss_rank(group_id, activity['boss_id'], limit=5)
         await self._send_world_boss_cards_safe(event, activity)
@@ -2582,7 +2612,7 @@ class Main(Star):
                 activity['boss_id'],
                 group_id,
                 user_id,
-                date.today().isoformat(),
+                datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat(),
                 WORLD_BOSS_DAILY_LIMIT,
             )
         except ValueError as exc:
@@ -2618,7 +2648,7 @@ class Main(Star):
                 activity['boss_id'],
                 group_id,
                 user_id,
-                date.today().isoformat(),
+                datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat(),
                 WORLD_BOSS_DAILY_LIMIT,
             )
         except ValueError as exc:
@@ -2960,7 +2990,7 @@ class Main(Star):
             await event.send(event.plain_result('当前群没有可关闭的世界BOSS活动。'))
             event.stop_event()
             return
-        updated = self.repo.close_group_boss(group_id, activity['boss_id'])
+        self.repo.close_group_boss(group_id, activity['boss_id'])
         await event.send(
             event.plain_result(
                 '【世界BOSS已关闭】本期世界BOSS未被击杀。'
@@ -2987,7 +3017,7 @@ class Main(Star):
         settlement = self.repo.get_group_boss_settlement(group_id, activity['boss_id'])
         if settlement is None:
             if activity['status'] in ('killed', 'closed'):
-                settlement = self.repo.settle_group_boss(group_id, activity['boss_id'])
+                settlement = await asyncio.to_thread(self.repo.settle_group_boss, group_id, activity['boss_id'])
             elif activity['status'] == 'active':
                 await event.send(event.plain_result('当前世界BOSS尚未击杀，请先继续挑战或使用 /bossclose 结束活动。'))
                 event.stop_event()
@@ -2999,7 +3029,6 @@ class Main(Star):
         await event.send(event.plain_result(boss_settlement_message(settlement)))
         event.stop_event()
 
-    @filter.command('rank3', alias={'三排榜'})
     @filter.command('rank3', alias={'\u4e09\u6392\u699c'})
     async def team3_rank_command(self, event: AstrMessageEvent):
         group_id = await self._require_group_id(event)
@@ -3021,65 +3050,87 @@ class Main(Star):
     
     @filter.command('daysettle', alias={'\u65e5\u699c\u7ed3\u7b97'})
     async def daily_settle_command(self, event: AstrMessageEvent):
+        user_id = await self._require_user_id(event)
+        if user_id is None or not await self._require_boss_admin(event, user_id):
+            return
         group_id = await self._require_group_id(event)
         if group_id is None:
             return
-        text = str(getattr(event, 'message_str', '') or '').strip()
+        text = str(getattr(event, "message_str", "") or "").strip()
         parts = text.split()
-        mode = 'all'
-        day_key = (date.today() - timedelta(days=1)).isoformat()
+        mode = "all"
+        day_key = (
+            datetime.now(ZoneInfo("Asia/Shanghai")).date() - timedelta(days=1)
+        ).isoformat()
         if len(parts) >= 2:
             candidate = parts[1].strip().lower()
-            if candidate in ('all', '1v1', '3v3'):
+            if candidate in ("all", "1v1", "3v3"):
                 mode = candidate
             else:
                 day_key = parts[1].strip()
         if len(parts) >= 3:
             day_key = parts[2].strip()
         try:
-            datetime.strptime(day_key, '%Y-%m-%d')
+            datetime.strptime(day_key, "%Y-%m-%d")
         except ValueError:
-            await event.send(event.plain_result('\u7528\u6cd5: /\u65e5\u699c\u7ed3\u7b97 [1v1|3v3|all] [YYYY-MM-DD]'))
+            await event.send(
+                event.plain_result(
+                    "\u7528\u6cd5: /\u65e5\u699c\u7ed3\u7b97 [1v1|3v3|all] [YYYY-MM-DD]"
+                )
+            )
             event.stop_event()
             return
-        boards = ['1v1', '3v3'] if mode == 'all' else [mode]
+        boards = ["1v1", "3v3"] if mode == "all" else [mode]
         lines: list[str] = []
         for board in boards:
             try:
-                result = self.repo.settle_daily_leaderboard(group_id, board, day_key)
+                result = await asyncio.to_thread(
+                    self.repo.settle_daily_leaderboard, group_id, board, day_key
+                )
             except ValueError as exc:
-                lines.append(f'\u3010\u5468\u699c\u7ed3\u7b97\u3011{board}: {exc}')
+                lines.append(f"\u3010\u5468\u699c\u7ed3\u7b97\u3011{board}: {exc}")
                 continue
             lines.extend(self._format_daily_settlement_lines(result))
         if not lines:
-            lines.append('\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002')
+            lines.append(
+                "\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002"
+            )
         await self._send_text_safe(event, join_lines(lines))
         event.stop_event()
 
     @filter.command('weeksettle', alias={'weeklysettle', '\u5468\u699c\u7ed3\u7b97'})
     async def weekly_settle_command(self, event: AstrMessageEvent):
+        user_id = await self._require_user_id(event)
+        if user_id is None or not await self._require_boss_admin(event, user_id):
+            return
         group_id = await self._require_group_id(event)
         if group_id is None:
             return
-        text = str(getattr(event, 'message_str', '') or '').strip()
+        text = str(getattr(event, "message_str", "") or "").strip()
         parts = text.split(maxsplit=1)
-        mode = parts[1].strip().lower() if len(parts) == 2 and parts[1].strip() else 'all'
-        if mode not in ('all', '1v1', '3v3'):
-            await event.send(event.plain_result('用法: /周榜结算 [1v1|3v3|all]'))
+        mode = (
+            parts[1].strip().lower() if len(parts) == 2 and parts[1].strip() else "all"
+        )
+        if mode not in ("all", "1v1", "3v3"):
+            await event.send(event.plain_result("用法: /周榜结算 [1v1|3v3|all]"))
             event.stop_event()
             return
-        boards = ['1v1', '3v3'] if mode == 'all' else [mode]
+        boards = ["1v1", "3v3"] if mode == "all" else [mode]
         week_key = self._current_week_key()
         lines: list[str] = []
         for board in boards:
             try:
-                result = self.repo.settle_weekly_leaderboard(group_id, board, week_key)
+                result = await asyncio.to_thread(
+                    self.repo.settle_weekly_leaderboard, group_id, board, week_key
+                )
             except ValueError as exc:
-                lines.append(f'\u3010\u5468\u699c\u7ed3\u7b97\u3011{board}: {exc}')
+                lines.append(f"\u3010\u5468\u699c\u7ed3\u7b97\u3011{board}: {exc}")
                 continue
             lines.extend(self._format_weekly_settlement_lines(result))
         if not lines:
-            lines.append('\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002')
+            lines.append(
+                "\u672c\u6b21\u6392\u884c\u699c\u6ca1\u6709\u53ef\u53d1\u5956\u5bf9\u8c61\u3002"
+            )
         await self._send_text_safe(event, join_lines(lines))
         event.stop_event()
 

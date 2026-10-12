@@ -8,6 +8,13 @@ import shutil
 import sqlite3
 import time
 from pathlib import Path
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+try:
+    from .shared_storage import serialized_user_action
+except ImportError:
+    from shared_storage import serialized_user_action
 from typing import Any
 
 
@@ -131,7 +138,9 @@ BREAKTHROUGH_BONUS = {
 
 def _default_data_dir() -> Path:
     if BASE_DIR.parent.name == "plugins":
-        return BASE_DIR.parent.parent / "name_fight_data"
+        from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+
+        return Path(get_astrbot_data_path()) / "name_fight_data"
     return BASE_DIR / "name_fight_data"
 
 
@@ -243,6 +252,14 @@ WORLD_BOSS_CLOSED_RANK_DEFAULT_REWARD = {
 }
 
 
+class _ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 class FighterRepository:
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or _default_db_path()
@@ -267,7 +284,7 @@ class FighterRepository:
             return json.load(file)
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.db_path)
+        connection = sqlite3.connect(self.db_path, timeout=15, factory=_ClosingConnection)
         connection.row_factory = sqlite3.Row
         return connection
 
@@ -302,6 +319,7 @@ class FighterRepository:
             "last_signin_date": str(row["last_signin_date"] or ""),
         }
 
+    @serialized_user_action
     def grant_points(self, user_id: str, amount: int) -> int:
         if amount <= 0:
             return self.get_user_points(user_id)
@@ -343,6 +361,7 @@ class FighterRepository:
             "receiver_points": receiver_points,
         }
 
+    @serialized_user_action
     def claim_daily_signin(self, user_id: str, today: str) -> dict[str, Any]:
         with self._connect() as connection:
             row = self._ensure_wallet_row(connection, user_id)
@@ -413,6 +432,7 @@ class FighterRepository:
             )
         return updated
 
+    @serialized_user_action
     def buy_item(self, user_id: str, item_key: str, quantity: int = 1) -> dict[str, Any]:
         item_id, data = self.get_item_catalog_entry(item_key)
         quantity = int(quantity)
@@ -521,6 +541,7 @@ class FighterRepository:
             "team_slots": [int(slot) for slot in slots if slot is not None],
         }
 
+    @serialized_user_action
     def get_pve_profile(
         self,
         user_id: str,
@@ -535,6 +556,7 @@ class FighterRepository:
             connection.commit()
         return self._pve_profile_payload(row, maximum_energy, recovery_seconds, timestamp)
 
+    @serialized_user_action
     def use_pve_energy_item(
         self,
         user_id: str,
@@ -593,6 +615,7 @@ class FighterRepository:
             "profile": self._pve_profile_payload(profile, maximum_energy, recovery_seconds, timestamp),
         }
 
+    @serialized_user_action
     def set_pve_team(
         self,
         user_id: str,
@@ -727,6 +750,7 @@ class FighterRepository:
             "settlement": json.loads(row["settlement_json"]) if row["settlement_json"] else None,
         }
 
+    @serialized_user_action
     def create_pve_session(self, user_id: str, session_id: str, stage_id: str, tactic_id: str,
                            seed: int, team: list[dict[str, Any]], enemies: list[dict[str, Any]],
                            energy_cost: int, maximum_energy: int = 100,
@@ -757,6 +781,7 @@ class FighterRepository:
             )
             connection.commit()
 
+    @serialized_user_action
     def append_pve_switch(self, user_id: str, session_id: str, expected_count: int, choice: int) -> None:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -776,6 +801,7 @@ class FighterRepository:
             )
             connection.commit()
 
+    @serialized_user_action
     def abandon_pve_session(self, user_id: str, session_id: str) -> None:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -791,6 +817,7 @@ class FighterRepository:
             )
             connection.commit()
 
+    @serialized_user_action
     def settle_pve_attempt(
         self,
         user_id: str,
@@ -883,6 +910,7 @@ class FighterRepository:
             raise RuntimeError("PVE settlement profile missing")
         return settlement
 
+    @serialized_user_action
     def claim_pve_chapter_reward(
         self,
         user_id: str,
@@ -1318,6 +1346,7 @@ class FighterRepository:
             return [1, 2, 3]
         return self._normalize_team3_order([int(row["slot1"]), int(row["slot2"]), int(row["slot3"])])
 
+    @serialized_user_action
     def set_user_team3_order(self, user_id: str, order: list[int] | tuple[int, int, int]) -> list[int]:
         normalized = self._normalize_team3_order(order)
         roster = self.get_user_fighters(user_id)
@@ -1427,6 +1456,7 @@ class FighterRepository:
         return row is not None
 
 
+    @serialized_user_action
     def set_fighter_avatar_path(self, user_id: str, fighter_name: str, avatar_path: str | None) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -1442,6 +1472,7 @@ class FighterRepository:
             raise RuntimeError("fighter avatar update failed")
         return updated
 
+    @serialized_user_action
     def set_active_fighter(self, user_id: str, fighter_name: str) -> dict[str, Any]:
         with self._connect() as connection:
             owned = connection.execute(
@@ -1461,6 +1492,7 @@ class FighterRepository:
             raise RuntimeError("active fighter lookup failed")
         return fighter
 
+    @serialized_user_action
     def create_fighter_for_user(
         self,
         user_id: str,
@@ -1493,10 +1525,21 @@ class FighterRepository:
         fighter_name: str,
         forced_base_star: float | None = None,
     ) -> dict[str, Any]:
+        if (
+            not fighter_name
+            or len(fighter_name) > 32
+            or not fighter_name.isprintable()
+        ):
+            raise ValueError(
+                "Character names must contain 1 to 32 printable characters"
+            )
         if self.get_fighter_by_name(fighter_name) is not None:
             raise ValueError("\u89d2\u8272\u540d\u5df2\u5b58\u5728: " + fighter_name)
-        return self._build_generated_fighter(fighter_name, forced_base_star=forced_base_star)
+        return self._build_generated_fighter(
+            fighter_name, forced_base_star=forced_base_star
+        )
 
+    @serialized_user_action
     def replace_fighter_for_user(
         self,
         user_id: str,
@@ -1886,6 +1929,7 @@ class FighterRepository:
             for row in rows
         ]
 
+    @serialized_user_action
     def _grant_item_direct(self, user_id: str, item_id: str, quantity: int) -> int:
         with self._connect() as connection:
             updated = self._change_item_quantity(connection, user_id, item_id, quantity)
@@ -1911,45 +1955,82 @@ class FighterRepository:
             ).fetchone()
         return row is not None
 
-    def settle_daily_leaderboard(self, group_id: str, board_type: str, day_key: str) -> dict[str, Any]:
-        board = str(board_type).strip().lower()
-        if board not in ("1v1", "3v3"):
-            raise ValueError("\u6392\u884c\u699c\u7c7b\u578b\u53ea\u80fd\u662f 1v1 \u6216 3v3")
-        if self.has_daily_settlement(group_id, board, day_key):
-            raise ValueError(f"\u672c\u7fa4 {day_key} \u7684 {board} \u65e5\u699c\u5df2\u7ecf\u7ed3\u7b97\u8fc7\u4e86")
+    def _grant_settlement_points(self, connection, user_id: str, amount: int) -> int:
+        row = self._ensure_wallet_row(connection, str(user_id))
+        points = int(row["points"]) + max(0, int(amount))
+        connection.execute(
+            "UPDATE user_wallets SET points = ? WHERE user_id = ?",
+            (points, str(user_id)),
+        )
+        return points
 
-        entries = self.get_group_leaderboard(group_id, limit=10) if board == "1v1" else self.get_group_team3_leaderboard(group_id, limit=10)
-        rewards: list[dict[str, Any]] = []
-        for index, entry in enumerate(entries, start=1):
-            user_id = entry.get("user_id")
-            if not user_id:
-                continue
-            points = int(DAILY_LEADERBOARD_REWARDS.get(index, DAILY_LEADERBOARD_DEFAULT_POINTS))
-            wallet_points = self.grant_points(str(user_id), points)
-            rewards.append(
-                {
-                    "rank": index,
-                    "user_id": str(user_id),
-                    "display_name": str(entry.get("display_name") or entry.get("fighter_name") or user_id),
-                    "points": points,
-                    "wallet_points": wallet_points,
-                }
-            )
-
-        payload = json.dumps({"board_type": board, "day_key": day_key, "rewards": rewards}, ensure_ascii=False)
+    def settle_daily_leaderboard(
+        self, group_id: str, board_type: str, day_key: str
+    ) -> dict[str, Any]:
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            expected = (
+                datetime.now(ZoneInfo("Asia/Shanghai")).date() - timedelta(days=1)
+            ).isoformat()
+            if day_key != expected:
+                raise ValueError("Only yesterday's leaderboard can be settled")
+            board = str(board_type).strip().lower()
+            if board not in ("1v1", "3v3"):
+                raise ValueError(
+                    "\u6392\u884c\u699c\u7c7b\u578b\u53ea\u80fd\u662f 1v1 \u6216 3v3"
+                )
+            if self.has_daily_settlement(group_id, board, day_key):
+                raise ValueError(
+                    f"\u672c\u7fa4 {day_key} \u7684 {board} \u65e5\u699c\u5df2\u7ecf\u7ed3\u7b97\u8fc7\u4e86"
+                )
+
+            entries = (
+                self.get_group_leaderboard(group_id, limit=10)
+                if board == "1v1"
+                else self.get_group_team3_leaderboard(group_id, limit=10)
+            )
+            rewards: list[dict[str, Any]] = []
+            for index, entry in enumerate(entries, start=1):
+                user_id = entry.get("user_id")
+                if not user_id:
+                    continue
+                points = int(
+                    DAILY_LEADERBOARD_REWARDS.get(
+                        index, DAILY_LEADERBOARD_DEFAULT_POINTS
+                    )
+                )
+                wallet_points = self._grant_settlement_points(
+                    connection, str(user_id), points
+                )
+                rewards.append(
+                    {
+                        "rank": index,
+                        "user_id": str(user_id),
+                        "display_name": str(
+                            entry.get("display_name")
+                            or entry.get("fighter_name")
+                            or user_id
+                        ),
+                        "points": points,
+                        "wallet_points": wallet_points,
+                    }
+                )
+
+            payload = json.dumps(
+                {"board_type": board, "day_key": day_key, "rewards": rewards},
+                ensure_ascii=False,
+            )
             connection.execute(
                 "INSERT INTO daily_settlements (group_id, board_type, day_key, payload) VALUES (?, ?, ?, ?)",
                 (group_id, board, day_key, payload),
             )
-            connection.commit()
-        return {
-            "group_id": group_id,
-            "board_type": board,
-            "day_key": day_key,
-            "entries": entries,
-            "rewards": rewards,
-        }
+            return {
+                "group_id": group_id,
+                "board_type": board,
+                "day_key": day_key,
+                "entries": entries,
+                "rewards": rewards,
+            }
 
     def has_weekly_settlement(self, group_id: str, board_type: str, week_key: str) -> bool:
         with self._connect() as connection:
@@ -1959,57 +2040,88 @@ class FighterRepository:
             ).fetchone()
         return row is not None
 
-    def settle_weekly_leaderboard(self, group_id: str, board_type: str, week_key: str) -> dict[str, Any]:
-        board = str(board_type).strip().lower()
-        if board not in ("1v1", "3v3"):
-            raise ValueError("\u6392\u884c\u699c\u7c7b\u578b\u53ea\u80fd\u662f 1v1 \u6216 3v3")
-        if self.has_weekly_settlement(group_id, board, week_key):
-            raise ValueError(f"\u672c\u7fa4 {week_key} \u7684 {board} \u5468\u699c\u5df2\u7ecf\u7ed3\u7b97\u8fc7\u4e86")
-
-        entries = self.get_group_leaderboard(group_id, limit=10) if board == "1v1" else self.get_group_team3_leaderboard(group_id, limit=10)
-        rewards: list[dict[str, Any]] = []
-        for index, entry in enumerate(entries, start=1):
-            user_id = entry.get("user_id")
-            if not user_id:
-                continue
-            reward_plan = WEEKLY_LEADERBOARD_REWARDS.get(index)
-            points = int(reward_plan["points"]) if reward_plan else WEEKLY_LEADERBOARD_DEFAULT_POINTS
-            wallet_points = self.grant_points(str(user_id), points)
-            item_id = None
-            item_name = None
-            item_quantity = 0
-            if reward_plan and reward_plan.get("item_id"):
-                item_id = str(reward_plan["item_id"])
-                item_quantity = int(reward_plan.get("item_quantity", 1))
-                self._grant_item_direct(str(user_id), item_id, item_quantity)
-                item_name = str(ITEM_CATALOG[item_id]["name"])
-            rewards.append(
-                {
-                    "rank": index,
-                    "user_id": str(user_id),
-                    "display_name": str(entry.get("display_name") or entry.get("fighter_name") or user_id),
-                    "points": points,
-                    "wallet_points": wallet_points,
-                    "item_id": item_id,
-                    "item_name": item_name,
-                    "item_quantity": item_quantity,
-                }
-            )
-
-        payload = json.dumps({"board_type": board, "week_key": week_key, "rewards": rewards}, ensure_ascii=False)
+    def settle_weekly_leaderboard(
+        self, group_id: str, board_type: str, week_key: str
+    ) -> dict[str, Any]:
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            previous = datetime.now(ZoneInfo("Asia/Shanghai")).date() - timedelta(
+                days=7
+            )
+            year, week, _ = previous.isocalendar()
+            if week_key != f"{year}-W{week:02d}":
+                raise ValueError("Only the previous week's leaderboard can be settled")
+            board = str(board_type).strip().lower()
+            if board not in ("1v1", "3v3"):
+                raise ValueError(
+                    "\u6392\u884c\u699c\u7c7b\u578b\u53ea\u80fd\u662f 1v1 \u6216 3v3"
+                )
+            if self.has_weekly_settlement(group_id, board, week_key):
+                raise ValueError(
+                    f"\u672c\u7fa4 {week_key} \u7684 {board} \u5468\u699c\u5df2\u7ecf\u7ed3\u7b97\u8fc7\u4e86"
+                )
+
+            entries = (
+                self.get_group_leaderboard(group_id, limit=10)
+                if board == "1v1"
+                else self.get_group_team3_leaderboard(group_id, limit=10)
+            )
+            rewards: list[dict[str, Any]] = []
+            for index, entry in enumerate(entries, start=1):
+                user_id = entry.get("user_id")
+                if not user_id:
+                    continue
+                reward_plan = WEEKLY_LEADERBOARD_REWARDS.get(index)
+                points = (
+                    int(reward_plan["points"])
+                    if reward_plan
+                    else WEEKLY_LEADERBOARD_DEFAULT_POINTS
+                )
+                wallet_points = self._grant_settlement_points(
+                    connection, str(user_id), points
+                )
+                item_id = None
+                item_name = None
+                item_quantity = 0
+                if reward_plan and reward_plan.get("item_id"):
+                    item_id = str(reward_plan["item_id"])
+                    item_quantity = int(reward_plan.get("item_quantity", 1))
+                    self._change_item_quantity(
+                        connection, str(user_id), item_id, item_quantity
+                    )
+                    item_name = str(ITEM_CATALOG[item_id]["name"])
+                rewards.append(
+                    {
+                        "rank": index,
+                        "user_id": str(user_id),
+                        "display_name": str(
+                            entry.get("display_name")
+                            or entry.get("fighter_name")
+                            or user_id
+                        ),
+                        "points": points,
+                        "wallet_points": wallet_points,
+                        "item_id": item_id,
+                        "item_name": item_name,
+                        "item_quantity": item_quantity,
+                    }
+                )
+
+            payload = json.dumps(
+                {"board_type": board, "week_key": week_key, "rewards": rewards},
+                ensure_ascii=False,
+            )
             connection.execute(
                 "INSERT INTO weekly_settlements (group_id, board_type, week_key, payload) VALUES (?, ?, ?, ?)",
                 (group_id, board, week_key, payload),
             )
-            connection.commit()
-        return {
-            "group_id": group_id,
-            "board_type": board,
-            "week_key": week_key,
-            "entries": entries,
-            "rewards": rewards,
-        }
+            return {
+                "group_id": group_id,
+                "board_type": board,
+                "week_key": week_key,
+                "entries": entries,
+                "rewards": rewards,
+            }
 
     def _load_payload_json(self, payload: Any) -> dict[str, Any]:
         if isinstance(payload, dict):
@@ -2054,11 +2166,11 @@ class FighterRepository:
         created_by: str,
     ) -> dict[str, Any]:
         if self.get_active_group_boss(group_id) is not None:
-            raise ValueError("��ǰȺ�Ѿ��н����е�����BOSS���")
+            raise ValueError("\u5f53\u524d\u7fa4\u5df2\u7ecf\u6709\u8fdb\u884c\u4e2d\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002")
         phase2_stats = phase2_payload.get("stats", {})
         phase2_max_hp = int(phase2_stats.get("hp", 0))
         if phase2_max_hp <= 0:
-            raise ValueError("����BOSS���׶�Ѫ��������Ч��")
+            raise ValueError("\u4e16\u754cBOSS\u4e8c\u9636\u6bb5\u8840\u91cf\u914d\u7f6e\u65e0\u6548\u3002")
         with self._connect() as connection:
             cursor = connection.execute(
                 """
@@ -2122,7 +2234,7 @@ class FighterRepository:
     def close_group_boss(self, group_id: str, boss_id: int) -> dict[str, Any]:
         activity = self.get_group_boss_by_id(group_id, boss_id)
         if activity is None:
-            raise ValueError("δ�ҵ���Ӧ������BOSS���")
+            raise ValueError("\u672a\u627e\u5230\u5bf9\u5e94\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002")
         if activity["status"] == "active":
             with self._connect() as connection:
                 connection.execute(
@@ -2170,7 +2282,7 @@ class FighterRepository:
             ).fetchone()
             used = 0 if row is None else int(row["used_attempts"])
             if used >= int(daily_limit):
-                raise ValueError("����������BOSS��ս�����Ѿ������ˡ�")
+                raise ValueError("\u4f60\u4eca\u5929\u7684\u4e16\u754cBOSS\u6311\u6218\u6b21\u6570\u5df2\u7ecf\u7528\u5b8c\u4e86\u3002")
             used += 1
             connection.execute(
                 """
@@ -2241,9 +2353,9 @@ class FighterRepository:
                 (boss_id, group_id),
             ).fetchone()
             if row is None:
-                raise ValueError("δ�ҵ���Ӧ������BOSS���")
+                raise ValueError("\u672a\u627e\u5230\u5bf9\u5e94\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002")
             if str(row["status"]) != "active":
-                raise ValueError("��ǰ����BOSS��ѽ����������ټ�¼�˺���")
+                raise ValueError("\u5f53\u524d\u4e16\u754cBOSS\u6d3b\u52a8\u5df2\u7ed3\u675f\uff0c\u4e0d\u80fd\u518d\u8bb0\u5f55\u4f24\u5bb3\u3002")
             before_hp = int(row["phase2_current_hp"])
             after_hp = max(0, before_hp - damage)
             is_killed = after_hp <= 0
@@ -2318,27 +2430,81 @@ class FighterRepository:
         }
 
     def settle_group_boss(self, group_id: str, boss_id: int) -> dict[str, Any]:
-        existing = self.get_group_boss_settlement(group_id, boss_id)
-        if existing is not None:
-            return existing
-        activity = self.get_group_boss_by_id(group_id, boss_id)
-        if activity is None:
-            raise ValueError("δ�ҵ���Ӧ������BOSS���")
-        if activity["status"] not in ("killed", "closed", "settled"):
-            raise ValueError("����BOSS��δ���������ܽ��㡣")
-        entries = self.get_group_boss_rank(group_id, boss_id, limit=10)
-        killed = activity["status"] == "killed"
-        participant_rewards: list[dict[str, Any]] = []
-        if killed:
-            for entry in entries:
-                user_id = str(entry["user_id"])
-                points = int(WORLD_BOSS_KILL_PARTICIPATION_REWARD["points"])
-                wallet_points = self.grant_points(user_id, points)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = self.get_group_boss_settlement(group_id, boss_id)
+            if existing is not None:
+                return existing
+            activity = self.get_group_boss_by_id(group_id, boss_id)
+            if activity is None:
+                raise ValueError(
+                    "\u672a\u627e\u5230\u5bf9\u5e94\u7684\u4e16\u754cBOSS\u6d3b\u52a8\u3002"
+                )
+            if activity["status"] not in ("killed", "closed", "settled"):
+                raise ValueError(
+                    "\u4e16\u754cBOSS\u5c1a\u672a\u7ed3\u675f\uff0c\u4e0d\u80fd\u7ed3\u7b97\u3002"
+                )
+            entries = self.get_group_boss_rank(group_id, boss_id, limit=10)
+            killed = activity["status"] == "killed"
+            participant_rewards: list[dict[str, Any]] = []
+            if killed:
+                for entry in entries:
+                    user_id = str(entry["user_id"])
+                    points = int(WORLD_BOSS_KILL_PARTICIPATION_REWARD["points"])
+                    wallet_points = self._grant_settlement_points(
+                        connection, user_id, points
+                    )
+                    item_rewards: list[dict[str, Any]] = []
+                    for item_id, quantity in (
+                        WORLD_BOSS_KILL_PARTICIPATION_REWARD.get("items") or {}
+                    ).items():
+                        if int(quantity) <= 0:
+                            continue
+                        self._change_item_quantity(
+                            connection, user_id, str(item_id), int(quantity)
+                        )
+                        item_rewards.append(
+                            {
+                                "item_id": str(item_id),
+                                "item_name": str(ITEM_CATALOG[str(item_id)]["name"]),
+                                "quantity": int(quantity),
+                            }
+                        )
+                    participant_rewards.append(
+                        {
+                            "user_id": user_id,
+                            "display_name": str(entry["display_name"]),
+                            "points": points,
+                            "wallet_points": wallet_points,
+                            "items": item_rewards,
+                        }
+                    )
+            rank_reward_map = (
+                WORLD_BOSS_KILL_RANK_REWARDS
+                if killed
+                else WORLD_BOSS_CLOSED_RANK_REWARDS
+            )
+            rank_default_reward = (
+                WORLD_BOSS_KILL_RANK_DEFAULT_REWARD
+                if killed
+                else WORLD_BOSS_CLOSED_RANK_DEFAULT_REWARD
+            )
+            rank_rewards: list[dict[str, Any]] = []
+            for index, entry in enumerate(entries, start=1):
+                reward_plan = dict(rank_reward_map.get(index, rank_default_reward))
+                points = int(reward_plan.get("points", 0))
+                wallet_points = (
+                    self._grant_settlement_points(connection, entry["user_id"], points)
+                    if points > 0
+                    else self._grant_settlement_points(connection, entry["user_id"], 0)
+                )
                 item_rewards: list[dict[str, Any]] = []
-                for item_id, quantity in (WORLD_BOSS_KILL_PARTICIPATION_REWARD.get("items") or {}).items():
+                for item_id, quantity in (reward_plan.get("items") or {}).items():
                     if int(quantity) <= 0:
                         continue
-                    self._grant_item_direct(user_id, str(item_id), int(quantity))
+                    self._change_item_quantity(
+                        connection, str(entry["user_id"]), str(item_id), int(quantity)
+                    )
                     item_rewards.append(
                         {
                             "item_id": str(item_id),
@@ -2346,53 +2512,24 @@ class FighterRepository:
                             "quantity": int(quantity),
                         }
                     )
-                participant_rewards.append(
+                rank_rewards.append(
                     {
-                        "user_id": user_id,
-                        "display_name": str(entry["display_name"]),
+                        "rank": index,
+                        "user_id": entry["user_id"],
+                        "display_name": entry["display_name"],
+                        "total_damage": int(entry["total_damage"]),
+                        "attempts": int(entry["attempts"]),
                         "points": points,
                         "wallet_points": wallet_points,
                         "items": item_rewards,
                     }
                 )
-        rank_reward_map = WORLD_BOSS_KILL_RANK_REWARDS if killed else WORLD_BOSS_CLOSED_RANK_REWARDS
-        rank_default_reward = WORLD_BOSS_KILL_RANK_DEFAULT_REWARD if killed else WORLD_BOSS_CLOSED_RANK_DEFAULT_REWARD
-        rank_rewards: list[dict[str, Any]] = []
-        for index, entry in enumerate(entries, start=1):
-            reward_plan = dict(rank_reward_map.get(index, rank_default_reward))
-            points = int(reward_plan.get("points", 0))
-            wallet_points = self.grant_points(entry["user_id"], points) if points > 0 else self.get_user_points(entry["user_id"])
-            item_rewards: list[dict[str, Any]] = []
-            for item_id, quantity in (reward_plan.get("items") or {}).items():
-                if int(quantity) <= 0:
-                    continue
-                self._grant_item_direct(str(entry["user_id"]), str(item_id), int(quantity))
-                item_rewards.append(
-                    {
-                        "item_id": str(item_id),
-                        "item_name": str(ITEM_CATALOG[str(item_id)]["name"]),
-                        "quantity": int(quantity),
-                    }
-                )
-            rank_rewards.append(
-                {
-                    "rank": index,
-                    "user_id": entry["user_id"],
-                    "display_name": entry["display_name"],
-                    "total_damage": int(entry["total_damage"]),
-                    "attempts": int(entry["attempts"]),
-                    "points": points,
-                    "wallet_points": wallet_points,
-                    "items": item_rewards,
-                }
-            )
-        payload = {
-            "boss_name": activity["boss_name"],
-            "settlement_type": "killed" if killed else "closed",
-            "participant_rewards": participant_rewards,
-            "rank_rewards": rank_rewards,
-        }
-        with self._connect() as connection:
+            payload = {
+                "boss_name": activity["boss_name"],
+                "settlement_type": "killed" if killed else "closed",
+                "participant_rewards": participant_rewards,
+                "rank_rewards": rank_rewards,
+            }
             connection.execute(
                 """
                 INSERT INTO group_boss_settlements (boss_id, group_id, payload)
@@ -2408,11 +2545,15 @@ class FighterRepository:
                 """,
                 (group_id, boss_id),
             )
-            connection.commit()
-        settlement = self.get_group_boss_settlement(group_id, boss_id)
-        if settlement is None:
-            raise RuntimeError("world boss settlement failed")
-        return settlement
+            settlement = self._hydrate_boss_settlement(
+                connection.execute(
+                    "SELECT * FROM group_boss_settlements WHERE group_id = ? AND boss_id = ?",
+                    (group_id, boss_id),
+                ).fetchone()
+            )
+            if settlement is None:
+                raise RuntimeError("world boss settlement failed")
+            return settlement
 
     def get_group_boss_settlement(self, group_id: str, boss_id: int) -> dict[str, Any] | None:
         with self._connect() as connection:
@@ -2660,12 +2801,14 @@ class FighterRepository:
             connection.execute(sql, tuple(parameters))
             connection.commit()
 
+    @serialized_user_action
     def _consume_item(self, user_id: str, item_id: str, quantity: int) -> int:
         with self._connect() as connection:
             remaining = self._change_item_quantity(connection, user_id, item_id, -quantity)
             connection.commit()
         return remaining
 
+    @serialized_user_action
     def feed_fighter_star_exp(self, user_id: str, fighter_name: str, item_key: str, quantity: int = 1) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -2737,6 +2880,7 @@ class FighterRepository:
             },
         }
 
+    @serialized_user_action
     def breakthrough_fighter(self, user_id: str, fighter_name: str) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -2787,6 +2931,7 @@ class FighterRepository:
             raise ValueError("\u5f53\u524d\u6ca1\u6709\u53ef\u7528\u7684\u6b66\u5b66\u5019\u9009")
         return pool
 
+    @serialized_user_action
     def _update_fighter_loadout(
         self,
         user_id: str,
@@ -2856,6 +3001,7 @@ class FighterRepository:
             raise ValueError("\u5f53\u524d\u6ca1\u6709\u53ef\u7528\u7684\u5019\u9009")
         return pool
 
+    @serialized_user_action
     def reroll_loadout_random(self, user_id: str, fighter_name: str, category: str, item_key: str) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -2893,6 +3039,7 @@ class FighterRepository:
             result['new_martial'] = chosen
         return result
 
+    @serialized_user_action
     def reroll_martial_random(self, user_id: str, fighter_name: str, item_key: str) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -2917,6 +3064,7 @@ class FighterRepository:
             "new_martial": martial_art,
         }
 
+    @serialized_user_action
     def create_loadout_choice_options(self, user_id: str, fighter_name: str, category: str) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -2973,6 +3121,7 @@ class FighterRepository:
             "item_name": ITEM_CATALOG["martial_token_choice"]["name"],
         }
 
+    @serialized_user_action
     def create_web_loadout_choice(self, user_id: str, fighter_name: str, category: str) -> dict[str, Any]:
         fighter = self.get_user_fighter_by_name(user_id, fighter_name)
         if fighter is None:
@@ -3004,6 +3153,7 @@ class FighterRepository:
             connection.commit()
         return self.get_web_loadout_choice(user_id)
 
+    @serialized_user_action
     def apply_web_loadout_choice(self, user_id: str, fighter_name: str, category: str, choice_id: str) -> dict[str, Any]:
         self._choice_catalog(category)
         with self._connect() as connection:
@@ -3051,6 +3201,7 @@ class FighterRepository:
                 "target_label": {"martial_art": "武功", "neigong": "内功", "qinggong": "轻功"}[category],
                 "new_entry": self._choice_catalog(category)[choice_id]}
 
+    @serialized_user_action
     def abandon_web_loadout_choice(self, user_id: str) -> None:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -3059,6 +3210,7 @@ class FighterRepository:
             connection.execute("DELETE FROM web_loadout_choices WHERE user_id = ?", (user_id,))
             connection.commit()
 
+    @serialized_user_action
     def apply_loadout_choice(self, user_id: str, fighter_name: str, category: str, choice_id: str) -> dict[str, Any]:
         kwargs = {category + "_id": choice_id} if category in ("neigong", "qinggong") else {"martial_art_id": choice_id}
         updated = self._update_fighter_loadout(
@@ -3159,6 +3311,7 @@ class FighterRepository:
             ).fetchone()
         return json.loads(str(row["fighter_json"])) if row else None
 
+    @serialized_user_action
     def create_web_summon_preview(self, user_id: str, fighter_name: str) -> dict[str, Any]:
         name = fighter_name.strip()
         if not name:
@@ -3186,6 +3339,7 @@ class FighterRepository:
             connection.commit()
         return fighter
 
+    @serialized_user_action
     def commit_web_summon_preview(self, user_id: str, replace_slot: int | None = None) -> tuple[str | None, dict[str, Any]]:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -3253,6 +3407,7 @@ class FighterRepository:
             raise RuntimeError("summoned fighter lookup failed")
         return old_name, bound
 
+    @serialized_user_action
     def special_summon_preview_fighter(self, user_id: str, fighter_name: str) -> dict[str, Any]:
         item_id = "special_summon_token"
         if self.get_fighter_by_name(fighter_name) is not None:
@@ -3267,6 +3422,7 @@ class FighterRepository:
         return fighter
 
 
+    @serialized_user_action
     def bind_prepared_fighter_for_user(self, user_id: str, prepared_fighter: dict[str, Any]) -> dict[str, Any]:
         roster = self.get_user_fighters(user_id)
         if len(roster) >= MAX_FIGHTERS_PER_USER:

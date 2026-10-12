@@ -1,3 +1,17 @@
+# 1.3.0 - Plugin release hardening
+
+- Publish the AstrBot plugin separately from the Web application.
+- Require trusted administrators for boss and leaderboard management.
+- Settle yesterday and the previous ISO week in Asia/Shanghai only.
+- Commit settlement rewards, items and records atomically.
+- Isolate active battles by group and cancel owned tasks on unload.
+- Bound GIF workers and timeouts, retaining slots until workers finish.
+- Validate bounded avatar downloads and trusted local cache paths asynchronously.
+- Add plugin settings and retain the existing player database location.
+- Keep generated media outside the plugin directory and clean delivered files.
+- Replace bundled fonts with Noto Sans SC under the SIL Open Font License.
+- Exclude Web assets, temporary media and development artifacts from distribution.
+
 # Changelog
 
 ## 1.2.1 - 2026-04-02
