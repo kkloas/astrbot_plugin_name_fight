@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import json
-import logging
 import os
 import shutil
 import socket
@@ -20,7 +19,7 @@ from typing import Any
 from PIL import GifImagePlugin, Image, ImageChops
 from websockets.sync.client import connect
 
-logger = logging.getLogger(__name__)
+from astrbot.api import logger
 
 
 def _free_port() -> int:

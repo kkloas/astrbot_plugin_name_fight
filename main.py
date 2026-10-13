@@ -305,7 +305,7 @@ def extract_first_image_ref(event: AstrMessageEvent) -> str | None:
     return None
 
 
-@register('astrbot_plugin_name_fight', 'kkloas', 'Name Fight', '1.4.1')
+@register('astrbot_plugin_name_fight', 'kkloas', 'Name Fight', '1.4.2')
 class Main(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)

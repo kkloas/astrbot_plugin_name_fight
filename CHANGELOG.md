@@ -1,3 +1,13 @@
+# 1.4.2 - 2026-10-13 - AstrBot review fixes
+
+- Use the logger imported from astrbot.api in the GIF renderer.
+- Store persistent data in data/plugin_data/astrbot_plugin_name_fight.
+- Migrate legacy saves with SQLite backup, including committed WAL data.
+- Copy referenced legacy avatars and update their paths before publishing the database.
+- Preserve existing destination saves and original source files; clean failed migration output.
+- Serialize first-start migration and skip automatic migration for explicit database paths.
+- Document the new storage path and require stopping old instances before upgrade.
+
 # 1.4.1 - 2026-10-12 - Plugin release hardening
 
 - Publish the AstrBot plugin separately from the Web application.

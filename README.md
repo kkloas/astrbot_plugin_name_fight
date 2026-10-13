@@ -4,7 +4,7 @@
 
 Name Fight 是由 kkloas 开发的 AstrBot 群聊武侠对战插件.用姓名生成角色, 通过对战, 签到和世界 BOSS 获取资源, 培养星级, 调整武学与三人阵容.
 
-当前插件版本为 **1.4.1**, 默认分支为 `release-plugin-1-4-1`.本版提供 Bot 插件, Web 应用在 `dev-web` 分支单独开发.
+当前插件版本为 **1.4.2**, 默认分支为 `release-plugin-1-4-2`.本版提供 Bot 插件, Web 应用在 `dev-web` 分支单独开发.
 
 ## 功能
 
@@ -34,7 +34,7 @@ https://github.com/kkloas/astrbot_plugin_name_fight
 仓库默认分支已指向插件发布版.需要明确指定分支时使用:
 
 ```text
-https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-4-1
+https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-4-2
 ```
 
 安装后打开插件配置面板, 按需设置管理员名单和 GIF 开关.以下示例使用 `/` 作为命令前缀; 如果 AstrBot 配置了其他唤醒方式, 请按实际设置发送命令.群聊中的 `@玩家` 应使用平台真实的 @ 消息.
@@ -164,30 +164,32 @@ GIF 渲染超时后返回文字结果; 后台工作尚未结束时仍占用渲�
 
 ## 存档与更新
 
-玩家存档位于 AstrBot 数据目录中的 `name_fight_data/`:
+玩家存档位于 AstrBot 数据目录中的 `plugin_data/astrbot_plugin_name_fight/`:
 
 ```text
-name_fight_data/
+plugin_data/astrbot_plugin_name_fight/
   fighters.db
   avatars/
 ```
 
-代码更新保留原存档位置.升级前使用 SQLite backup API 备份数据库, 并备份 `avatars/`; 或先停止 AstrBot, 再完整备份该目录.角色卡和 GIF 临时输出写入 AstrBot 临时目录, 发送后清理.
+升级前先停止旧插件实例并备份数据库和头像.从旧版升级时, 如果新目录没有 `fighters.db`, 插件会优先迁移 `data/name_fight_data/` 中的存档, 然后检查插件本地旧目录.迁移使用 SQLite backup, 包含 WAL 中已提交的数据, 复制数据库引用的旧目录头像并更新路径.原文件保留, 新目录已有数据库时不会覆盖或重复导入.迁移失败时中止初始化, 保留旧存档以便修复后重试.
+
+迁移完成后只使用新目录.请勿同时运行仍向旧目录写入的实例.角色卡和 GIF 临时输出写入 AstrBot 临时目录, 发送后清理.
 
 ## 分支与版本
 
 | 分支 | 用途 |
 | --- | --- |
-| `release-plugin-1-4-1` | 当前默认分支, 1.4.1 插件发布线 |
+| `release-plugin-1-4-2` | 当前默认分支, 1.4.2 插件发布线 |
 | `dev-web` | Bot/Web 开发线 |
 | `archive-bot-baseline-20260922` | 2026-09-22 的旧 Bot 基线 |
 | `main` | 保留的旧 Bot/Web 混合代码 |
 
-版本标签 `v1.2.1`, `v1.4.0`, `v1.4.1` 标记各自的固定提交.安装当前插件请使用默认发布分支.更新记录见 [CHANGELOG.md](./CHANGELOG.md).
+版本标签 `v1.2.1`, `v1.4.0`, `v1.4.1`, `v1.4.2` 标记各自的固定提交.安装当前插件请使用默认发布分支.更新记录见 [CHANGELOG.md](./CHANGELOG.md).
 
 ## 开发与资源许可
 
-从 Git 克隆源码后, 安装运行依赖并运行 `python -m unittest discover`.测试使用临时数据库.真实浏览器回放验证可运行 `python verify_bot_gif.py`, 输出位于 `output/`.
+在可导入 `astrbot.api` 的 AstrBot Python 环境中, 从 Git 克隆源码并安装运行依赖, 然后运行 `python -m unittest discover`.测试使用临时数据库.真实浏览器回放验证可运行 `python verify_bot_gif.py`, 输出位于 `output/`.
 
 分发 ZIP 使用 `git archive --format=zip --prefix=astrbot_plugin_name_fight/ HEAD` 构建, `.gitattributes` 排除测试与开发资料, 发布包需小于 16 MB.
 

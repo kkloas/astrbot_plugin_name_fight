@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
+from contextlib import closing
 import hashlib
 import random
 import shutil
@@ -12,9 +15,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 try:
-    from .shared_storage import serialized_user_action
+    from .shared_storage import account_lock, serialized_user_action
 except ImportError:
-    from shared_storage import serialized_user_action
+    from shared_storage import account_lock, serialized_user_action
 from typing import Any
 
 
@@ -137,19 +140,21 @@ BREAKTHROUGH_BONUS = {
 
 
 def _default_data_dir() -> Path:
-    if BASE_DIR.parent.name == "plugins":
-        from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+    from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-        return Path(get_astrbot_data_path()) / "name_fight_data"
-    return BASE_DIR / "name_fight_data"
+    return Path(get_astrbot_data_path()) / "plugin_data" / "astrbot_plugin_name_fight"
 
 
 def _default_db_path() -> Path:
     return _default_data_dir() / "fighters.db"
 
 
-def _legacy_db_path() -> Path:
-    return LEGACY_DATA_DIR / "fighters.db"
+def _legacy_db_paths() -> list[Path]:
+    return [
+        _default_data_dir().parent.parent / "name_fight_data" / "fighters.db",
+        BASE_DIR / "name_fight_data" / "fighters.db",
+        LEGACY_DATA_DIR / "fighters.db",
+    ]
 
 
 WORLD_BOSS_KILL_PARTICIPATION_REWARD = {
@@ -264,7 +269,8 @@ class FighterRepository:
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or _default_db_path()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._migrate_legacy_db()
+        if db_path is None:
+            self._migrate_legacy_db()
         self.martial_arts = self._load_json(CONFIG_DIR / "martial_arts.json")
         self.neigong = self._load_json(CONFIG_DIR / "neigong.json")
         self.qinggong = self._load_json(CONFIG_DIR / "qinggong.json")
@@ -274,10 +280,61 @@ class FighterRepository:
         self._init_db()
 
     def _migrate_legacy_db(self) -> None:
-        legacy_db = _legacy_db_path()
-        if self.db_path.exists() or not legacy_db.exists() or legacy_db == self.db_path:
-            return
-        shutil.copy2(legacy_db, self.db_path)
+        with account_lock(self.db_path, "__storage_migration__"):
+            if self.db_path.exists():
+                return
+            legacy_db = next(
+                (path for path in _legacy_db_paths() if path.is_file()), None
+            )
+            if legacy_db is None:
+                return
+            with tempfile.TemporaryDirectory(
+                prefix=".migration-", dir=self.db_path.parent
+            ) as directory:
+                staging = Path(directory)
+                staged_db = staging / "fighters.db"
+                old_avatars = (legacy_db.parent / "avatars").resolve()
+                final_avatars = self.db_path.parent / "avatars" / staging.name
+                copied_avatars: dict[Path, Path] = {}
+                with closing(sqlite3.connect(
+                    legacy_db.resolve().as_uri() + "?mode=ro", uri=True, timeout=15
+                )) as source, closing(sqlite3.connect(staged_db)) as target:
+                    source.backup(target)
+                    columns = {
+                        row[1] for row in target.execute("PRAGMA table_info(fighters)")
+                    }
+                    if "avatar_path" in columns:
+                        for name, value in target.execute(
+                            "SELECT name, avatar_path FROM fighters WHERE avatar_path IS NOT NULL"
+                        ).fetchall():
+                            avatar = Path(value).resolve()
+                            if not avatar.is_relative_to(old_avatars) or not avatar.is_file():
+                                continue
+                            relative = avatar.relative_to(old_avatars)
+                            staged_avatar = staging / "avatars" / relative
+                            if avatar not in copied_avatars:
+                                staged_avatar.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(avatar, staged_avatar)
+                                copied_avatars[avatar] = final_avatars / relative
+                            target.execute(
+                                "UPDATE fighters SET avatar_path = ? WHERE name = ?",
+                                (str(copied_avatars[avatar]), name),
+                            )
+                    target.commit()
+                    if target.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                        raise ValueError("Legacy database integrity check failed")
+                published_avatars = False
+                try:
+                    if copied_avatars:
+                        final_avatars.parent.mkdir(parents=True, exist_ok=True)
+                        os.replace(staging / "avatars", final_avatars)
+                        published_avatars = True
+                    # A hard link publishes the complete database without replacing a save.
+                    os.link(staged_db, self.db_path)
+                except BaseException:
+                    if published_avatars:
+                        shutil.rmtree(final_avatars)
+                    raise
 
     def _load_json(self, path: Path) -> list[dict[str, Any]]:
         with path.open("r", encoding="utf-8-sig") as file:

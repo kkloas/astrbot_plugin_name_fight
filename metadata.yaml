@@ -1,9 +1,9 @@
 name: astrbot_plugin_name_fight
 display_name: Name Fight
-version: 1.4.1
+version: 1.4.2
 author: kkloas
 desc: 基于姓名生成角色的 AstrBot 武侠对战插件, 支持 1v1、3v3、积分商店、道具养成、补星突破和武学洗练。
-repo: https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-4-1
+repo: https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-4-2
 astrbot_version: ">=4.23.2,<5"
 support_platforms:
   - aiocqhttp
