@@ -23,6 +23,7 @@ from PIL import Image
 from avatar_storage import PublicResolver, normalize_image, save_avatar, validate_url
 from database import FighterRepository
 from render_profile import render_star_card
+from text_resources import compact_battle_logs
 
 ROOT = Path(__file__).parent
 FIXED_NOW = datetime(2026, 10, 13, 12, tzinfo=ZoneInfo("Asia/Shanghai"))
@@ -37,6 +38,8 @@ def load_bot_functions():
         "_is_boss_admin",
         "_require_boss_admin",
         "_render_and_send_battle",
+        "_send_battle_animation_safe",
+        "_send_battle_sequence_safe",
         "terminate",
         "daily_settle_command",
         "weekly_settle_command",
@@ -57,6 +60,7 @@ def load_bot_functions():
             node.decorator_list = []
             nodes.append(node)
     namespace = {
+        "__package__": None,
         "Any": Any,
         "hashlib": hashlib,
         "AstrMessageEvent": object,
@@ -225,6 +229,181 @@ class PermissionTests(unittest.IsolatedAsyncioTestCase):
         event.get_group_id.return_value = ""
         with self.assertRaises(RuntimeError):
             BOT["extract_group_id"](event)
+
+
+class GifImportFallbackTests(unittest.IsolatedAsyncioTestCase):
+    def make_bot(self, enabled=True):
+        return SimpleNamespace(
+            config={"enable_gif": enabled}, _render_and_send_battle=AsyncMock()
+        )
+
+    async def test_disabled_gif_skips_path_lookup_and_import(self):
+        bot = self.make_bot(False)
+        path = Mock(side_effect=RuntimeError("must not look up paths"))
+        with patch.dict(BOT, {"get_astrbot_temp_path": path}):
+            with patch("builtins.__import__") as importer:
+                result = await BOT["_send_battle_animation_safe"](
+                    bot, object(), {}, {}, {}
+                )
+        self.assertFalse(result)
+        path.assert_not_called()
+        importer.assert_not_called()
+        bot._render_and_send_battle.assert_not_awaited()
+
+    async def test_single_battle_still_sends_text_and_records_result_after_import_failure(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = FighterRepository(Path(directory) / "fighters.db")
+            attacker = repo.create_fighter_for_user("u1", "A")
+            defender = repo.create_fighter_for_user("u2", "B")
+            bot = self.make_bot()
+            bot.repo = repo
+            bot.broadcast_delay = 0
+            bot._battling_groups = set()
+            bot._battle_tasks = set()
+            bot._send_lines = AsyncMock()
+            bot._grant_ranked_battle_points = Mock(return_value=(20, 8, 20, 8, 0, 0))
+            result = {"winner": "A", "logs": ["A wins"]}
+            bot.engine = SimpleNamespace(battle_with_events=Mock(return_value=result))
+            bot._send_battle_animation_safe = BOT[
+                "_send_battle_animation_safe"
+            ].__get__(bot)
+            event = Mock(send=AsyncMock())
+            event.plain_result.side_effect = str
+            with patch.dict(
+                BOT,
+                {
+                    "get_astrbot_temp_path": Mock(return_value="temp"),
+                    "compact_battle_logs": compact_battle_logs,
+                    "battle_overview_line": Mock(return_value="A vs B"),
+                },
+            ):
+                with patch(
+                    "builtins.__import__", side_effect=ModuleNotFoundError("websockets")
+                ):
+                    await BOT["_start_battle"](
+                        bot, event, "g1", attacker, defender, "start", ("u1", "u2")
+                    )
+            bot._send_lines.assert_awaited_once_with(
+                event, compact_battle_logs(result["logs"])
+            )
+            self.assertEqual(repo.get_group_leaderboard("g1")[0]["fighter_name"], "A")
+            bot._grant_ranked_battle_points.assert_called_once()
+            self.assertIn("积分奖励", event.send.await_args_list[-1].args[0])
+            self.assertEqual(bot._battling_groups, set())
+            self.assertEqual(bot._battle_tasks, set())
+            bot._render_and_send_battle.assert_not_awaited()
+
+    async def test_missing_dependency_and_import_initialization_error_fall_back(self):
+        real_import = __import__
+        for package in (None, "astrbot_plugin_name_fight"):
+            for error in (
+                ModuleNotFoundError("websockets"),
+                RuntimeError("bad dependency"),
+            ):
+                with self.subTest(package=package, error=type(error).__name__):
+                    bot = self.make_bot()
+
+                    def import_renderer(name, *args, **kwargs):
+                        if name == "web_battle_renderer":
+                            raise error
+                        return real_import(name, *args, **kwargs)
+
+                    with patch.dict(
+                        BOT,
+                        {
+                            "__package__": package,
+                            "get_astrbot_temp_path": Mock(return_value="temp"),
+                        },
+                    ):
+                        with patch("builtins.__import__", side_effect=import_renderer):
+                            result = await BOT["_send_battle_animation_safe"](
+                                bot, object(), {}, {}, {}
+                            )
+                    self.assertFalse(result)
+                    bot._render_and_send_battle.assert_not_awaited()
+
+    async def test_path_lookup_failure_falls_back_before_import(self):
+        bot = self.make_bot()
+        with patch.dict(
+            BOT,
+            {"get_astrbot_temp_path": Mock(side_effect=OSError("temp unavailable"))},
+        ):
+            with patch("builtins.__import__") as importer:
+                result = await BOT["_send_battle_animation_safe"](
+                    bot, object(), {}, {}, {}
+                )
+        self.assertFalse(result)
+        importer.assert_not_called()
+        bot._render_and_send_battle.assert_not_awaited()
+
+    async def test_available_renderer_is_used_in_both_import_modes(self):
+        real_import = __import__
+        renderer = Mock()
+        module = SimpleNamespace(render_battle_animation=renderer)
+
+        def import_renderer(name, *args, **kwargs):
+            if name == "web_battle_renderer":
+                return module
+            return real_import(name, *args, **kwargs)
+
+        for package in (None, "astrbot_plugin_name_fight"):
+            bot = self.make_bot()
+            bot._render_and_send_battle.return_value = True
+            event, attacker, defender, replay = object(), {}, {}, {"logs": []}
+            with patch.dict(
+                BOT,
+                {
+                    "__package__": package,
+                    "get_astrbot_temp_path": Mock(return_value="temp"),
+                },
+            ):
+                with patch("builtins.__import__", side_effect=import_renderer):
+                    self.assertTrue(
+                        await BOT["_send_battle_animation_safe"](
+                            bot, event, attacker, defender, replay, "title"
+                        )
+                    )
+            bot._render_and_send_battle.assert_awaited_once_with(
+                event, renderer, attacker, defender, replay, "temp", "title"
+            )
+
+    async def test_team_replay_sends_each_bout_as_text_when_dependency_is_missing(self):
+        bot = self.make_bot()
+        bot._send_lines = AsyncMock()
+        bot._send_battle_animation_safe = BOT["_send_battle_animation_safe"].__get__(
+            bot
+        )
+        event = Mock(send=AsyncMock())
+        event.plain_result.side_effect = str
+        segments = [
+            {
+                "fighter_a": {"name": "A"},
+                "fighter_b": {"name": "B"},
+                "result": {"logs": [text]},
+            }
+            for text in ("first bout", "second bout")
+        ]
+        with patch.dict(
+            BOT,
+            {
+                "get_astrbot_temp_path": Mock(return_value="temp"),
+                "compact_battle_logs": compact_battle_logs,
+            },
+        ):
+            with patch(
+                "builtins.__import__", side_effect=ModuleNotFoundError("websockets")
+            ):
+                self.assertTrue(
+                    await BOT["_send_battle_sequence_safe"](bot, event, segments)
+                )
+        self.assertEqual(bot._send_lines.await_count, 2)
+        self.assertEqual(
+            [call.args[1] for call in bot._send_lines.await_args_list],
+            [compact_battle_logs(segment["result"]["logs"]) for segment in segments],
+        )
+        bot._render_and_send_battle.assert_not_awaited()
 
 
 class ResourceTests(unittest.IsolatedAsyncioTestCase):

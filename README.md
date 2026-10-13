@@ -39,7 +39,7 @@ https://github.com/kkloas/astrbot_plugin_name_fight/tree/release-plugin-1-4-2
 
 安装后打开插件配置面板, 按需设置管理员名单和 GIF 开关.以下示例使用 `/` 作为命令前缀; 如果 AstrBot 配置了其他唤醒方式, 请按实际设置发送命令.群聊中的 `@玩家` 应使用平台真实的 @ 消息.
 
-GIF 使用随包提供的 `web_animation/` 动画资源, 不需要 Node 或前端构建.可通过环境变量 `NAME_FIGHT_CHROME` 指定浏览器可执行文件.浏览器不可用, 渲染繁忙或超时时会回退文字结果.Cloud 是否能生成 GIF 取决于实际运行环境是否提供浏览器; 可先关闭 `enable_gif` 使用文字对战.
+GIF 使用随包提供的 `web_animation/` 动画资源, 不需要 Node 或前端构建.可通过环境变量 `NAME_FIGHT_CHROME` 指定浏览器可执行文件.渲染模块依赖导入失败, 浏览器不可用, 渲染繁忙或超时时会回退文字结果.关闭 `enable_gif` 时不会导入渲染模块.Cloud 是否能生成 GIF 取决于实际运行环境是否提供浏览器; 可先关闭 `enable_gif` 使用文字对战.
 
 ## 新玩家上手
 

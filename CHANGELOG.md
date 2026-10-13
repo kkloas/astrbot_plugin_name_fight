@@ -1,6 +1,7 @@
 # 1.4.2 - 2026-10-13 - AstrBot review fixes
 
 - Use the logger imported from astrbot.api in the GIF renderer.
+- Skip renderer imports when GIFs are disabled and fall back to text on dependency import failures.
 - Store persistent data in data/plugin_data/astrbot_plugin_name_fight.
 - Migrate legacy saves with SQLite backup, including committed WAL data.
 - Copy referenced legacy avatars and update their paths before publishing the database.

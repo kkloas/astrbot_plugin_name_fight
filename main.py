@@ -1377,11 +1377,19 @@ class Main(Star):
         replay_state: dict[str, Any],
         title: str = "江湖对决回放",
     ) -> bool:
-        data_dir = get_astrbot_temp_path()
+        if not self.config.get("enable_gif", True):
+            return False
         try:
-            from .web_battle_renderer import render_battle_animation
-        except ImportError:
-            from web_battle_renderer import render_battle_animation
+            data_dir = get_astrbot_temp_path()
+            if __package__:
+                from .web_battle_renderer import render_battle_animation
+            else:
+                from web_battle_renderer import render_battle_animation
+        except Exception as exc:
+            logger.warning(
+                f"[name_fight] animation unavailable, fallback to text: {exc!r}"
+            )
+            return False
         return await self._render_and_send_battle(
             event,
             render_battle_animation,
