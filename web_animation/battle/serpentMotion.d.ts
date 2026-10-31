@@ -5,8 +5,10 @@ type Frame = { x: number; lift: number; opacity: number; blink: number; pose: Ri
 type Sample = { tip: Point; hand: Point; root: Point; frame: Frame };
 export const names: string[];
 export const notes: string[];
-export function serpentMotion(event: BattleEvent, time: number, travel: number): Frame | undefined;
-export function serpentEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => Sample, target: Point, dir: number, impactAge: number, hit: boolean): void;
+export function serpentMotion(event: BattleEvent, time: number, travel: number, webEnhanced?: boolean): Frame | undefined;
+export function inkPythonPath(time: number, hand: Point, target: Point): Point[];
+export function inkWhipPath(move: string, time: number, hand: Point, target: Point): Point[];
+export function serpentEffects(ctx: CanvasRenderingContext2D, event: BattleEvent, time: number, sampleAt: (time: number) => Sample, target: Point, dir: number, impactAge: number, hit: boolean, webEnhanced?: boolean): void;
 export function serpentTime(local: number, contact?: number): number;
 export function serpentReplayTime(local: number, contact?: number): number;
 export function drawSerpentWhip(ctx: CanvasRenderingContext2D, points: Point[]): void;

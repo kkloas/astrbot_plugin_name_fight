@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PveView } from './pve/PveView';
+import { ShowcaseView } from './showcase/ShowcaseView';
 
 const API_BASE = '';
 
@@ -86,7 +87,7 @@ type GameState = {
   needsFirstFighter: boolean;
 };
 
-type View = 'jianghu' | 'fighters' | 'pve' | 'shop' | 'leaderboard' | 'boss';
+type View = 'jianghu' | 'fighters' | 'pve' | 'showcase' | 'shop' | 'leaderboard' | 'boss';
 
 const itemLabels: Record<string, string> = {
   star_exp_pill_s: '小星尘丹',
@@ -321,6 +322,7 @@ export function App() {
             ['jianghu', '总览'],
             ['fighters', '人物'],
             ['pve', '江湖历练'],
+            ['showcase', '演武堂'],
             ['shop', '背包'],
             ['leaderboard', '排行'],
             ['boss', '世界BOSS'],
@@ -339,7 +341,7 @@ export function App() {
         </div>
       </header>
 
-      <main className={`game-grid${view === 'pve' ? ' battle-focused' : ''}`}>
+      <main className={`game-grid${view === 'pve' || view === 'showcase' ? ' battle-focused' : ''}`}>
         <aside className="side-panel">
           <h2>角色信息</h2>
           {game.activeFighter ? <HeroCard fighter={game.activeFighter} compact /> : <p>尚无出战角色</p>}
@@ -389,6 +391,7 @@ export function App() {
             onNotice={setNotice}
             openFighters={() => setView('fighters')}
           />}
+          {view === 'showcase' && <ShowcaseView request={api} />}
           {view === 'shop' && (
             <ShopView
               game={game}

@@ -131,8 +131,8 @@ export function expandedMotion(event, time, travel) {
             shoulders, sword: angle, lean: 0 } };
 }
 
-export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit) {
-    if (event.martialArtId === 'whip_baimang') return serpentEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
+export function drawExpandedEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit, webEnhanced = false) {
+    if (event.martialArtId === 'whip_baimang') return serpentEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit, webEnhanced);
     if (event.martialArtId === 'staff_bainiaochaofeng') return phoenixEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
     if (event.martialArtId === 'short_shenghuoling') return holyEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);
     if (event.martialArtId === 'sword_xuantie') return heavyEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit);

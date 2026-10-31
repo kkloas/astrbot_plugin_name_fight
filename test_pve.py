@@ -162,6 +162,19 @@ class PveRepositoryTests(unittest.TestCase):
 
 
 class PveServiceTests(unittest.TestCase):
+    BASELINE_COUNTS = {"martial_arts": 18, "neigong": 12, "qinggong": 9}
+
+    def baseline_templates(self):
+        """Fixed-seed snapshots pin the original loadout pools, so later additive arts cannot shift them."""
+        saved = {key: getattr(self.repo, key) for key in self.BASELINE_COUNTS}
+        try:
+            for key, count in self.BASELINE_COUNTS.items():
+                setattr(self.repo, key, saved[key][:count])
+            return [self.repo.generate_preview_fighter(name) for name in ("平衡甲", "平衡乙", "平衡丙")]
+        finally:
+            for key, value in saved.items():
+                setattr(self.repo, key, value)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="name-fight-pve-service-")
         self.repo = ClosingRepository(Path(self.temp.name) / "fighters.db")
@@ -241,7 +254,7 @@ class PveServiceTests(unittest.TestCase):
 
     def test_main_2229cda_accepted_fixed_seed_win_rates(self):
         allowed_ratings = (1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0)
-        templates = [self.repo.generate_preview_fighter(name) for name in ("平衡甲", "平衡乙", "平衡丙")]
+        templates = self.baseline_templates()
         # Snapshot after the low-HP extra action was limited to one added turn.
         # This is deterministic regression data, not population-wide balance.
         expected_wins = {
@@ -369,7 +382,7 @@ class PveServiceTests(unittest.TestCase):
         self.assertEqual(second.exception.current, 0)
 
     def test_chapter_three_recommended_team_can_clear_and_earn_three_stars(self):
-        templates = [self.repo.generate_preview_fighter(name) for name in ("平衡甲", "平衡乙", "平衡丙")]
+        templates = self.baseline_templates()
         allowed_ratings = (1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0)
         for offset, stage_id in enumerate(self.service.stage_order[12:18]):
             stage = self.service.stage_map[stage_id]
@@ -580,7 +593,7 @@ class PveServiceTests(unittest.TestCase):
         self.assertEqual(result["mechanicResults"]["distinct_seal_breakers"], 3)
 
     def test_late_recommended_team_has_two_viable_tactics(self):
-        templates = [self.repo.generate_preview_fighter(name) for name in ("平衡甲", "平衡乙", "平衡丙")]
+        templates = self.baseline_templates()
         team = []
         for template in templates:
             fighter = dict(template)

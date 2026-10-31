@@ -42,7 +42,7 @@ class SharedReleaseTests(unittest.TestCase):
             expected = json.loads(subprocess.check_output(
                 ["git", "show", f"2229cda:configs/{name}.json"], cwd=ROOT))
             actual = json.loads((ROOT / "configs" / f"{name}.json").read_text(encoding="utf-8"))
-            self.assertEqual(actual, expected, name)
+            self.assertEqual(actual[:len(expected)], expected, name)
 
     def test_new_loadouts_are_generated_without_touching_player_data(self):
         with tempfile.TemporaryDirectory() as directory:

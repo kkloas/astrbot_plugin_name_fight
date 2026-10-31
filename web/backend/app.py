@@ -85,6 +85,10 @@ class DuelRequest(BaseModel):
     defenderName: str | None = None
 
 
+class ShowcaseRequest(BaseModel):
+    swap: bool = False
+
+
 class PveTeamRequest(BaseModel):
     slots: list[int]
 
@@ -379,6 +383,45 @@ def duel(payload: DuelRequest) -> dict[str, Any]:
         "displayLogs": compact_battle_logs(result["logs"]),
         "rating": None,
         "snapshot": _state_payload(),
+    }
+
+
+SHOWCASE_LOADOUTS = {
+    "ink": ("sword_xuanmo", "taiji_xuanmo_gong", "taxue_wuhen", "玄墨·无名"),
+    "crimson": ("blade_chixiao", "chixiao_shaxin_jue", "zongyun_ti", "赤霄·断魂"),
+}
+
+
+def _showcase_fighter(key: str) -> dict[str, Any]:
+    art_id, inner_id, light_id, name = SHOWCASE_LOADOUTS[key]
+    fighter = repo._build_generated_fighter(f"演武-{name}", forced_base_star=4.0)
+    fighter["name"] = name
+    fighter["martial_art"] = next(item for item in repo.martial_arts if item["id"] == art_id)
+    fighter["neigong"] = next(item for item in repo.neigong if item["id"] == inner_id)
+    fighter["qinggong"] = next(item for item in repo.qinggong if item["id"] == light_id)
+    fighter["martial_art_id"], fighter["neigong_id"], fighter["qinggong_id"] = art_id, inner_id, light_id
+    fighter["stats"] = repo._recalculate_final_stats(
+        dict(fighter["raw_stats"]), 4.0, 0, fighter["martial_art"], fighter["neigong"], fighter["qinggong"],
+    )
+    return fighter
+
+
+@app.post("/api/battles/showcase")
+def showcase_duel(payload: ShowcaseRequest | None = None) -> dict[str, Any]:
+    """Read-only demo duel between the two new loadouts; never touches player data."""
+    attacker, defender = _showcase_fighter("ink"), _showcase_fighter("crimson")
+    if payload and payload.swap:
+        attacker, defender = defender, attacker
+    result = engine.battle_with_events(attacker, defender)
+    return {
+        "attacker": _fighter_payload(attacker),
+        "defender": _fighter_payload(defender),
+        "winner": result["winner"],
+        "state": result["state"],
+        "events": result["events"],
+        "logs": result["logs"],
+        "displayLogs": compact_battle_logs(result["logs"]),
+        "rating": None,
     }
 
 

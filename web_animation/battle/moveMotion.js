@@ -4,6 +4,7 @@ import { profileFor } from './moveProfiles.js';
 import { swordSequence } from './swordSequences.js';
 import { newMartialMotion } from './newMartialMotion.js';
 import { expandedMotion } from './expandedArts.js';
+import { masterMotion } from './wuxiaMasterArts.js';
 const pt = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 const beat = (front, rear, angle, tilt = 8) => ({ front, rear, angle, tilt });
 function arc(a, b, t, root) {
@@ -145,6 +146,8 @@ function score(p, t) {
     return sample(keys, t);
 }
 export function moveMotion(event, t, travel, weapon, missed = false) {
+    const master = masterMotion(event, t, travel, missed);
+    if (master) return master;
     const expanded = expandedMotion(event, t, travel);
     if (expanded) return expanded;
     const candidate = newMartialMotion(event, t, travel);

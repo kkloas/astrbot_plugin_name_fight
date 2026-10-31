@@ -247,5 +247,51 @@
         "trigger_msg": "【乾坤大挪移】借力打力！击打在四肢的劲道被尽数挪移反震！"
       }
     ]
+  },
+  {
+    "id": "taiji_xuanmo_gong",
+    "name": "太极玄墨功",
+    "description": "以墨入道、阴阳相济的上乘内功。真气流转如苍墨晕染宣纸，周身圆融少破绽；若敌方强攻胸臂，太极墨印便会旋转卸力，化作玄墨剑气反震敌身。",
+    "combat_summary": "攻守兼备的太极反制内功。周身各部位均有稳健减伤，胸口与手臂受击时更能引动太极墨印借力反震。",
+    "hp_multiplier": 1.16,
+    "def_multiplier": 1.14,
+    "part_guard": {
+      "head": 0.93,
+      "chest": 0.86,
+      "abdomen": 0.9,
+      "arm": 0.82,
+      "leg": 0.9
+    },
+    "passives": [
+      {
+        "type": "part_counter",
+        "trigger_parts": [
+          "chest",
+          "arm"
+        ],
+        "reflect_ratio": 0.36,
+        "trigger_msg": "【太极玄墨功】阴阳墨印旋转卸力，将袭来劲道化作苍墨气芒反震而出！"
+      }
+    ]
+  },
+  {
+    "id": "chixiao_shaxin_jue",
+    "name": "赤霄煞心诀",
+    "description": "赤霄一脉以煞炼心的霸烈内功，真气炽热如残阳熔金。与敌交锋见血之际，可引煞火汲取敌方散逸气血反哺己身，愈战愈狂。",
+    "combat_summary": "嗜血强攻型内功。兼顾上身护体减伤与稳定的汲血续航，配合高爆发刀剑武学能打出极强的压制力。",
+    "hp_multiplier": 1.14,
+    "def_multiplier": 1.08,
+    "part_guard": {
+      "head": 0.9,
+      "chest": 0.86,
+      "abdomen": 0.92,
+      "arm": 0.88
+    },
+    "passives": [
+      {
+        "type": "vampirism",
+        "leech_ratio": 0.24
+      }
+    ]
   }
 ]

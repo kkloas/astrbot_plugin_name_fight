@@ -1,11 +1,15 @@
 import {twoBone} from './sampleMotion.js';
+const pythonHead=typeof Image==='undefined'?null:new Image();
+if(pythonHead)pythonHead.src=new URL('./assets/ink-python-wash.png',import.meta.url).href;
+const whipSweep=typeof Image==='undefined'?null:new Image();
+if(whipSweep)whipSweep.src=new URL('./assets/ink-whip-sweep.png',import.meta.url).href;
 export const names=['银蛇吐信','灵蛇缠腕','毒龙卷柱','鳞片倒割','狂蟒翻江','千丝万缕','嗜血蟒绞','绝技·白蟒索命'];
 export const notes=['腕抖弹梢 / 银蛇吐信 / 毒珠飞溅','绕腕成环 / 沉肩回拽 / 蛇牙倒钩','贴地游走 / 螺旋攀升 / 蟒柱封步','三番送鞭 / 连抽倒割 / 飞鳞逆割','连续抡抽 / 延长鞭打 / 翻江白浪','高速连抽 / 细影交织 / 毒雨千丝','合围成圈 / 两段收紧 / 拧转回扯','腾空掷鞭 / 白蟒扑咬 / 锁身绞杀'];
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{x=clamp(x);return x*x*(3-2*x)},mix=(a,b,u)=>a+(b-a)*u;
 const end=i=>i===4?2180:i>=3&&i<=6?1860:1340;
 const beat=(i,t)=>{const period=i===3?280:i===4?310:180;return (1-Math.cos(clamp((t-600)/(end(i)-600))*(end(i)-600)/period*Math.PI*2))/2;};
 const seed=n=>{const x=Math.sin(n*127.1)*43758.54;return x-Math.floor(x)};
-export function serpentMotion(event,time,travel){
+export function serpentMotion(event,time,travel,webEnhanced=false){
  const i=names.indexOf(event.move);if(i<0)return;
  const prep=ease((time-180)/320),go=ease((time-500)/450),back=ease((time-end(i))/340),active=prep*(1-back),strike=clamp((time-520)/430);
  const snap=Math.sin(strike*Math.PI),pull=ease((time-950)/260)*(1-back);
@@ -19,6 +23,13 @@ export function serpentMotion(event,time,travel){
  if(i===5){const b=beat(i,time);gx=15+49*b;gy=-155+38*b;lean=-14+29*b;}
  if(i===6){const squeeze=ease((time-950)/230)*.5+ease((time-1270)/240)*.5,twist=Math.sin(clamp((time-1510)/350)*Math.PI);gx=55*go-55*squeeze;gy=-102+squeeze*18-twist*25;h=52;lean=22*go-47*squeeze;x-=twist*28;}
  if(i===7){lift=-92*Math.sin(Math.PI*clamp((time-400)/900));gx=25+48*go-22*pull;gy=-133+26*go;lean=24*go-18*pull;h=70;x+=45*go*(1-back);}
+ if(webEnhanced&&i>=3&&i<=5){
+  const cast=ease((time-420)/390),follow=ease((time-850)/260),retract=ease((time-1130)/320);
+  gx=mix(-8,i===4?68:58,cast)-retract*24;
+  gy=mix(i===5?-145:-120,i===4?-76:-96,cast)+follow*8;
+  lean=mix(-18,i===4?24:18,cast)-retract*12;
+  h=i===4?61:68;
+ }
  lean*=1-back;h=mix(74,h,active);gx=mix(34,gx,active);gy=mix(-105,gy,active);lean=Math.max(-38,Math.min(38,lean));
  const hip=[0,-h],neck=[lean,-h-Math.sqrt(2704-lean*lean)],shoulders=[[neck[0]-10,neck[1]+6],[neck[0]+10,neck[1]+6]];
  const [fe,fh]=twoBone(shoulders[1],[gx,gy],40,1),[be,bh]=twoBone(shoulders[0],[-35-20*active,-90+25*active],40,-1);
@@ -43,6 +54,52 @@ function whipPath(i,time,hand,target,active){
  for(let pass=0;pass<2;pass++){const old=pts.map(p=>[...p]);for(let j=1;j<pts.length-1;j++)pts[j]=old[j].map((v,k)=>(old[j-1][k]+2*v+old[j+1][k])/4);}
  return pts;
 }
+export function inkPythonPath(time,hand,target){
+ const launch=ease((time-430)/470),coil=ease((time-700)/350),tighten=ease((time-950)/320),recover=ease((time-1340)/340);
+ const reach=launch*(1-recover),tx=mix(hand[0]+100,target[0],reach),ty=mix(hand[1]+45,target[1],reach);
+ const radius=mix(74,47,tighten),pts=[];
+ for(let j=0;j<=90;j++){
+  const u=j/90,s=Math.sin(Math.PI*u),straightX=mix(hand[0],tx,u),straightY=mix(hand[1],ty,u)-s*30*reach;
+  let x=straightX,y=straightY+Math.sin(u*7-time*.006)*s*18*reach*(1-coil);
+  if(u>.52){
+   const v=(u-.52)/.48,a=-Math.PI*.8+v*Math.PI*2.7;
+   const blend=coil*ease(v/.18);
+   x=mix(x,tx+Math.cos(a)*radius,blend);
+   y=mix(y,ty+Math.sin(a)*radius*.48+(v-.5)*62,blend);
+  }
+  pts.push([x,y]);
+ }
+ return pts;
+}
+export function inkWhipPath(move,time,hand,target){
+ const i=names.indexOf(move);if(i===7)return inkPythonPath(time,hand,target);
+ const cast=ease((time-400)/470),recover=ease((time-end(i))/340),active=cast*(1-recover);
+ const tx=mix(hand[0]+95,target[0],active),ty=mix(hand[1]+45,target[1],active);
+ const loop=ease((time-650)/400)*(1-recover),tighten=ease((time-980)/400),pts=[];
+ const amp=[28,28,48,38,65,30,30][i]||28;
+ for(let j=0;j<=90;j++){
+  const u=j/90,delay=ease((time-350-u*240)/420),envelope=Math.sin(Math.PI*u);
+  const x=mix(hand[0],tx,u),baseY=mix(hand[1],ty,u);
+  let px=x,py=baseY+Math.sin(u*8-time*.009)*envelope*amp*active*(1-.65*delay);
+  py-=envelope*amp*.55*active;
+  if(i===2){
+   const spiral=u*12-time*.006;
+   py=mix(py,mix(hand[1],ty+55-u*95,u),active)+Math.cos(spiral)*envelope*17*active;
+   px+=Math.sin(spiral)*envelope*29*active;
+  }
+  if(i===3||i===5){
+   const cycle=(time-500)/(i===3?310:180)*Math.PI*2;
+   px-=u*active*(i===3?32:16)*(.5+.5*Math.sin(cycle));
+   py+=Math.sin(cycle-u*5)*envelope*active*(i===3?22:14);
+  }
+  if((i===1||i===6)&&u>.56){
+   const v=(u-.56)/.44,a=-Math.PI*.85+v*Math.PI*(i===6?3:2.2),r=(i===6?65:30)*(1-tighten*(i===6?.35:.15));
+   const f=loop*ease(v/.2);px=mix(px,tx+Math.cos(a)*r,f);py=mix(py,ty+Math.sin(a)*r*.48+(v-.5)*(i===6?55:15),f);
+  }
+  pts.push([px,py]);
+ }
+ return pts;
+}
 export function drawSerpentWhip(ctx,pts){
  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
  for(const [color,w]of [['#78847a',4.8],['#eceee0',2.9]]){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();}
@@ -50,7 +107,7 @@ export function drawSerpentWhip(ctx,pts){
  for(let j=5;j<pts.length-1;j+=5){const p=pts[j],q=pts[j+1],a=Math.atan2(q[1]-p[1],q[0]-p[0]);ctx.beginPath();ctx.moveTo(...p);ctx.lineTo(p[0]-Math.cos(a)*4-Math.sin(a)*5,p[1]-Math.sin(a)*4+Math.cos(a)*5);ctx.stroke();}
  ctx.restore();
 }
-export function serpentEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
+export function serpentEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit,webEnhanced=false){
  const i=names.indexOf(event.move);if(i<0||time<390||time>2660)return;
  const fade=1-ease((time-end(i))/440),grow=ease((time-390)/230),alpha=fade*grow;
  const world=t=>{const f=sampleAt(t).frame;if(!f?.pose.whip)return [];return f.pose.whip.map(p=>[f.x+dir*p[0],324+f.lift+p[1]]);};
@@ -58,10 +115,17 @@ export function serpentEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit)
  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
  const path=(arr,color,w,a)=>{ctx.strokeStyle=color;ctx.lineWidth=w;ctx.globalAlpha=a;ctx.beginPath();arr.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();};
  // The apparition shares the articulated whip path rather than floating beside it.
- path(pts,'#778f63',i===7?62:15,alpha*.12);path(pts,'#faffdf',i===7?38:9,alpha*.57);path(pts,'#99ac7c',1.2,alpha*.66);
- for(let j=7;j<pts.length-2;j+=3){const p=pts[j],q=pts[j+1],a=Math.atan2(q[1]-p[1],q[0]-p[0]),w=i===7?18:4;path([[p[0]-Math.sin(a)*w,p[1]+Math.cos(a)*w],[p[0]+Math.cos(a)*3,p[1]+Math.sin(a)*3],[p[0]+Math.sin(a)*w,p[1]-Math.cos(a)*w]],'#7b9268',.85,alpha*.6);}
+ const inkPython=i===7&&webEnhanced&&pythonHead?.complete&&pythonHead.naturalWidth;
+ if(webEnhanced){
+  path(pts,'#5c6862',i===7?35:20,alpha*.08);path(pts,'#c9cebe',i===7?17:8,alpha*.24);path(pts,'#6d7970',1.2,alpha*.34);
+ }else{path(pts,'#778f63',i===7?62:15,alpha*.12);path(pts,'#faffdf',i===7?38:9,alpha*.57);path(pts,'#99ac7c',1.2,alpha*.66);}
+ for(let j=7;j<pts.length-2;j+=inkPython?7:3){const p=pts[j],q=pts[j+1],a=Math.atan2(q[1]-p[1],q[0]-p[0]),w=inkPython?6:i===7?18:4;path([[p[0]-Math.sin(a)*w,p[1]+Math.cos(a)*w],[p[0]+Math.cos(a)*3,p[1]+Math.sin(a)*3],[p[0]+Math.sin(a)*w,p[1]-Math.cos(a)*w]],'#7b9268',.85,alpha*(inkPython ? .14 : .6));}
  const tip=pts.at(-1),prev=pts.at(-3),ang=Math.atan2(tip[1]-prev[1],tip[0]-prev[0]);
- if(i>=3){
+ if(inkPython){
+ ctx.save();ctx.translate(...tip);ctx.rotate(ang);if(Math.cos(ang)<0)ctx.scale(1,-1);
+ const scale=mix(.38,1.15,ease((time-520)/430));
+ ctx.globalAlpha=alpha*.88;ctx.drawImage(pythonHead,-156*scale,-52*scale,190*scale,104*scale);ctx.restore();
+ }else if(i>=3){
  ctx.save();ctx.translate(...tip);ctx.rotate(ang);ctx.globalAlpha=alpha*.35;ctx.fillStyle='#83a568';
  ctx.beginPath();ctx.ellipse(3,0,i===7?30:11,i===7?23:7,0,0,Math.PI*2);ctx.fill();ctx.restore();
  }
@@ -70,6 +134,13 @@ export function serpentEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit)
  // Venom and barbs are cosmetic particles, with hit bursts omitted on a dodge.
  for(let j=0;j<(i===4?65:35);j++){const age=time-520-j*21;if(age<0||age>650)continue;const p=age/650,source=world(520+j*21);if(!source.length)continue;const o=source.at(-1),x=o[0]-dir*p*(12+seed(j)*40),y=o[1]+p*p*75;ctx.globalAlpha=(1-p)*alpha*.6;ctx.fillStyle=j%2?'#749d36':'#a4b84c';ctx.beginPath();ctx.ellipse(x,y,1.5+seed(j+9)*2,2.5+p*3,-p,0,Math.PI*2);ctx.fill();}
  if(hit&&impactAge>=0&&impactAge<650){const p=impactAge/650;for(let j=0;j<(i===7?65:30);j++){const a=j*2.399,v=30+seed(j)*100,x=target[0]+Math.cos(a)*v*p,y=target[1]+Math.sin(a)*v*p+p*p*60;ctx.globalAlpha=(1-p)*.8;ctx.fillStyle=j%3?'#76913e':'#e9edcf';ctx.beginPath();ctx.ellipse(x,y,1+seed(j+44)*3,2+seed(j+4)*5,a,0,Math.PI*2);ctx.fill();if(j%4===0)path([[x-4,y+3],[x,y-5],[x+2,y+4]],'#78906c',1,(1-p)*.8);}}
+ if(webEnhanced&&whipSweep?.complete&&whipSweep.naturalWidth&&[0,3,4,5].includes(i)){
+  const pulse=ease((time-540)/130)*(1-ease((time-900)/260));
+  const mid=pts[Math.floor(pts.length*.7)],start=pts[Math.floor(pts.length*.38)];
+  const direction=Math.atan2(tip[1]-start[1],tip[0]-start[0]);
+  ctx.save();ctx.translate(...mid);ctx.rotate(direction);if(Math.cos(direction)<0)ctx.scale(1,-1);
+  ctx.globalAlpha=alpha*pulse*.72;ctx.drawImage(whipSweep,-105,-30,210,60);ctx.restore();
+ }
  ctx.restore();
 }
 
