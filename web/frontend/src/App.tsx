@@ -96,7 +96,7 @@ type LeaderboardEntry = {
 
 
 type GameState = {
-  session: { userId: string; groupId: string; maxFighters: number; displayName: string };
+  session: { userId: string; groupId: string; maxFighters: number; displayName: string; isAdmin: boolean };
   fighters: Fighter[];
   activeFighter: Fighter | null;
   wallet: { points: number; last_signin_date: string };
@@ -369,7 +369,7 @@ export function App() {
             ['jianghu', '总览'],
             ['fighters', '人物'],
             ['pve', '江湖历练'],
-            ['showcase', '演武堂'],
+            ...(game.session.isAdmin ? [['showcase', '演武堂']] : []),
             ['shop', '背包'],
             ['leaderboard', '排行'],
             ['boss', '世界BOSS'],
@@ -441,7 +441,7 @@ export function App() {
             onNotice={setNotice}
             openFighters={() => setView('fighters')}
           />}
-          {view === 'showcase' && <ShowcaseView request={api} />}
+          {view === 'showcase' && game.session.isAdmin && <ShowcaseView request={api} />}
           {view === 'shop' && (
             <ShopView
               game={game}

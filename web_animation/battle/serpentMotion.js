@@ -102,9 +102,9 @@ export function inkWhipPath(move,time,hand,target){
 }
 export function drawSerpentWhip(ctx,pts){
  ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
- for(const [color,w]of [['#78847a',4.8],['#d8f910',2.9]]){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();}
- ctx.strokeStyle='#0ed605';ctx.lineWidth=1;
- for(let j=5;j<pts.length-1;j+=5){const p=pts[j],q=pts[j+1],a=Math.atan2(q[1]-p[1],q[0]-p[0]);ctx.beginPath();ctx.moveTo(...p);ctx.lineTo(p[0]-Math.cos(a)*4-Math.sin(a)*5,p[1]-Math.sin(a)*4+Math.cos(a)*5);ctx.stroke();}
+ const first=pts[0],next=pts[1];
+ if(first&&next){const a=Math.atan2(next[1]-first[1],next[0]-first[0]);ctx.strokeStyle='#514c46';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(first[0]-Math.cos(a)*23,first[1]-Math.sin(a)*23);ctx.lineTo(first[0]+Math.cos(a)*2,first[1]+Math.sin(a)*2);ctx.stroke();}
+ ctx.strokeStyle='#b1c0b7';ctx.lineWidth=3;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();
  ctx.restore();
 }
 export function serpentEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit,webEnhanced=false){

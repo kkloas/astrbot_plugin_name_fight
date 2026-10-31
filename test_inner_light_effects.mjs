@@ -16,7 +16,7 @@ for(const side of ['a','b'])for(const art of [...arts,...steps]){
  for(const layers of [1,3,5])drawArtFootwork(context().ctx,art.id,f.x,dir,.8,500,[{x:f.x,y:324},{x:f.x-dir*20,y:324}],layers);
  drawArtAura(context().ctx,f,dir,['crisis_defense'],500,3);
  assert.equal(JSON.stringify(battle),before);
- if(art.id==='biyun_xinfa'){const c=context();drawArtTrigger(c.ctx,event,f,dir,other,2200);assert.ok(c.calls.some(c=>c[0]==='stroke'));const end=context();drawArtTrigger(end.ctx,event,f,dir,other,2700);assert.ok(!end.calls.some(c=>c[0]==='stroke'));}
+ if(art.id==='biyun_xinfa'){const c=context();drawArtTrigger(c.ctx,event,f,dir,other,2200);assert.ok(c.calls.some(c=>c[0]==='createRadialGradient'));const end=context();drawArtTrigger(end.ctx,event,f,dir,other,2700);assert.ok(!end.calls.some(c=>c[0]==='createRadialGradient'));}
  if(['shenzhao_jing','jiayi_shengong','zixia_shengong'].includes(art.id)){const a=context(),b=context();drawArtTrigger(a.ctx,event,f,dir,other,300);drawTrigger(b.ctx,event,f.x,other.x,300);assert.deepEqual(a.calls.slice(1,-1),b.calls);}
 }
 console.log(`Inner/light: ${frames} deterministic event frames, both sides, all 21 arts, original effects and prolonged healing passed.`);

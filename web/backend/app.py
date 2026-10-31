@@ -4,6 +4,7 @@ import logging
 import json
 import os
 import sqlite3
+import secrets
 import sys
 from datetime import date
 from hashlib import sha256
@@ -66,6 +67,10 @@ pve = PveService(repo, engine)
 
 @app.middleware("http")
 async def protect_api(request: Request, call_next):
+    if request.url.path == "/motion-preview.html":
+        identity = auth.get_identity(request.cookies.get(SESSION_COOKIE))
+        if identity is None or not is_web_admin(identity):
+            return JSONResponse({"detail": "仅管理员可使用特效拆解台"}, status_code=403)
     if (
         COOKIE_SECURE
         and request.url.scheme == "http"
@@ -94,6 +99,17 @@ def require_session(request: Request) -> WebIdentity:
     identity = auth.get_identity(request.cookies.get(SESSION_COOKIE))
     if identity is None:
         raise HTTPException(status_code=401, detail="请先在 QQ 群验证登录")
+    return identity
+
+
+def is_web_admin(identity: WebIdentity) -> bool:
+    admins = {value.strip() for value in os.environ.get("NFIGHT_WEB_ADMIN_IDS", "").split(",") if value.strip()}
+    return identity.user_id in admins
+
+
+def require_web_admin(identity: WebIdentity = Depends(require_session)) -> WebIdentity:
+    if not is_web_admin(identity):
+        raise HTTPException(status_code=403, detail="仅管理员可使用演武堂")
     return identity
 
 
@@ -212,6 +228,28 @@ class ShowcaseRequest(BaseModel):
     swap: bool = False
 
 
+class PracticeStats(BaseModel):
+    hp: int = Field(ge=1, le=1000000)
+    atk: int = Field(ge=0, le=100000)
+    def_: int = Field(alias="def", ge=0, le=100000)
+    spd: float = Field(ge=1, le=100000)
+    crt: float = Field(ge=0, le=100)
+    eva: float = Field(ge=0, le=100)
+
+
+class PracticeFighter(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    stats: PracticeStats
+    martialArtId: str
+    neigongId: str
+    qinggongId: str
+
+
+class PracticeBattle(BaseModel):
+    attacker: PracticeFighter
+    defender: PracticeFighter
+
+
 class PveTeamRequest(BaseModel):
     slots: list[int]
 
@@ -300,6 +338,7 @@ def _state_payload(identity: WebIdentity) -> dict[str, Any]:
             "groupId": identity.group_id,
             "maxFighters": MAX_FIGHTERS_PER_USER,
             "displayName": identity.display_name,
+            "isAdmin": is_web_admin(identity),
         },
         "fighters": [_fighter_payload(fighter) for fighter in fighters],
         "activeFighter": _fighter_payload(active),
@@ -616,7 +655,7 @@ def _showcase_fighter(key: str) -> dict[str, Any]:
 
 
 @app.post("/api/battles/showcase")
-def showcase_duel(payload: ShowcaseRequest | None = None, identity: WebIdentity = Depends(require_session)) -> dict[str, Any]:
+def showcase_duel(payload: ShowcaseRequest | None = None, identity: WebIdentity = Depends(require_web_admin)) -> dict[str, Any]:
     """Read-only demo duel between the two new loadouts; never touches player data."""
     attacker, defender = _showcase_fighter("ink"), _showcase_fighter("crimson")
     if payload and payload.swap:
@@ -631,6 +670,51 @@ def showcase_duel(payload: ShowcaseRequest | None = None, identity: WebIdentity 
         "logs": result["logs"],
         "displayLogs": compact_battle_logs(result["logs"]),
         "rating": None,
+    }
+
+
+@app.get("/api/admin/practice/config")
+def practice_config(identity: WebIdentity = Depends(require_web_admin)) -> dict[str, Any]:
+    return {
+        "martialArts": [_entry_payload(item) for item in repo.martial_arts],
+        "neigong": [{**_entry_payload(item), "passives": item.get("passives", [])} for item in repo.neigong],
+        "qinggong": [{**_entry_payload(item), "special_effect_data": item.get("special_effect_data")} for item in repo.qinggong],
+    }
+
+
+@app.post("/api/admin/practice/random")
+def practice_random(identity: WebIdentity = Depends(require_web_admin)) -> dict[str, Any]:
+    fighter = repo._build_generated_fighter("Practice-" + secrets.token_hex(8))
+    return _fighter_payload(fighter)
+
+
+def _practice_fighter(value: PracticeFighter) -> dict[str, Any]:
+    fighter = repo._build_generated_fighter(value.name)
+    for key, entry_id, entries in (
+        ("martial_art", value.martialArtId, repo.martial_arts),
+        ("neigong", value.neigongId, repo.neigong),
+        ("qinggong", value.qinggongId, repo.qinggong),
+    ):
+        entry = next((item for item in entries if item["id"] == entry_id), None)
+        if entry is None:
+            raise HTTPException(status_code=422, detail=f"Unknown {key}: {entry_id}")
+        fighter[key] = entry
+        fighter[key + "_id"] = entry_id
+    fighter["stats"] = value.stats.model_dump(by_alias=True)
+    return fighter
+
+
+@app.post("/api/admin/practice/battle")
+def practice_battle(payload: PracticeBattle, identity: WebIdentity = Depends(require_web_admin)) -> dict[str, Any]:
+    attacker = _practice_fighter(payload.attacker)
+    defender = _practice_fighter(payload.defender)
+    if attacker["name"] == defender["name"]:
+        raise HTTPException(status_code=422, detail="双方角色名不能相同")
+    result = engine.battle_with_events(attacker, defender)
+    return {
+        "attacker": _fighter_payload(attacker), "defender": _fighter_payload(defender),
+        "winner": result["winner"], "state": result["state"], "events": result["events"],
+        "logs": result["logs"], "displayLogs": compact_battle_logs(result["logs"]), "rating": None,
     }
 
 

@@ -23,7 +23,7 @@ import { expandedMoveFor, drawExpandedEffects } from './expandedArts.js';
 import { names as qinNames, qinPose, qinFX, qinTime } from './qinMotion.js';
 import { holyTime, holyReplayTime, holySample } from './holyMotion.js';
 import { heavyTime, heavyReplayTime, heavyHold, heavyShake } from './heavyMotion.js';
-import { isMasterArt, masterMoveFor, drawMasterFigure, drawMasterEffects, drawWebSceneBackdrop, drawWebBattleStains, drawWebSceneForeground } from './wuxiaMasterArts.js';
+import { isMasterArt, masterMoveFor, drawMasterSash, drawMasterEffects, drawWebSceneBackdrop, drawWebBattleStains, drawWebSceneForeground } from './wuxiaMasterArts.js';
 // Head, neck, waist, rear elbow/hand, sword elbow/hand, rear knee/foot, front knee/foot.
 const poses = {
     idle: { points: [[0, -137], [0, -116], [-7, -65], [-28, -95], [-19, -71], [24, -101], [39, -89], [-24, -34], [-39, 0], [20, -34], [39, 0]], sword: -.45, lean: 0 },
@@ -107,10 +107,8 @@ function stroke(ctx, points, width, color) {
     ctx.stroke();
 }
 function fighter(ctx, x, side, pose, time, weapon, alpha = 1, lift = 0, sheathed = false, artId, trailSamples) {
-    if (isMasterArt(artId)) {
-        drawMasterFigure(ctx, x, side, pose, time, weapon, alpha, lift, sheathed, artId, trailSamples);
-        return;
-    }
+    if (isMasterArt(artId))
+        drawMasterSash(ctx, side, time, alpha, artId, trailSamples);
     drawCurvedFigure(ctx, x, (side === 'a' ? 1 : -1) * (pose.facing || 1), pose, time, weapon, alpha, lift, sheathed, artId);
 }
 function motionPoses(technique, weapon, type) {
@@ -387,7 +385,31 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed', webEnhan
     }
     const masterIai = attack?.martialArtId === 'sword_xuanmo' && attack?.move === '绝技·一剑霜寒' && attack?.actor === side && local >= 60 && local < 600;
     const sheathed = victorySheathed || masterIai || (weapon === 'katana' && technique.motion === 'draw' && attack?.actor === side && local >= 0 && local < 830);
+    if (pose.whip && attack?.martialArtId === 'whip_baimang' && turn?.actor === side) {
+        const recovery = smooth((local - contact - 470) / 260);
+        if (recovery > 0) {
+            const whip = pose.whip;
+            const restingPose = blend(motion.idle, motion.gather, .05 + Math.sin(time / 530) * .025);
+            pose = blend(pose, restingPose, recovery);
+            pose.whip = whip;
+            x += (home - x) * recovery;
+            lift *= 1 - recovery;
+        }
+    }
     pose = constrainRig(pose);
+    if (pose.whip && attack?.martialArtId === 'whip_baimang' && turn?.actor === side) {
+        const recovery = smooth((local - contact - 470) / 260);
+        if (recovery > 0) {
+            const hand = pose.points[6], angle = pose.sword;
+            const cos = Math.cos(angle), sin = Math.sin(angle);
+            pose.whip = pose.whip.map((point, index, all) => {
+                const u = index / (all.length - 1), rx = 8 + 171 * u;
+                const ry = Math.sin(u * 8.1 - time / 100) * Math.sin(u * Math.PI) * 19;
+                const resting = [hand[0] + rx * cos - ry * sin, hand[1] + rx * sin + ry * cos];
+                return [point[0] + (resting[0] - point[0]) * recovery, point[1] + (resting[1] - point[1]) * recovery];
+            });
+        }
+    }
     return { x, pose, lift, opacity, blink, weapon: state.weaponsReady[side] ? weapon : 'unarmed', technique, armed: state.weaponsReady[side], sheathed, variant };
 }
 export function draw(ctx, battle, time, width, reducedMotion, effects, mode, options = {}) {

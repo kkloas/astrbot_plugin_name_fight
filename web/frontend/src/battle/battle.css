@@ -114,3 +114,6 @@
 .showcase-cards p { font-size:13px; color:#586050; margin:6px 0; }
 .showcase-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
 .showcase-actions a { color:#853a30; }
+.showcase-cards article label { display:block; margin:6px 0; }
+.practice-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 12px; }
+.practice-stats input { width:90px; max-width:100%; }
