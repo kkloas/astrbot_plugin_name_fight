@@ -63,7 +63,7 @@ export type ReplayBattle = {
 import { stateAt, initiativeAt, statusLabels, victoryLabels } from '../../../../web_animation/battle/replay.js';
 export { stateAt, initiativeAt, statusLabels, victoryLabels };
 
-export function useBattlePlayback(battle: ReplayBattle | null) {
+export function useBattlePlayback(battle: ReplayBattle | null, loop = false) {
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -82,14 +82,15 @@ export function useBattlePlayback(battle: ReplayBattle | null) {
       // Hidden tabs do not consume the replay or jump over the fight on return.
       const elapsed = document.hidden ? 0 : Math.min(80, now - previous);
       previous = now;
-      clock.current = Math.min(duration, clock.current + elapsed * speed);
+      const next = clock.current + elapsed * speed;
+      clock.current = loop && duration > 0 && next >= duration ? next % duration : Math.min(duration, next);
       setTime(clock.current);
       if (clock.current >= duration) setPlaying(false);
       else frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [battle, duration, playing, speed]);
+  }, [battle, duration, playing, speed, loop]);
   const seek = (value: number) => {
     clock.current = Math.max(0, Math.min(duration, value));
     setTime(clock.current);

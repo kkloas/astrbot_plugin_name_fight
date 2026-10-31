@@ -543,15 +543,9 @@ function drawMasterWeapon(ctx, art, weapon, ink, time, armed = true) {
     ctx.restore();
 }
 
-export function drawMasterFigure(ctx, x, side, pose, time, weapon, alpha, lift, sheathed, artId, trailSamples = []) {
+export function drawMasterSash(ctx, side, time, alpha, artId, trailSamples = []) {
     const art = masterArts[artId];
     if (!art) return;
-    const facingDir = (side === 'a' ? 1 : -1) * (pose.facing || 1);
-    const p = pose.points;
-    const s = pose.shoulders || [p[1], p[1]];
-    const ink = side === 'a' ? art.ink : '#2f3837';
-
-    // 1. Deterministic multi-node flowing headband & waist sash sampled from actual past world frames!
     if (trailSamples.length >= 2 && alpha > 0.22) {
         ctx.save();
         ctx.lineCap = 'round';
@@ -578,6 +572,17 @@ export function drawMasterFigure(ctx, x, side, pose, time, weapon, alpha, lift, 
         }
         ctx.restore();
     }
+}
+
+export function drawMasterFigure(ctx, x, side, pose, time, weapon, alpha, lift, sheathed, artId, trailSamples = []) {
+    const art = masterArts[artId];
+    if (!art) return;
+    const facingDir = (side === 'a' ? 1 : -1) * (pose.facing || 1);
+    const p = pose.points;
+    const s = pose.shoulders || [p[1], p[1]];
+    const ink = side === 'a' ? art.ink : '#2f3837';
+
+    drawMasterSash(ctx, side, time, alpha, artId, trailSamples);
 
     ctx.save();
     ctx.globalAlpha *= alpha;

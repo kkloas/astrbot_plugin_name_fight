@@ -40,6 +40,14 @@ export function masterMotion(event: BattleEvent, time: number, travel: number, d
     blink: number;
     pose: RigPose;
 } | undefined;
+export function drawMasterSash(
+    ctx: CanvasRenderingContext2D,
+    side: Side,
+    time: number,
+    alpha: number,
+    artId?: string,
+    trailSamples?: { x: number; lift: number; pose: RigPose }[],
+): void;
 export function drawMasterFigure(
     ctx: CanvasRenderingContext2D,
     x: number,

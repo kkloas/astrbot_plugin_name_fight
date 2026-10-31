@@ -36,6 +36,13 @@ cookies. The Bot confirms login by trusted QQ group event fields, not message
 text containing an account number. Both processes must have access to the same
 database and `.account-locks` directory.
 
+The Web practice tools are restricted to QQ IDs listed in the server environment
+variable `NFIGHT_WEB_ADMIN_IDS`, separated by commas. An empty value grants no
+administrators. Configure this only in the server environment, not in Git. The
+practice endpoints enforce the whitelist and do not update player saves. Route
+`/motion-preview.html` through the Web backend if a separate frontend server
+normally serves static files, so its access check is applied as well.
+
 ```bash
 cd web/frontend
 npm ci

@@ -203,12 +203,14 @@ class WebAccountHttpTests(unittest.TestCase):
             and not route.path.startswith("/api/auth/")
             and route.path not in {"/api/health", "/api/{path:path}"}
         ]
+        def requires_session(dependency):
+            return dependency.call == self.api.require_session or any(
+                requires_session(child) for child in dependency.dependencies
+            )
+
         self.assertTrue(
             all(
-                any(
-                    dep.call == self.api.require_session
-                    for dep in route.dependant.dependencies
-                )
+                requires_session(route.dependant)
                 for route in game_routes
             )
         )
@@ -239,11 +241,14 @@ class WebAccountHttpTests(unittest.TestCase):
             client.get("http://127.0.0.1:8001/api/health").status_code, 200
         )
 
-    def test_showcase_requires_login_and_uses_new_loadouts(self):
+    def test_showcase_requires_admin_and_uses_new_loadouts(self):
         client = self.client()
         self.assertEqual(client.post("/api/battles/showcase", json={}).status_code, 401)
         self.login(client)
-        response = client.post("/api/battles/showcase", json={})
+        with patch.dict(os.environ, {"NFIGHT_WEB_ADMIN_IDS": ""}):
+            self.assertEqual(client.post("/api/battles/showcase", json={}).status_code, 403)
+        with patch.dict(os.environ, {"NFIGHT_WEB_ADMIN_IDS": "10000001"}):
+            response = client.post("/api/battles/showcase", json={})
         self.assertEqual(response.status_code, 200)
         result = response.json()
         self.assertEqual(result["attacker"]["martialArt"]["id"], "sword_xuanmo")
