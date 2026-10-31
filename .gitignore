@@ -7,3 +7,16 @@ name_fight_data/
 *.sqlite3
 .DS_Store
 Thumbs.db
+
+# Local builds, browser dependencies, and generated runtime files
+web/frontend/node_modules/
+web/frontend/dist/
+web/.python-packages/
+.pytest_cache/
+.ruff_cache/
+output/
+data/tmp_*
+*.db-wal
+*.db-shm
+.env
+.env.*

@@ -35,6 +35,8 @@ class ActionGaugeTests(unittest.TestCase):
             if "gauge" in event:
                 gauge.update(event["gauge"])
             if "gaugeValue" in event:
+                if event.get("effect") == "low_hp_extra_action":
+                    self.assertAlmostEqual(event["gaugeValue"], gauge[event["target"]] + 100)
                 gauge[event["target"]] = event["gaugeValue"]
 
     def test_real_tick_and_spending_chain(self):
@@ -64,10 +66,19 @@ class ActionGaugeTests(unittest.TestCase):
                 if event.get("effect") == "battle_start_first_strike":
                     self.assertEqual(event["gaugeValue"], 100)
                 if event.get("effect") == "low_hp_extra_action":
-                    self.assertGreaterEqual(event["gaugeValue"], 1000)
+                    self.assertGreaterEqual(event["gaugeValue"], 100)
                 if event.get("status") == "slowed":
                     self.assertGreater(event["speedAfter"], 0)
                     self.assertLess(event["speedAfter"], 75)
+
+    def test_low_hp_extra_action_gets_the_next_turn(self):
+        battle = next(item["battle"] for item in effect_fixtures() if item["id"] == "low_hp_extra_action")
+        events = battle["events"]
+        trigger_index = next(index for index, event in enumerate(events)
+                             if event.get("effect") == "low_hp_extra_action")
+        trigger = events[trigger_index]
+        next_turn = next(event for event in events[trigger_index + 1:] if event["type"] == "turn_start")
+        self.assertEqual(next_turn["actor"], trigger["target"])
 
     def test_victory_matches_existing_outro_categories(self):
         cases = [(3, .8, False, "quick"), (8, .8, False, "dominant"),

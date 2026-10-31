@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "dragon_chief_phase1": {
+    "portrait": "dragon-chief-guardian-v1.png",
+    "theme": "bronze",
+    "label": "破阵前锋",
+    "animation": "gate_sword"
+  },
+  "dragon_chief_phase2": {
+    "portrait": "dragon-chief-sovereign-v1.png",
+    "theme": "jade",
+    "label": "龙首真身",
+    "animation": "dragon_sword"
+  }
+}

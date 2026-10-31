@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 from database import FighterRepository
 from pve import PveService
+from web_auth import WebAuthRepository, WebIdentity
 
 sys.path.insert(0, str(Path(__file__).parent / "web" / ".python-packages"))
 import uvicorn
@@ -39,8 +40,11 @@ class WebBattleEventsTest(unittest.TestCase):
             repo = ClosingRepository(db_path)
             with patch("database.FighterRepository", return_value=repo):
                 api = importlib.import_module("web.backend.app")
-            with patch.object(api, "repo", repo):
+            with patch.object(api, "repo", repo), patch.object(api, "auth", WebAuthRepository(repo.db_path)):
                 api.pve = PveService(repo, api.engine)
+                device, code, _ = api.auth.create_challenge()
+                api.auth.confirm(code, WebIdentity("10000001", "20000001", "Test player"))
+                token = api.auth.exchange(device)
                 sock = socket.socket()
                 sock.bind(("127.0.0.1", 0))
                 port = sock.getsockname()[1]
@@ -56,7 +60,8 @@ class WebBattleEventsTest(unittest.TestCase):
                     def request(route, body=None):
                         data = None if body is None else json.dumps(body).encode("utf-8")
                         req = Request(f"http://127.0.0.1:{port}/api/{route}", data=data,
-                                      headers={"Content-Type": "application/json"})
+                                      headers={"Content-Type": "application/json", "Origin": api.PUBLIC_ORIGIN,
+                                               "Cookie": f"{api.SESSION_COOKIE}={token}"})
                         with urlopen(req, timeout=5) as response:
                             return json.load(response)
 

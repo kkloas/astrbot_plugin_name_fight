@@ -164,6 +164,7 @@ def apply_boss_phase_skin(
         skinned_moves: list[dict[str, Any]] = []
         for index, base_move in enumerate(base_moves):
             move = deepcopy(base_move)
+            move["visual_move"] = base_move["name"]
             if index < len(move_skins):
                 skin = move_skins[index]
                 if skin.get("name"):
@@ -307,7 +308,7 @@ def boss_phase_opening_message(team_label: str, payload: dict[str, Any]) -> str:
 def boss_phase_transition_message(phase1: dict[str, Any], phase2: dict[str, Any]) -> str:
     phase1_name = str(phase1.get("name") or "\u4e00\u9636\u6bb5")
     phase2_name = str(phase2.get("name") or "\u4e8c\u9636\u6bb5")
-    return f"\u3010\u9636\u6bb5\u5207\u6362\u3011{phase1_name} \u5df2\u88ab\u51fb\u7a7f\uff0c{phase2_name} \u6ee1\u8840\u73b0\u4e16\uff0c\u6b8b\u9635\u7ee7\u7eed\u5f3a\u653b\u3002"
+    return f"\u3010\u9636\u6bb5\u5207\u6362\u3011{phase1_name} \u5df2\u88ab\u51fb\u7a7f\uff0c{phase2_name} \u73b0\u4e16\uff0c\u6b8b\u9635\u7ee7\u7eed\u5f3a\u653b\u3002"
 
 
 def boss_duel_intro_message(phase_label: str, duel_no: int, fighter_name: str, boss_name: str) -> str:
@@ -397,9 +398,9 @@ def boss_help_message() -> str:
             "【世界BOSS帮助】",
             "常用命令:",
             "/boss - 查看当前状态、血量、次数和本期奖励预览",
-            "/bossfight - 详细版挑战，展示完整阶段日志",
+            "/bossfight - 动画版挑战，逐阵发送战斗 GIF",
             "/bossquick - 快速版挑战，只看阶段摘要",
-            "/bosssim [phase1|phase2] - 详细演练，不扣次数，不写共享血量",
+            "/bosssim [phase1|phase2] - 动画演练，不扣次数，不写共享血量",
             "/bosssimquick [phase1|phase2] - 快速演练，不扣次数，不写共享血量",
             "/bossrank - 查看贡献榜",
             "/bossopen /bossclose /bosssettle - 管理员开启、关闭、结算",

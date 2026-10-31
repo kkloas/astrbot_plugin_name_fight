@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 
 from database import FighterRepository
 from pve import PveService
+from web_auth import WebAuthRepository, WebIdentity
 
 sys.path.insert(0, str(Path(__file__).parent / "web" / ".python-packages"))
 import uvicorn
@@ -40,12 +41,15 @@ class WebPveApiTest(unittest.TestCase):
             repo = ClosingRepository(Path(directory) / "fighters.db")
             with patch("database.FighterRepository", return_value=repo):
                 api = importlib.import_module("web.backend.app")
-            with patch.object(api, "repo", repo):
+            with patch.object(api, "repo", repo), patch.object(api, "auth", WebAuthRepository(repo.db_path)):
                 api.pve = PveService(repo, api.engine)
+                device, code, _ = api.auth.create_challenge()
+                api.auth.confirm(code, WebIdentity("10000001", "20000001", "Test player"))
+                token = api.auth.exchange(device)
                 sock = socket.socket()
                 sock.bind(("127.0.0.1", 0))
                 port = sock.getsockname()[1]
-                server = uvicorn.Server(uvicorn.Config(api.app, log_level="error", ws="none"))
+                server = uvicorn.Server(uvicorn.Config(api.app, log_level="error", ws="none", lifespan="off"))
                 thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
                 thread.start()
                 try:
@@ -59,7 +63,8 @@ class WebPveApiTest(unittest.TestCase):
                         req = Request(
                             f"http://127.0.0.1:{port}/api/{route}",
                             data=data,
-                            headers={"Content-Type": "application/json"},
+                            headers={"Content-Type": "application/json", "Origin": api.PUBLIC_ORIGIN,
+                                               "Cookie": f"{api.SESSION_COOKIE}={token}"},
                         )
                         with urlopen(req, timeout=10) as response:
                             return json.load(response)
@@ -90,7 +95,7 @@ class WebPveApiTest(unittest.TestCase):
                     with repo._connect() as connection:
                         connection.execute(
                             "UPDATE user_wallets SET points = 200 WHERE user_id = ?",
-                            (api.DEFAULT_USER_ID,),
+                            ("10000001",),
                         )
                         connection.commit()
                     request("shop/buy", {"itemId": "energy_pill", "quantity": 1})
@@ -110,8 +115,34 @@ class WebPveApiTest(unittest.TestCase):
                         request("pve/chapters/chapter_1/rewards/18/claim", {})
                     self.assertEqual(error.exception.code, 400)
                     error.exception.close()
+                    with repo._connect() as connection:
+                        connection.execute(
+                            "INSERT INTO pve_stage_progress (user_id, stage_id, best_stars, clear_count, first_cleared_at, last_cleared_at) VALUES (?, ?, 1, 1, 1, 1)",
+                            ("10000001", "2-6"),
+                        )
+                        connection.commit()
+                    with self.assertRaises(HTTPError) as tactic_error:
+                        request("pve/stages/3-1/challenge", {"tacticId": "invalid"})
+                    self.assertEqual(tactic_error.exception.code, 400)
+                    tactic_error.exception.close()
+                    chapter_three = request("pve/stages/3-1/challenge", {"tacticId": "3-1-rush"})
+                    self.assertEqual(chapter_three["selectedTacticId"], "3-1-rush")
+                    self.assertEqual(len(chapter_three["stage"]["enemies"]), 7)
+                    self.assertEqual(chapter_three["status"], "pending")
+                    self.assertEqual(len(chapter_three["duels"]), 2)
+                    resumed = request("pve/attempt")
+                    self.assertEqual(resumed["attemptId"], chapter_three["attemptId"])
+                    while chapter_three["status"] == "pending":
+                        prompt = chapter_three["switchPrompt"]
+                        chapter_three = request(
+                            f"pve/attempts/{chapter_three['attemptId']}/switch",
+                            {"decisionCount": prompt["decisionCount"], "fighterIndex": prompt["availableIndexes"][-1]},
+                        )
+                    self.assertEqual(chapter_three["status"], "complete")
+                    self.assertEqual(len(chapter_three["objectiveResults"]), 3)
                 finally:
                     server.should_exit = True
+                    server.force_exit = True
                     thread.join(timeout=5)
                     sock.close()
                     self.assertFalse(thread.is_alive())

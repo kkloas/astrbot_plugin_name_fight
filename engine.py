@@ -157,9 +157,10 @@ STATE_TEXT = {
 
 
 class CombatEngine:
-    def __init__(self, max_ticks: int = 100, max_actions: int = 50) -> None:
+    def __init__(self, max_ticks: int = 100, max_actions: int = 50, rng: Any = None) -> None:
         self.max_ticks = max_ticks
         self.max_actions = max_actions
+        self.rng = rng if rng is not None else random
 
     def battle(self, fighter_a: dict[str, Any], fighter_b: dict[str, Any]) -> list[str]:
         logs, _winner, _state = self.battle_with_state(fighter_a, fighter_b)
@@ -174,11 +175,12 @@ class CombatEngine:
         logs, winner_name, state = self.battle_with_state(fighter_a, fighter_b, _events=events)
         victory_time = (int(state["actions"]) + 1) * 1900
         victory = next((event for event in events if event.get("type") == "victory_start"), None)
-        if victory is None:
+        if victory is None and not state.get("phase_boundary"):
             victory = {"type": "victory_start", "victoryKind": "standard" if winner_name and any(event.get("type") == "damage" and event.get("hpAfter") == 0 for event in events) else "judged" if winner_name else "draw"}
             events.append(victory)
-        victory.update(time=victory_time,
-                       victoryVariant=sha256("\n".join(logs).encode("utf-8")).digest()[0] % 3)
+        if victory is not None:
+            victory.update(time=victory_time,
+                           victoryVariant=sha256("\n".join(logs).encode("utf-8")).digest()[0] % 3)
         events.append({
             "type": "battle_end",
             "time": victory_time + 1800,
@@ -201,7 +203,7 @@ class CombatEngine:
         actor_a = self._build_actor(fighter_a)
         actor_b = self._build_actor(fighter_b)
         logs: list[str] = [
-            random.choice(INTRO_TEMPLATES).format(attacker=actor_a["name"], defender=actor_b["name"]),
+            self.rng.choice(INTRO_TEMPLATES).format(attacker=actor_a["name"], defender=actor_b["name"]),
             self._panel_text(actor_a, actor_b),
         ]
         if _events is not None:
@@ -257,13 +259,14 @@ class CombatEngine:
                 charge_ticks = 0
                 charge_time = 0
 
-            ready.sort(key=lambda actor: (actor["ag"], random.random()), reverse=True)
+            ready.sort(key=lambda actor: (bool(actor.get("_extra_action_pending")), actor["ag"], self.rng.random()), reverse=True)
             for attacker in ready:
                 defender = actor_b if attacker is actor_a else actor_a
                 if attacker["hp"] <= 0 or defender["hp"] <= 0 or attacker["ag"] < 100:
                     continue
                 gauge_before = self._initiative_snapshot(actor_a, actor_b)
                 attacker["ag"] -= 100
+                attacker["_extra_action_pending"] = False
                 actions += 1
                 log_start = len(logs)
                 if _events is not None:
@@ -306,9 +309,14 @@ class CombatEngine:
                         gauge=current_gauge["gauge"],
                         speeds=current_gauge["speeds"],
                     )
+                if actor_b.get("_hp_floor", 0) and actor_b["hp"] <= actor_b["_hp_floor"]:
+                    logs.append(f"{actor_b['name']} 气机骤变,战斗进入下一阶段.")
+                    state = self._battle_state(actor_a, actor_b, actions, replay_frames, collect_replay)
+                    state["phase_boundary"] = True
+                    return logs, None, state
                 if defender["hp"] <= 0 or attacker["hp"] <= 0:
                     if defender["hp"] <= 0 and attacker["hp"] <= 0:
-                        logs.append(random.choice(DRAW_TEMPLATES))
+                        logs.append(self.rng.choice(DRAW_TEMPLATES))
                         if collect_replay:
                             replay_frames.append(self._replay_snapshot(actor_a, actor_b, actions, None, None, logs[-1:], "outcome"))
                         return logs, None, self._battle_state(actor_a, actor_b, actions, replay_frames, collect_replay)
@@ -325,7 +333,7 @@ class CombatEngine:
         hp_ratio_a = actor_a["hp"] / actor_a["max_hp"]
         hp_ratio_b = actor_b["hp"] / actor_b["max_hp"]
         if abs(hp_ratio_a - hp_ratio_b) < 0.01:
-            logs.append(random.choice(DRAW_TEMPLATES))
+            logs.append(self.rng.choice(DRAW_TEMPLATES))
         else:
             winner, loser = (actor_a, actor_b) if hp_ratio_a > hp_ratio_b else (actor_b, actor_a)
             logs.append(self._pick_outro_text(winner, loser, actions, judged=True))
@@ -382,6 +390,7 @@ class CombatEngine:
             "name": fighter["name"],
             "stats": stats,
             "hp": max(0, min(stats["hp"], int(fighter.get("current_hp", stats["hp"])))),
+            "_hp_floor": max(0, int(fighter.get("phase_hp_floor", 0))),
             "max_hp": stats["hp"],
             "ag": 0.0,
             "martial_art": fighter["martial_art"],
@@ -435,13 +444,13 @@ class CombatEngine:
             pool = CLUTCH_WIN_TEMPLATES
         else:
             pool = STANDARD_WIN_TEMPLATES
-        return random.choice(pool).format(attacker=winner["name"], defender=loser["name"])
+        return self.rng.choice(pool).format(attacker=winner["name"], defender=loser["name"])
 
     def _take_turn(self, attacker: dict[str, Any], defender: dict[str, Any], logs: list[str], action_no: int) -> None:
         if attacker["hp"] <= 0:
             return
         logs.append(
-            random.choice(TURN_START_TEMPLATES).format(
+            self.rng.choice(TURN_START_TEMPLATES).format(
                 action_no=action_no,
                 attacker=attacker["name"],
                 defender=defender["name"],
@@ -457,7 +466,7 @@ class CombatEngine:
             logs.extend(self._resolve_action_end_effects(attacker))
             return
 
-        move = random.choice(attacker["martial_art"]["moves"])
+        move = self.rng.choice(attacker["martial_art"]["moves"])
         if "_replay" in attacker:
             attacker["_replay"]["time"] = action_no * 1900 + 550
             self._emit(attacker, "attack", target=defender.get("_side"), move=move.get("name", ""), martialArtId=attacker["martial_art"].get("id"), weaponType=attacker["martial_art"].get("type"), moveIndex=attacker["martial_art"].get("moves", []).index(move))
@@ -466,7 +475,7 @@ class CombatEngine:
                 attacker["_replay"]["time"] = action_no * 1900 + 950
                 self._emit(attacker, "dodge", target=defender.get("_side"), sourceSkill={"category": "qinggong", "id": defender["qinggong"].get("id"), "name": defender["qinggong"].get("name", "")})
             logs.append(
-                random.choice(DODGE_TEMPLATES).format(
+                self.rng.choice(DODGE_TEMPLATES).format(
                     attacker=attacker["name"],
                     defender=defender["name"],
                     qinggong=defender["qinggong"]["name"],
@@ -489,7 +498,7 @@ class CombatEngine:
                        bodyPartKey=part_key, sourceSkill=self._skill_summary(defender, "neigong"))
         hp_before = int(defender["hp"])
         damage, mitigation_logs = self._apply_damage_defer(defender, damage)
-        defender["hp"] = max(0, defender["hp"] - damage)
+        defender["hp"] = max(defender.get("_hp_floor", 0), defender["hp"] - damage)
         logs.append(self._hit_reaction(defender, part_key))
         logs.append(
             "{text} \u9020\u6210 {damage} \u70b9\u4f24\u5bb3, {defender} \u5269\u4f59 {hp}/{max_hp} \u6c14\u8840\u3002".format(
@@ -530,7 +539,7 @@ class CombatEngine:
         return tagged
 
     def _render_move_text(self, attacker: dict[str, Any], defender: dict[str, Any], move: dict[str, Any], body_part_text: str) -> str:
-        template = random.choice(move["texts"]) if move.get("texts") else move["template"]
+        template = self.rng.choice(move["texts"]) if move.get("texts") else move["template"]
         return template.format(
             attacker=attacker["name"],
             defender=defender["name"],
@@ -542,11 +551,11 @@ class CombatEngine:
 
     def _crit_text(self, attacker: dict[str, Any], defender: dict[str, Any]) -> str:
         pool = attacker["martial_art"].get("crit_reactions") or DEFAULT_CRIT_REACTIONS
-        return random.choice(pool).format(attacker=self._tag_name(attacker["name"]), defender=self._tag_name(defender["name"]))
+        return self.rng.choice(pool).format(attacker=self._tag_name(attacker["name"]), defender=self._tag_name(defender["name"]))
 
     def _hit_reaction(self, defender: dict[str, Any], part_key: str) -> str:
         pool = HIT_REACTION_TEMPLATES.get(part_key, HIT_REACTION_TEMPLATES["chest"])
-        return random.choice(pool).format(defender=self._tag_name(defender["name"]))
+        return self.rng.choice(pool).format(defender=self._tag_name(defender["name"]))
 
     def _resolve_turn_start(self, actor: dict[str, Any], logs: list[str]) -> bool:
         stunned_state = self._find_state(actor, "stunned")
@@ -559,7 +568,7 @@ class CombatEngine:
             if state["type"] == "bleeding":
                 damage = self._bleeding_damage(actor, state)
                 hp_before = int(actor["hp"])
-                actor["hp"] = max(0, actor["hp"] - damage)
+                actor["hp"] = max(actor.get("_hp_floor", 0), actor["hp"] - damage)
                 logs.append("{name} \u4f24\u53e3\u8ff8\u88c2, \u6d41\u8840\u53d1\u4f5c, \u635f\u5931 {damage} \u70b9\u6c14\u8840\u3002".format(name=actor["name"], damage=damage))
                 state["duration"] -= 1
                 self._hp_event(actor, hp_before, "bleeding", amount=damage)
@@ -572,7 +581,7 @@ class CombatEngine:
                 damage = max(1, (pending + duration - 1) // duration)
                 damage = min(damage, pending)
                 hp_before = int(actor["hp"])
-                actor["hp"] = max(0, actor["hp"] - damage)
+                actor["hp"] = max(actor.get("_hp_floor", 0), actor["hp"] - damage)
                 state["pending_damage"] = max(0, pending - damage)
                 state["duration"] -= 1
                 logs.append("{name} \u4f53\u5185\u88ab\u538b\u4e0b\u7684\u6697\u52b2\u9aa4\u7136\u53d1\u4f5c, \u635f\u5931 {damage} \u70b9\u6c14\u8840\u3002".format(name=actor["name"], damage=damage))
@@ -583,7 +592,7 @@ class CombatEngine:
             elif state["type"] == "poisoned":
                 damage = int(state.get("true_damage", 6))
                 hp_before = int(actor["hp"])
-                actor["hp"] = max(0, actor["hp"] - damage)
+                actor["hp"] = max(actor.get("_hp_floor", 0), actor["hp"] - damage)
                 logs.append("{name} \u4f53\u5185\u6bd2\u6027\u7ffb\u6d8c, \u635f\u5931 {damage} \u70b9\u771f\u5b9e\u4f24\u5bb3\u3002".format(name=actor["name"], damage=damage))
                 state["duration"] -= 1
                 self._hp_event(actor, hp_before, "poisoned", amount=damage)
@@ -603,7 +612,7 @@ class CombatEngine:
         for passive in actor["neigong"].get("passives", []):
             if passive.get("type") != "regeneration":
                 continue
-            if random.random() > passive.get("chance", 1.0):
+            if self.rng.random() > passive.get("chance", 1.0):
                 continue
             heal = max(1, int(actor["max_hp"] * passive.get("heal_ratio", 0.0)))
             real_heal = min(heal, actor["max_hp"] - actor["hp"])
@@ -625,7 +634,7 @@ class CombatEngine:
             if passive.get("type") == "thorns":
                 reflect = max(1, int(damage * passive.get("reflect_ratio", 0.0)))
                 hp_before = int(attacker["hp"])
-                attacker["hp"] = max(0, attacker["hp"] - reflect)
+                attacker["hp"] = max(attacker.get("_hp_floor", 0), attacker["hp"] - reflect)
                 self._hp_event(attacker, hp_before, passive["type"], source=defender, amount=reflect)
                 logs.append("{name} 护体劲力反震而出, 令 {target} 反受 {damage} 点伤害。".format(name=defender["name"], target=attacker["name"], damage=reflect))
                 logs.extend(self._resolve_fatal_block(attacker))
@@ -635,7 +644,7 @@ class CombatEngine:
                     continue
                 reflect = max(1, int(damage * passive.get("reflect_ratio", 0.0)))
                 hp_before = int(attacker["hp"])
-                attacker["hp"] = max(0, attacker["hp"] - reflect)
+                attacker["hp"] = max(attacker.get("_hp_floor", 0), attacker["hp"] - reflect)
                 self._hp_event(attacker, hp_before, passive["type"], source=defender, amount=reflect)
                 message = self._format_effect_message(passive.get("trigger_msg"), defender)
                 if message:
@@ -756,7 +765,8 @@ class CombatEngine:
             if used >= limit:
                 continue
             actor["special_usage"][key] = used + 1
-            actor["ag"] = max(actor["ag"], 1000.0)
+            actor["ag"] += 100.0
+            actor["_extra_action_pending"] = True
             self._passive_event(actor, effect["type"], "qinggong", gaugeValue=actor["ag"])
             message = self._format_effect_message(effect.get("trigger_msg"), actor)
             if message:
@@ -881,7 +891,7 @@ class CombatEngine:
         logs: list[str] = []
         for effect in move.get("effects", []):
             chance = effect.get("chance", 0.0) + effect.get("part_bonus", {}).get(part_key, 0.0)
-            if random.random() > chance:
+            if self.rng.random() > chance:
                 continue
             state = {"type": effect["type"], "duration": int(effect.get("duration", 1))}
             if effect["type"] == "weakened":
@@ -914,7 +924,7 @@ class CombatEngine:
     ) -> tuple[int, bool]:
         atk = self._effective_atk(attacker)
         defense = self._effective_def(defender)
-        variance = random.uniform(0.92, 1.08)
+        variance = self.rng.uniform(0.92, 1.08)
         move_multiplier = self._move_multiplier(move)
         part_multiplier = BODY_PARTS[part_key]["damage_multiplier"]
         guard_multiplier = defender["neigong"].get("part_guard", {}).get(part_key, 1.0)
@@ -930,13 +940,13 @@ class CombatEngine:
     def _move_multiplier(self, move: dict[str, Any]) -> float:
         if "damage_multiplier" in move:
             return float(move["damage_multiplier"])
-        return random.uniform(move["power_min"], move["power_max"])
+        return self.rng.uniform(move["power_min"], move["power_max"])
 
     def _pick_body_part(self, attacker: dict[str, Any], move: dict[str, Any]) -> tuple[str, str]:
         if move.get("target_weights"):
             labels = list(move["target_weights"].keys())
             weights = list(move["target_weights"].values())
-            chosen_text = random.choices(labels, weights=weights, k=1)[0]
+            chosen_text = self.rng.choices(labels, weights=weights, k=1)[0]
             part_key = TEXT_PART_TO_KEY.get(chosen_text, chosen_text if chosen_text in BODY_PARTS else "chest")
             if chosen_text in BODY_PARTS:
                 chosen_text = BODY_PARTS[chosen_text]["label"]
@@ -951,7 +961,7 @@ class CombatEngine:
             weight *= martial_bias.get(key, 1.0)
             weight *= move_bias.get(key, 1.0)
             weights.append(weight)
-        chosen_key = random.choices(keys, weights=weights, k=1)[0]
+        chosen_key = self.rng.choices(keys, weights=weights, k=1)[0]
         return chosen_key, BODY_PARTS[chosen_key]["label"]
 
     def _effective_atk(self, actor: dict[str, Any]) -> float:
@@ -1034,7 +1044,7 @@ class CombatEngine:
         actor["states"] = [state for state in actor["states"] if state.get("duration", 0) > 0]
 
     def _roll(self, threshold: float) -> bool:
-        return random.uniform(0.0, 100.0) < threshold
+        return self.rng.uniform(0.0, 100.0) < threshold
     def _emit(self, actor: dict[str, Any], kind: str, **payload: Any) -> None:
         replay = actor.get("_replay")
         if replay is None:

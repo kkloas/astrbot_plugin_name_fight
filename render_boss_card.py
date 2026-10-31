@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import json
+from pathlib import Path
 import uuid
 from typing import Any
 
@@ -93,7 +95,66 @@ def _draw_centered(draw: ImageDraw.ImageDraw, cx: int, y: int, text: str, font, 
     )
 
 
+def _render_shared_card(payload: dict[str, Any], data_dir: str) -> str | None:
+    assets = Path(__file__).parent / "web_animation" / "boss_assets"
+    manifest = json.loads((assets / "manifest.json").read_text(encoding="utf-8"))
+    visual = manifest.get(payload.get("boss_key"))
+    if not visual:
+        return None
+    canvas = Image.new("RGBA", (1000, 700), (31, 30, 25, 255))
+    draw = ImageDraw.Draw(canvas)
+    gold, paper = (186, 148, 84), (239, 225, 195)
+    draw.rectangle((14, 14, 985, 685), outline=gold, width=2)
+    draw.line((385, 115, 385, 630), fill=(110, 92, 59), width=1)
+    with Image.open(assets / visual["portrait"]) as source:
+        portrait = source.convert("RGBA")
+        portrait.thumbnail((370, 570), Image.Resampling.LANCZOS)
+        canvas.alpha_composite(
+            portrait,
+            (20 + (350 - portrait.width) // 2, 100 + (570 - portrait.height) // 2),
+        )
+    font_dir = str(Path(__file__).parent / "web_animation")
+    title = _build_font(font_dir, "STXINGKA.TTF", [], 42)
+    body = _build_font(font_dir, "STKAITI.TTF", [], 28)
+    small = _build_font(font_dir, "STKAITI.TTF", [], 23)
+    draw.text((38, 34), str(payload.get("name", NAME_FALLBACK)), font=title, fill=paper)
+    draw.text(
+        (420, 125), str(payload.get("label", visual["label"])), font=body, fill=gold
+    )
+    for index, (label, key) in enumerate(
+        (("武学", "martial_art"), ("内功", "neigong"), ("轻功", "qinggong"))
+    ):
+        entry = payload.get(key) or {}
+        y = 185 + index * 75
+        draw.text((420, y), label, font=small, fill=gold)
+        name = _truncate_text(draw, str(entry.get("name", "")), body, 395)
+        draw.text((490, y - 3), name, font=body, fill=paper)
+        draw.line((420, y + 47, 950, y + 47), fill=(83, 75, 55))
+    stats = payload.get("stats") or {}
+    hp = payload.get("current_hp", stats.get("hp", 0))
+    values = [
+        ("气血", f"{hp}/{stats.get('hp', 0)}"),
+        ("速度", stats.get("spd", 0)),
+        ("攻击", stats.get("atk", 0)),
+        ("暴击", f"{stats.get('crt', 0)}%"),
+        ("防御", stats.get("def", 0)),
+        ("闪避", f"{stats.get('eva', 0)}%"),
+    ]
+    for index, (label, value) in enumerate(values):
+        x, y = 420 + (index % 2) * 280, 440 + (index // 2) * 61
+        draw.text((x, y), label, font=small, fill=gold)
+        draw.text((x + 64, y), str(value), font=small, fill=paper)
+    draw.text((420, 644), "群侠共讨 · 世界首领", font=small, fill=gold)
+    output = Path(data_dir) / f"tmp_boss_card_{uuid.uuid4().hex[:8]}.jpg"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    canvas.convert("RGB").save(output, quality=90)
+    return str(output)
+
+
 def render_boss_card(payload: dict[str, Any], data_dir: str, avatar_path: str | None = None) -> str | None:
+    shared = _render_shared_card(payload, data_dir)
+    if shared:
+        return shared
     template_path = _template_path(data_dir, payload)
     if not template_path or not os.path.exists(template_path):
         return None

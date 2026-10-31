@@ -1,5 +1,6 @@
 import { isNewArt } from './newMartialMotion.js';
 import { isExpandedArt } from './expandedArts.js';
+import { isMasterArt } from './wuxiaMasterArts.js';
 const seeds = new WeakMap();
 function hash(text, seed = 2166136261) {
     let n = seed;
@@ -13,7 +14,7 @@ function hash(text, seed = 2166136261) {
 // a 50/50 choice without combat RNG calls or frame-dependent random selection.
 // Equal recordings retain their choices even after JSON round trips.
 export function motionVariantFor(battle, event, mode = 'mixed') {
-    if (isNewArt(event?.martialArtId) || isExpandedArt(event?.martialArtId))
+    if (isNewArt(event?.martialArtId) || isExpandedArt(event?.martialArtId) || isMasterArt(event?.martialArtId))
         return 'current';
     if (mode !== 'mixed')
         return mode;

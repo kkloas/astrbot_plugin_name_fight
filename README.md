@@ -3,6 +3,7 @@
 Web 和 AstrBot 现已共用 `web_animation/battle/` 的动作和特效实现.
 Web 可通过 `web/dev.bat` 启动, 动作预览在 `/motion-preview.html`.
 同步架构、测试和 Linux Bot 更新步骤见 [两端兼容说明](SHARED_ANIMATION.md).
+Web 和 AstrBot 服务器从 `dev-web` 更新的步骤见 [服务器更新指南](SERVER_UPDATE.md).
 
 ![Name Fight Logo](./logo.png)
 

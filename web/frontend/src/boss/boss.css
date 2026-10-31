@@ -1,0 +1,81 @@
+.world-boss-view { color:var(--ink); background:rgba(244,234,215,.96); padding:20px; border:1px solid #b8a887; }
+.boss-heading,.boss-section-title,.boss-bout-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.boss-heading { padding:8px 0 20px; }
+.boss-heading h2 { margin:6px 0 0; font-size:30px; }
+.boss-eyebrow { font-size:12px; letter-spacing:.16em; color:#80603b; }
+.boss-status { padding:6px 12px; border:1px solid #b7a88a; font-size:12px; white-space:nowrap; }
+.boss-status.active { border-color:#a5291c; color:#a5291c; }
+.boss-phase-tabs { display:flex; gap:6px; border-bottom:1px solid #bba37a; }
+.boss-phase-tabs button { border-radius:0; border:0; padding:12px 20px; background:transparent; color:#6f6456; }
+.boss-phase-tabs button[aria-selected="true"] { background:#302c24; color:#f7e5c5; }
+.boss-dossier { display:grid; grid-template-columns:minmax(160px,.85fr) 1.15fr; min-height:380px; border:1px solid #bba37a; border-top:0; background:radial-gradient(ellipse at 20% 50%,#d4c4a3 0,transparent 57%),#f0e7d5; overflow:hidden; }
+.boss-portrait { position:relative; display:flex; justify-content:center; align-items:flex-end; min-width:0; overflow:hidden; }
+.boss-portrait img { width:100%; max-height:410px; object-fit:contain; object-position:bottom; }
+.boss-portrait>span { position:absolute; bottom:14px; left:14px; writing-mode:vertical-rl; font-size:19px; letter-spacing:.25em; color:#8b3023; padding:8px; border:1px solid #9c6950; background:#eee3cacc; }
+.boss-details { padding:25px 22px 22px 10px; }
+.boss-details h3 { font-size:23px; margin:5px 0 10px; }
+.boss-details>p { color:#6f6456; font-size:13px; line-height:1.8; }
+.boss-stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 12px; padding:14px 0; border-top:1px solid #a9997b66; border-bottom:1px solid #a9997b66; }
+.boss-stat-grid dt { font-size:11px; color:#73634d; }
+.boss-stat-grid dd { margin:3px 0 0; font:600 17px Georgia,serif; }
+.boss-techniques { display:grid; gap:10px; }
+.boss-techniques>div { display:grid; grid-template-columns:32px 1fr; gap:4px 8px; }
+.boss-techniques span { color:#84704f; font-size:12px; }
+.boss-techniques strong { font-size:14px; }
+.boss-techniques small { grid-column:2; font-size:11px; color:#746957; line-height:1.5; }
+.boss-shared-health { margin:18px 0; }
+.boss-shared-health>div:first-child { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+.boss-health-track { margin:8px 0; height:12px; background:#d6c9ae; box-shadow:inset 0 0 0 1px #a58e6e; overflow:hidden; }
+.boss-health-track i { display:block; height:100%; background:linear-gradient(90deg,#672c25,#a94130); transition:width .4s; }
+.boss-shared-health small,.boss-team-panel small { color:#746957; font-size:11px; }
+.boss-team-panel { padding:18px; border:1px solid #c6b593; background:#f8f0df66; }
+.boss-section-title h3 { margin:0; font-size:18px; }
+.boss-section-title>span { font-size:12px; color:#795d3c; }
+.boss-team-panel p { font-size:12px; color:#746957; line-height:1.7; }
+.boss-team-slots { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:16px 0; }
+.boss-team-slots label { display:grid; gap:6px; min-width:0; }
+.boss-team-slots label>span { font-size:12px; color:#786347; }
+.boss-team-slots select,.boss-actions select { width:100%; min-width:0; background:#f4ead7; border:1px solid #b8a887; color:#332b20; padding:8px 6px; border-radius:2px; }
+.boss-actions { display:flex; align-items:stretch; gap:8px; margin:16px 0 10px; flex-wrap:wrap; }
+.boss-actions select { width:auto; flex:1; }
+.world-boss-view button { cursor:pointer; }
+.world-boss-view button:disabled { opacity:.45; cursor:not-allowed; }
+.world-boss-view button.boss-challenge { background:#8c3024; color:#fff0d8; border-color:#6c241b; padding:10px 18px; }
+.boss-error { color:#a5291c!important; font-size:13px; padding:10px; background:#a5291c0b; }
+.boss-retry { padding:12px; border:1px solid #aa7942; margin:12px 0; }
+.boss-replay { margin:24px 0; padding-top:20px; border-top:2px solid #8f7957; }
+.boss-replay-note { font-size:11px; color:#746957; }
+.boss-bout-heading { flex-wrap:wrap; background:#302c24; color:#eddbb7; padding:12px; margin:14px 0; font-size:13px; }
+.boss-bout-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 0; }
+.boss-bout-controls label { display:flex; gap:6px; align-items:center; font-size:12px; margin-left:auto; }
+.boss-result { display:flex; gap:8px 18px; flex-wrap:wrap; padding:16px; background:#d8c8a64d; border-left:3px solid #977642; font-size:13px; }
+.boss-result>strong { width:100%; font-size:17px; }
+.boss-result>p { width:100%; margin:0; }
+.boss-bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin:22px 0; }
+.boss-bottom-grid h3 { font-size:17px; border-bottom:1px solid #b8a887; padding-bottom:10px; }
+.boss-ranking ol { padding:0; margin:0; list-style:none; }
+.boss-ranking li { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #b8a88744; font-size:12px; }
+.boss-ranking li b { color:#927447; font:600 17px Georgia,serif; }
+.boss-ranking li span { flex:1; overflow-wrap:anywhere; }
+.boss-ranking li strong { color:#923d2e; }
+.boss-rules p,.boss-ranking>p,.boss-empty { font-size:12px; line-height:1.9; color:#746957; }
+@media(max-width:650px) {
+  .boss-dossier { grid-template-columns:minmax(100px,.7fr) 1.3fr; min-height:300px; }
+  .boss-portrait img { min-height:270px; object-fit:cover; object-position:50% 25%; }
+  .boss-details { padding:15px 12px 15px 4px; }
+  .boss-details h3 { font-size:19px; }
+  .boss-stat-grid { gap:8px; }
+  .boss-stat-grid dd { font-size:15px; }
+  .boss-team-slots { grid-template-columns:1fr; }
+  .boss-team-slots label { grid-template-columns:50px 1fr; align-items:center; }
+  .boss-bottom-grid { grid-template-columns:1fr; gap:8px; }
+  .boss-actions .boss-challenge { width:100%; }
+  .boss-portrait>span { left:5px; font-size:14px; }
+}
+@media(prefers-reduced-motion:reduce) { .boss-health-track i { transition:none; } }
+
+.boss-rewards summary { cursor:pointer; color:#8c3024; padding:8px 0; font-size:13px; }
+.boss-rewards table { width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed; }
+.boss-rewards th,.boss-rewards td { padding:7px 4px; border-bottom:1px solid #b8a88766; text-align:left; overflow-wrap:anywhere; }
+.boss-rewards th:first-child { width:32px; }
+@media(max-width:650px) { .world-boss-view { padding:12px; } }

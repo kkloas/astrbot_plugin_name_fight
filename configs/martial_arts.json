@@ -2353,5 +2353,142 @@
         "effects": []
       }
     ]
+  },
+  {
+    "id": "sword_xuanmo",
+    "name": "玄墨剑典",
+    "type": "sword",
+    "description": "以剑代笔，引苍青玄墨入锋。剑走龙蛇之际，墨痕外敛而剑芒内炽，极尽写意与凛冽之致。",
+    "combat_summary": "轻灵迅捷的水墨剑道，兼具远程剑气、太极封势与御剑齐射，墨影穿云偶能迟滞敌方身法。",
+    "stat_modifiers": {
+      "atk": 1.07,
+      "spd": 1.08,
+      "crt": 1.05
+    },
+    "moves": [
+      {
+        "name": "起笔问墨",
+        "damage_multiplier": 0.92,
+        "template": "{attacker} 剑指轻拂青锋，一式「{move_name}」如饱墨初落，自下而上斜挑 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "残月掠影",
+        "damage_multiplier": 0.98,
+        "template": "{attacker} 踏步侧旋，剑光弯作一钩苍青新月，「{move_name}」倏然掠向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "墨影穿云",
+        "damage_multiplier": 0.96,
+        "template": "{attacker} 身化浓淡墨影欺近，一式「{move_name}」破雾穿刺，寒芒直逼 {defender} 的{body_part}。",
+        "effects": [
+          {
+            "type": "slowed",
+            "chance": 0.25,
+            "duration": 2,
+            "spd_multiplier": 0.85
+          }
+        ]
+      },
+      {
+        "name": "破空剑气",
+        "damage_multiplier": 1.06,
+        "template": "{attacker} 振腕挥剑斩裂空气，「{move_name}」催出一道外墨内芒的半月剑波，激射 {defender} 的{body_part}！",
+        "effects": []
+      },
+      {
+        "name": "泼墨回风",
+        "damage_multiplier": 1.12,
+        "template": "{attacker} 旋身连挥两道狂草剑弧，「{move_name}」墨点飞溅如骤雨，锋芒落向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "太极封锋",
+        "damage_multiplier": 1.16,
+        "template": "{attacker} 剑尖画圆凝成阴阳墨印，随即中宫直进，「{move_name}」破印贯向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "万剑归宗",
+        "damage_multiplier": 1.36,
+        "template": "{attacker} 纵身凌空掐诀，背后太极剑阵骤开，「{move_name}」化出漫天青墨剑影齐齐攒刺 {defender} 的{body_part}！",
+        "effects": []
+      },
+      {
+        "name": "绝技·一剑霜寒",
+        "damage_multiplier": 1.48,
+        "template": "天地忽作水墨苍茫！{attacker} 收剑蓄极，绝技「{move_name}」携惊雷寒芒一闪绝尘，瞬息斩穿 {defender} 的{body_part}！",
+        "effects": []
+      }
+    ]
+  },
+  {
+    "id": "blade_chixiao",
+    "name": "赤霄断魂刀",
+    "type": "blade",
+    "description": "刀引残阳烈煞，墨锋裹挟赤霞流火。出刀大开大合，每一斩皆如朱砂泼卷、惊雷裂地。",
+    "combat_summary": "刚猛霸烈的重刃刀法，刀弧宽阔且爆发凌厉，裂甲断岳可震散敌方护体防线。",
+    "stat_modifiers": {
+      "atk": 1.12,
+      "spd": 1.01
+    },
+    "moves": [
+      {
+        "name": "赤霞横江",
+        "damage_multiplier": 0.98,
+        "template": "{attacker} 沉腰拧胯，长刀拖出赤墨霞光，一式「{move_name}」横贯斩向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "裂甲断岳",
+        "damage_multiplier": 0.92,
+        "template": "{attacker} 双手擎刀当空怒劈，「{move_name}」挟千钧煞气重砸 {defender} 的{body_part}。",
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.25,
+            "duration": 2,
+            "def_multiplier": 0.8
+          }
+        ]
+      },
+      {
+        "name": "残阳撩月",
+        "damage_multiplier": 1.05,
+        "template": "{attacker} 压低身形拖刀疾进，「{move_name}」自地面掀起一轮赤红刀弧，逆撩 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "血影旋斩",
+        "damage_multiplier": 1.02,
+        "template": "{attacker} 借势旋身回环，刀风卷起朱墨狂澜，一式「{move_name}」绞向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "焚风踏浪",
+        "damage_multiplier": 1.14,
+        "template": "{attacker} 连踏两步催动烈焰刀劲，「{move_name}」前后双弧叠斩，重锋直压 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "赤练裂地",
+        "damage_multiplier": 1.22,
+        "template": "{attacker} 跃起劈落地面，刀罡化作赤红火浪贴地奔涌，「{move_name}」轰向 {defender} 的{body_part}！",
+        "effects": []
+      },
+      {
+        "name": "狂煞乱舞",
+        "damage_multiplier": 1.38,
+        "template": "{attacker} 煞气暴涨，刀光纵横交错织成赤墨罗网，「{move_name}」狂猛劈斩 {defender} 的{body_part}！",
+        "effects": []
+      },
+      {
+        "name": "绝技·赤霄断魂",
+        "damage_multiplier": 1.5,
+        "template": "血月映空，赤雷轰落！{attacker} 腾空怒斩绝技「{move_name}」，一道横贯天地的朱砂刀芒劈向 {defender} 的{body_part}！",
+        "effects": []
+      }
+    ]
   }
 ]

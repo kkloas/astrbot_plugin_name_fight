@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -10,6 +11,5 @@ if LOCAL_PACKAGES.exists() and str(LOCAL_PACKAGES) not in sys.path:
 
 import uvicorn
 
-
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("app:app", host="127.0.0.1", port=int(os.environ.get("NFIGHT_WEB_PORT", "8001")), reload=False)

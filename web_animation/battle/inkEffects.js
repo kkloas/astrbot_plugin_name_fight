@@ -16,16 +16,16 @@ function line(ctx, a, b, color, width = 1) {
 }
 export function drawAura(ctx, x, y, states, time, stacks = 1) {
     ctx.save();
-    ctx.globalAlpha = .5;
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (.5)), .65) * 1.15);
     ctx.lineCap = 'round';
     if (states.includes('crisis_defense')) {
         ctx.save();
         ctx.translate(x, y - 75);
         ctx.scale(.78, 1.15);
         for (let i = 0; i < 3; i++)
-            arc(ctx, 0, 0, 62 + i * 3, -1.25 + i * 2.1 + Math.sin(time / 900) * .1, .2 + i * 2.1, '#7b7758', 1.6);
+            arc(ctx, 0, 0, 62 + i * 3, -1.25 + i * 2.1 + Math.sin(time / 900) * .1, .2 + i * 2.1, '#d6be05', 1.6);
         ctx.restore();
-        ctx.strokeStyle = '#8c8b68';
+        ctx.strokeStyle = '#d6d005';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.ellipse(x, y - 3, 48, 8, 0, 0, Math.PI * 2);
@@ -35,24 +35,24 @@ export function drawAura(ctx, x, y, states, time, stacks = 1) {
         const layers = Math.max(1, Math.min(5, stacks));
         for (let i = 0; i < layers; i++) {
             const phase = time / 1300 + i * 1.25;
-            arc(ctx, x, y - 76, 36 + i * 6, phase, phase + 2.8, '#795387', 1.8);
+            arc(ctx, x, y - 76, 36 + i * 6, phase, phase + 2.8, '#9e05d6', 1.8);
         }
-        ellipse(ctx, x, y - 2, 34 + layers * 5, 7, '#906b9a', 1.5);
+        ellipse(ctx, x, y - 2, 34 + layers * 5, 7, '#a905d6', 1.5);
     }
     if (states.includes('deferred_damage')) {
         for (let i = 0; i < 3; i++) {
             const phase = time / 700 + i * 2.094;
-            arc(ctx, x, y - 72, 19 + i * 7, phase, phase + 1.9, '#a45942', 2);
+            arc(ctx, x, y - 72, 19 + i * 7, phase, phase + 1.9, '#d63605', 2);
         }
     }
     if (states.includes('stunned')) {
-        ctx.strokeStyle = '#65583e';
+        ctx.strokeStyle = '#d69005';
         ctx.beginPath();
         ctx.ellipse(x, y - 164, 21, 5, 0, 0, Math.PI * 2);
         ctx.stroke();
         for (let i = 0; i < 3; i++) {
             const a = time / 150 + i * 2.094;
-            ctx.fillStyle = '#736143';
+            ctx.fillStyle = '#d68805';
             ctx.beginPath();
             ctx.arc(x + Math.cos(a) * 21, y - 164 + Math.sin(a) * 5, 2.6, 0, Math.PI * 2);
             ctx.fill();
@@ -67,9 +67,9 @@ export function drawAura(ctx, x, y, states, time, stacks = 1) {
         }
     }
     if (states.includes('armor_broken')) {
-        line(ctx, [x - 14, y - 111], [x - 2, y - 89], '#8b5848', 1.5);
-        line(ctx, [x - 2, y - 89], [x - 11, y - 80], '#8b5848', 1.5);
-        line(ctx, [x - 11, y - 80], [x + 5, y - 57], '#8b5848', 1.5);
+        line(ctx, [x - 14, y - 111], [x - 2, y - 89], '#d63705', 1.5);
+        line(ctx, [x - 2, y - 89], [x - 11, y - 80], '#d63705', 1.5);
+        line(ctx, [x - 11, y - 80], [x + 5, y - 57], '#d63705', 1.5);
     }
     if (states.includes('weakened')) {
         for (let i = 0; i < 3; i++)
@@ -77,7 +77,7 @@ export function drawAura(ctx, x, y, states, time, stacks = 1) {
     }
     for (const kind of ['bleeding', 'poisoned'])
         if (states.includes(kind)) {
-            ctx.fillStyle = kind === 'bleeding' ? '#8c453a' : '#586b4f';
+            ctx.fillStyle = kind === 'bleeding' ? '#d62105' : '#48d605';
             for (let i = 0; i < 3; i++) {
                 const fall = ((time / 14 + i * 19) % 55);
                 ctx.beginPath();
@@ -98,7 +98,7 @@ function lotus(ctx, x, y, size, phase) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(size, size * .5);
-    ctx.strokeStyle = '#50796d';
+    ctx.strokeStyle = '#05d699';
     ctx.fillStyle = 'rgba(113,150,125,.17)';
     ctx.lineWidth = 1.4 / size;
     for (let i = 0; i < 7; i++) {
@@ -132,10 +132,10 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     const id = event.sourceSkill?.id;
     const effect = event.effect || event.cause || event.status;
     ctx.save();
-    ctx.globalAlpha = fade * .85;
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .85)), .65) * 1.15);
     ctx.lineCap = 'round';
     if (effect === 'fatal_block') {
-        const color = '#b38a38';
+        const color = '#d69005';
         for (let i = 0; i < 3; i++) {
             ellipse(ctx, x, 248, 18 + open * 31 + i * 9, 30 + open * 45 + i * 9, color, 2.4 - i * .5);
         }
@@ -153,7 +153,7 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     }
     else if (event.type === 'guard' && id === 'jinzhong_zhao') {
         const vulnerable = (event.multiplier || 1) > 1;
-        const color = vulnerable ? '#aa4436' : '#9b813e';
+        const color = vulnerable ? '#d61f05' : '#d69c05';
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -175,7 +175,7 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     }
     else if (effect === 'damage_defer' || effect === 'deferred_damage') {
         const release = effect === 'deferred_damage';
-        const color = release ? '#a13c36' : '#a46642';
+        const color = release ? '#d61105' : '#d65205';
         for (let i = 0; i < 9; i++) {
             const phase = clamp((age - i * 18) / 650);
             const radius = release ? 15 + phase * 65 : 65 - phase * 46;
@@ -187,11 +187,11 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     else if (effect === 'stacking_defense') {
         const layers = Math.max(1, Math.min(5, event.stacks || 1));
         for (let i = 0; i < layers; i++)
-            cloud(ctx, x, 310 - i * 23 - p * 12, 25 + open * (25 + i * 4), '#85588f', open);
-        ellipse(ctx, x, 324, 30 + open * 44, 8, '#936ea0', 2);
+            cloud(ctx, x, 310 - i * 23 - p * 12, 25 + open * (25 + i * 4), '#b005d6', open);
+        ellipse(ctx, x, 324, 30 + open * 44, 8, '#a005d6', 2);
     }
     else if (effect === 'part_counter') {
-        const color = '#526f80';
+        const color = '#0589d6';
         for (let i = 0; i < 2; i++)
             arc(ctx, x, 253, 32 + i * 10, p * 7 + i * Math.PI, p * 7 + i * Math.PI + 2.5, color, 2.5);
         for (let i = 0; i < 4; i++) {
@@ -203,7 +203,7 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     }
     else if (event.type === 'heal' && effect === 'vampirism') {
         const golden = id === 'golden_wind_record';
-        const color = '#8a3d41';
+        const color = '#d60510';
         for (let i = 0; i < 19; i++) {
             const local = age - i * 16;
             if (local < 0)
@@ -214,24 +214,24 @@ export function drawTrigger(ctx, event, x, otherX, age) {
             const sy = 245 + Math.sin(angle) * radius * .8 * scatter;
             const px = sx + (x - sx) * flight;
             const py = sy + (253 - sy) * flight - Math.sin(flight * Math.PI) * (18 + i % 4 * 9);
-            ctx.globalAlpha = fade * (1 - flight * .7) * (.55 + i % 3 * .15);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * (1 - flight * .7) * (.55 + i % 3 * .15))), .65) * 1.15);
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.ellipse(px, py, 1.8 + i % 3, 1.1 + i % 2, angle + flight, 0, Math.PI * 2);
             ctx.fill();
         }
-        ctx.globalAlpha = fade * .55;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (fade * .55)), .65) * 1.15);
         if (golden)
             for (let i = 0; i < 3; i++)
                 arc(ctx, x, 257, 21 + i * 8, p * 5 + i, p * 5 + i + 2.2, color, 1.5);
         else {
             arc(ctx, x, 252, 32, -1.3, 1.3, color, 4);
-            arc(ctx, x - 7, 252, 32, -1.15, 1.15, '#c1a398', 1.2);
+            arc(ctx, x - 7, 252, 32, -1.15, 1.15, '#f94f10', 1.2);
         }
     }
     else if (event.type === 'heal') {
         const burst = effect === 'burst_heal';
-        const color = burst ? '#437f79' : '#557948';
+        const color = burst ? '#05d6c1' : '#3dd605';
         ellipse(ctx, x, 322, 24 + open * (burst ? 62 : 26), 4 + open * 8, color);
         for (let i = 0; i < (burst ? 10 : 6); i++) {
             const phase = clamp((age - i * 30) / 800);
@@ -265,7 +265,7 @@ export function drawTrigger(ctx, event, x, otherX, age) {
     else if (effect === 'thorns' || event.type === 'guard' || effect === 'crisis_defense') {
         const vulnerable = event.type === 'guard' && (event.multiplier || 1) > 1;
         const iron = id === 'iron_wall_art';
-        const color = vulnerable ? '#914f42' : iron ? '#657773' : id === 'xiantian_qigong' ? '#8a8054' : '#877552';
+        const color = vulnerable ? '#d62805' : iron ? '#657773' : id === 'xiantian_qigong' ? '#d6af05' : '#d68f05';
         if (vulnerable) {
             const y = event.bodyPartKey === 'chest' ? 235 : 263;
             for (let i = 0; i < 3; i++) {
@@ -321,7 +321,7 @@ export function drawTrigger(ctx, event, x, otherX, age) {
         const stacks = Math.min(5, event.stacks || 1);
         for (let i = 0; i < stacks + 2; i++) {
             const r = 22 + i * 7;
-            ctx.strokeStyle = '#68968e'; ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#05d6b2'; ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.ellipse(x, 315 - i * 9, r, 6 + i * 2, -.18, p * 9 + i, p * 9 + i + 3.8);
             ctx.stroke();
@@ -331,13 +331,13 @@ export function drawTrigger(ctx, event, x, otherX, age) {
         for (let i = 0; i < 7; i++) {
             const a = i * Math.PI * 2 / 7 + p * .7, r = 50 * (1 - p) + 9;
             const px = x + Math.cos(a) * r, py = 245 + Math.sin(a) * r;
-            line(ctx, [px - 4, py], [px + 4, py], '#a68dca', 1.7);
-            line(ctx, [px, py - 4], [px, py + 4], '#a68dca', 1.7);
+            line(ctx, [px - 4, py], [px + 4, py], '#7010f9', 1.7);
+            line(ctx, [px, py - 4], [px, py + 4], '#7010f9', 1.7);
         }
     }
     else if (event.type === 'passive_trigger') {
         const strong = effect === 'low_hp_extra_action';
-        const color = strong ? '#685166' : '#55716c';
+        const color = strong ? '#d605c4' : '#05d6b1';
         ellipse(ctx, x, 323, 28 + open * 46, 5 + open * 7, color, 1.4);
         for (let i = 0; i < 6; i++) {
             const phase = strong ? (p < .35 ? 1 - p / .35 : (p - .35) / .65) : open;
@@ -370,13 +370,13 @@ export function drawFootwork(ctx, id, x, dir, phase, time, trace = []) {
     if (phase <= 0)
         return;
     ctx.save();
-    ctx.globalAlpha = phase * .72;
+    ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (phase * .72)), .65) * 1.15);
     ctx.lineCap = 'round';
     const trail = trace.length ? trace : [{ x: x - dir * 25, y: 324 }, { x: x - dir * 50, y: 324 }];
     if (id === 'wind_rider') {
         for (let i = 0; i < trail.length; i++) {
             const point = trail[i];
-            ctx.strokeStyle = '#729991'; ctx.lineWidth = 1.8;
+            ctx.strokeStyle = '#05d6ab'; ctx.lineWidth = 1.8;
             ctx.beginPath(); ctx.moveTo(point.x - dir * 40, point.y - 12);
             ctx.quadraticCurveTo(point.x - dir * 20, point.y - 33, point.x + dir * 18, point.y - 8);
             ctx.stroke();
@@ -385,20 +385,20 @@ export function drawFootwork(ctx, id, x, dir, phase, time, trace = []) {
     else if (id === 'star_shifter') {
         for (let i = 0; i < trail.length; i++) {
             const point = trail[i], r = 5 + i;
-            line(ctx, [point.x - r, point.y - 5], [point.x + r, point.y - 5], '#a68dca', 1.5);
-            line(ctx, [point.x, point.y - 5 - r], [point.x, point.y - 5 + r], '#a68dca', 1.5);
+            line(ctx, [point.x - r, point.y - 5], [point.x + r, point.y - 5], '#7010f9', 1.5);
+            line(ctx, [point.x, point.y - 5 - r], [point.x, point.y - 5 + r], '#7010f9', 1.5);
         }
     }
     else if (id === 'phantom_lotus') {
         for (let i = trail.length - 1; i >= 0; i--) {
-            ctx.globalAlpha = phase * (.55 - i * .08);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (phase * (.55 - i * .08))), .65) * 1.15);
             lotus(ctx, trail[i].x, 326, .6 + (trail.length - i) * .14, .8);
-            ellipse(ctx, trail[i].x, 327, 25 + i * 8, 4 + i, '#6e9685', 1);
+            ellipse(ctx, trail[i].x, 327, 25 + i * 8, 4 + i, '#05d67d', 1);
         }
     }
     else if (id === 'lightning_flash') {
         for (let j = 0; j < 3; j++) {
-            ctx.strokeStyle = j === 0 ? '#96834c' : '#b2a16b';
+            ctx.strokeStyle = j === 0 ? '#d6a005' : '#d6a405';
             ctx.lineWidth = j === 0 ? 2.2 : 1;
             ctx.beginPath();
             ctx.moveTo(x, 313 - j * 12);
@@ -412,7 +412,7 @@ export function drawFootwork(ctx, id, x, dir, phase, time, trace = []) {
     else if (id === 'earth_root') {
         for (let i = 0; i < 7; i++) {
             const drift = ((time / 60 + i * 7) % 15);
-            ctx.fillStyle = '#81755f';
+            ctx.fillStyle = '#d68c05';
             ctx.beginPath();
             ctx.moveTo(x - 40 + i * 13, 325 - drift * .25);
             ctx.lineTo(x - 36 + i * 13, 320 - drift * .6);
@@ -420,13 +420,13 @@ export function drawFootwork(ctx, id, x, dir, phase, time, trace = []) {
             ctx.closePath();
             ctx.fill();
         }
-        ellipse(ctx, x, 326, 42, 5, '#887e67', 1);
+        ellipse(ctx, x, 326, 42, 5, '#d69705', 1);
     }
     else if (id === 'shadow_drift') {
         for (let i = 0; i < trail.length; i++) {
             const pos = trail[i];
-            ctx.globalAlpha = phase * (.35 - i * .045);
-            ctx.strokeStyle = '#4c6266';
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (phase * (.35 - i * .045))), .65) * 1.15);
+            ctx.strokeStyle = '#05b6d6';
             ctx.lineWidth = 4 - i * .6;
             ctx.beginPath();
             ctx.moveTo(pos.x - dir * 25, pos.y - 40);
@@ -437,23 +437,23 @@ export function drawFootwork(ctx, id, x, dir, phase, time, trace = []) {
     else if (id === 'swan_shadow') {
         for (let i = 0; i < trail.length; i++) {
             const pos = trail[i];
-            ctx.globalAlpha = phase * (.45 - i * .07);
-            ctx.strokeStyle = '#607d77';
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (phase * (.45 - i * .07))), .65) * 1.15);
+            ctx.strokeStyle = '#05d6ab';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(pos.x - dir * 20, pos.y - 3);
             ctx.bezierCurveTo(pos.x - dir * 55, pos.y - 30, pos.x - dir * 70, pos.y - 45, pos.x - dir * 92, pos.y - 34);
             ctx.stroke();
             for (let j = 0; j < 3; j++)
-                line(ctx, [pos.x - dir * (37 + j * 13), pos.y - 20 - j * 5], [pos.x - dir * (45 + j * 16), pos.y - 5 - j * 5], '#607d77', 1.2);
+                line(ctx, [pos.x - dir * (37 + j * 13), pos.y - 20 - j * 5], [pos.x - dir * (45 + j * 16), pos.y - 5 - j * 5], '#05d6ab', 1.2);
         }
     }
     else if (id === 'shadow_fragrance') {
         for (let i = 0; i < trail.length; i++) {
-            ctx.globalAlpha = phase * (.45 - i * .065);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (phase * (.45 - i * .065))), .65) * 1.15);
             const pos = trail[i];
-            cloud(ctx, pos.x, pos.y - 5, 22 + i * 8, '#65566b', .8);
-            ctx.fillStyle = '#6e596b';
+            cloud(ctx, pos.x, pos.y - 5, 22 + i * 8, '#9a05d6', .8);
+            ctx.fillStyle = '#d605b8';
             ctx.beginPath();
             ctx.ellipse(pos.x - dir * 18, pos.y - 19 - Math.sin(time / 230 + i) * 8, 4, 1.8, i, 0, Math.PI * 2);
             ctx.fill();
@@ -461,7 +461,7 @@ export function drawFootwork(ctx, id, x, dir, phase, time, trace = []) {
     }
     else {
         for (let i = 0; i < trail.length; i++) {
-            ctx.globalAlpha = phase * (.5 - i * .07);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (phase * (.5 - i * .07))), .65) * 1.15);
             cloud(ctx, trail[i].x, 326 - i % 2 * 4, 30 + i * 4, '#6b8178', .8 + Math.sin(time / 400 + i) * .1);
         }
     }

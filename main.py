@@ -7,12 +7,14 @@ import os
 import re
 import shutil
 import time
+import uuid
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 from urllib.request import urlopen
+from zoneinfo import ZoneInfo
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -21,14 +23,8 @@ from astrbot.api.star import Context, Star, register
 try:
     from .database import BATTLE_POINT_REWARDS, FighterRepository, MAX_FIGHTERS_PER_USER, TEAM3_TEAM_SIZE
     from .boss_resources import (
-        apply_boss_phase_skin,
-        boss_duel_intro_message,
-        boss_duel_result_message,
-        boss_duel_round_message,
         boss_fight_result_message,
         boss_help_message,
-        boss_phase_opening_message,
-        boss_phase_transition_message,
         boss_rank_message,
         boss_settlement_message,
         boss_status_message,
@@ -57,14 +53,8 @@ try:
 except ImportError:
     from database import BATTLE_POINT_REWARDS, FighterRepository, MAX_FIGHTERS_PER_USER, TEAM3_TEAM_SIZE
     from boss_resources import (
-        apply_boss_phase_skin,
-        boss_duel_intro_message,
-        boss_duel_result_message,
-        boss_duel_round_message,
         boss_fight_result_message,
         boss_help_message,
-        boss_phase_opening_message,
-        boss_phase_transition_message,
         boss_rank_message,
         boss_settlement_message,
         boss_status_message,
@@ -91,56 +81,31 @@ except ImportError:
         wallet_message,
     )
 
+try:
+    from .web_auth import WebAuthRepository, qq_group_identity
+    from .battle_delivery import (
+        BATTLE_SEND_TIMEOUT_SECONDS,
+        BattleDeliveryState,
+        send_qq_battle_image,
+    )
+except ImportError:
+    from web_auth import WebAuthRepository, qq_group_identity
+    from battle_delivery import (
+        BATTLE_SEND_TIMEOUT_SECONDS,
+        BattleDeliveryState,
+        send_qq_battle_image,
+    )
+
 PENDING_CREATE_TIMEOUT = 60.0
 CHALLENGE_TIMEOUT = 120.0
 MARTIAL_CHOICE_TIMEOUT = 120.0
 AVATAR_UPLOAD_TIMEOUT = 180.0
-WORLD_BOSS_DAILY_LIMIT = 3
-WORLD_BOSS_NAME = '群龙之首'
-WORLD_BOSS_PHASE1 = {
-    'boss_key': 'dragon_chief_phase1',
-    'name': '群龙之首·破阵前锋',
-    'label': '一阶段',
-    'description': '前锋镇守山门，先破其阵，方能逼出真身。',
-    'stats': {'hp': 1100, 'atk': 110, 'def': 70, 'spd': 96.0, 'crt': 8.0, 'eva': 5.0},
-    'martial_art_id': 'sword_huashan',
-    'neigong_id': 'shenzhao_jing',
-    'qinggong_id': 'lightning_flash',
-    'martial_art_skin': {
-        'name': '锁关剑阵',
-        'summary': '剑势连环封路，专为守门而设，压迫感强于杀伤。',
-    },
-    'neigong_skin': {
-        'name': '镇岳罡息',
-        'summary': '护体真气厚重绵长，前排硬抗时更显韧性。',
-    },
-    'qinggong_skin': {
-        'name': '巡门疾步',
-        'summary': '步法紧凑稳健，重在抢位拦截，不以花巧见长。',
-    },
-}
-WORLD_BOSS_PHASE2 = {
-    'boss_key': 'dragon_chief_phase2',
-    'name': '群龙之首·真身',
-    'label': '二阶段',
-    'description': '真身现世后共享血量开启，全群合力围攻，按贡献结算。',
-    'stats': {'hp': 50000, 'atk': 95, 'def': 105, 'spd': 92.0, 'crt': 6.0, 'eva': 4.0},
-    'martial_art_id': 'sword_huashan',
-    'neigong_id': 'shenzhao_jing',
-    'qinggong_id': 'lightning_flash',
-    'martial_art_skin': {
-        'name': '龙首镇岳剑',
-        'summary': '剑路大开大阖，以厚重威压统摄全场，久战压阵。',
-    },
-    'neigong_skin': {
-        'name': '万壑归元功',
-        'summary': '真元深锁于体，血厚防高，越围攻越难撼动。',
-    },
-    'qinggong_skin': {
-        'name': '潜龙回岳步',
-        'summary': '身法不求极速，只求沉稳换位，专注拖长战线。',
-    },
-}
+try:
+    from .world_boss import WorldBossService, default_boss, phase_payload
+    from .world_boss_config import WORLD_BOSS_DAILY_LIMIT
+except ImportError:
+    from world_boss import WorldBossService, default_boss, phase_payload
+    from world_boss_config import WORLD_BOSS_DAILY_LIMIT
 
 
 def _safe_call(obj: Any, name: str) -> Any:
@@ -360,9 +325,14 @@ class Main(Star):
         super().__init__(context)
         self.config = config or {}
         self.repo = FighterRepository()
+        self.world_boss = WorldBossService(self.repo)
+        self.web_auth = WebAuthRepository(self.repo.db_path)
         self.engine = CombatEngine()
         self.broadcast_delay = float(self.config.get('broadcast_delay', 1.6))
-        self.is_battling = False
+        self._battling_groups: set[str] = set()
+        self._render_slots = asyncio.Semaphore(2)
+        zone_name = str(self.config.get("settlement_timezone", "")).strip()
+        self._settlement_zone = ZoneInfo(zone_name) if zone_name else None
         self.pending_challenges: dict[str, dict[str, Any]] = {}
         self.pending_creations: dict[str, dict[str, Any]] = {}
         self.pending_team3_challenges: dict[str, dict[str, Any]] = {}
@@ -382,31 +352,50 @@ class Main(Star):
             return
         self._daily_settlement_task = loop.create_task(self._daily_settlement_loop())
 
+    def _settlement_now(self) -> datetime:
+        return datetime.now(self._settlement_zone) if self._settlement_zone else datetime.now().astimezone()
+
     async def _daily_settlement_loop(self) -> None:
         while True:
-            now = datetime.now()
-            next_midnight = datetime.combine((now + timedelta(days=1)).date(), datetime.min.time())
-            wait_seconds = max(1.0, (next_midnight - now).total_seconds())
             try:
-                await asyncio.sleep(wait_seconds)
-                day_key = (date.today() - timedelta(days=1)).isoformat()
-                await self._run_daily_settlements(day_key)
+                await self._resume_daily_settlements()
+                now = self._settlement_now()
+                next_day = now.date() + timedelta(days=1)
+                next_midnight = datetime.combine(next_day, datetime.min.time(), tzinfo=now.tzinfo)
+                await asyncio.sleep(min(60.0, max(1.0, next_midnight.timestamp() - now.timestamp())))
+                current = self._settlement_now()
+                if current.timestamp() >= next_midnight.timestamp():
+                    day_key = (next_day - timedelta(days=1)).isoformat()
+                    if current.timestamp() - next_midnight.timestamp() <= 300:
+                        await self._run_daily_settlements(day_key)
+                    else:
+                        logger.warning(f'[name_fight] missed daily snapshot for {day_key}; historical ranking cannot be reconstructed safely')
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                logger.warning(f'[name_fight] daily settlement failed: {exc!r}')
-                await asyncio.sleep(5.0)
+                logger.warning(f'[name_fight] daily settlement failed; retrying saved snapshots: {exc!r}')
+                await asyncio.sleep(60.0)
+
+    async def _resume_daily_settlements(self) -> None:
+        for snapshot in self.repo.get_pending_daily_settlement_snapshots():
+            try:
+                self.repo.settle_daily_leaderboard(
+                    snapshot['group_id'], snapshot['board_type'], snapshot['day_key'], entries=snapshot['entries']
+                )
+            except ValueError:
+                continue
+            except Exception as exc:
+                logger.warning(f"[name_fight] daily settlement retry failed: group={snapshot['group_id']} board={snapshot['board_type']} day={snapshot['day_key']}: {exc!r}")
 
     async def _run_daily_settlements(self, day_key: str) -> None:
-        total_rewards = 0
         for board in ('1v1', '3v3'):
             for group_id in self.repo.get_tracked_group_ids(board):
                 try:
-                    result = self.repo.settle_daily_leaderboard(group_id, board, day_key)
-                except ValueError:
-                    continue
-                total_rewards += len(result.get('rewards', []))
-        logger.info(f'[name_fight] daily settlements finished: day={day_key}, rewards={total_rewards}')
+                    if not self.repo.has_daily_settlement(group_id, board, day_key):
+                        self.repo.save_daily_settlement_snapshot(group_id, board, day_key)
+                except Exception as exc:
+                    logger.warning(f'[name_fight] daily snapshot failed: group={group_id} board={board} day={day_key}: {exc!r}')
+        await self._resume_daily_settlements()
 
     def _consume_pending_creation(self, user_id: str) -> dict[str, Any] | None:
         pending = self.pending_creations.get(user_id)
@@ -498,33 +487,10 @@ class Main(Star):
         return False
 
     def _build_world_boss_payload(self, template: dict[str, Any]) -> dict[str, Any]:
-        martial_art_id = str(template['martial_art_id'])
-        neigong_id = str(template['neigong_id'])
-        qinggong_id = str(template['qinggong_id'])
-        martial_art, neigong, qinggong = apply_boss_phase_skin(
-            template,
-            self.repo.martial_arts_map[martial_art_id],
-            self.repo.neigong_map[neigong_id],
-            self.repo.qinggong_map[qinggong_id],
-        )
-        return {
-            'boss_key': str(template.get('boss_key') or ''),
-            'name': str(template['name']),
-            'label': str(template.get('label') or ''),
-            'description': str(template.get('description') or ''),
-            'stats': dict(template['stats']),
-            'martial_art_id': martial_art_id,
-            'neigong_id': neigong_id,
-            'qinggong_id': qinggong_id,
-            'martial_art': martial_art,
-            'neigong': neigong,
-            'qinggong': qinggong,
-        }
+        return phase_payload(self.repo, template)
 
     def _build_default_world_boss(self) -> tuple[str, dict[str, Any], dict[str, Any]]:
-        phase1 = self._build_world_boss_payload(WORLD_BOSS_PHASE1)
-        phase2 = self._build_world_boss_payload(WORLD_BOSS_PHASE2)
-        return WORLD_BOSS_NAME, phase1, phase2
+        return default_boss(self.repo)
 
     def _refresh_world_boss_activity(self, group_id: str, activity: dict[str, Any]) -> dict[str, Any]:
         boss_name, phase1_payload, phase2_payload = self._build_default_world_boss()
@@ -547,7 +513,7 @@ class Main(Star):
         activity = self.repo.get_active_group_boss(group_id)
         if activity is None:
             return None
-        return self._refresh_world_boss_activity(group_id, activity)
+        return activity
 
     def _build_world_boss_fighter(self, payload: dict[str, Any], hp: int | None = None) -> dict[str, Any]:
         fighter = {
@@ -883,18 +849,21 @@ class Main(Star):
         reward_enabled: bool = False,
         elo_scale: float = 1.0,
     ) -> None:
-        if self.is_battling:
+        if group_id in self._battling_groups:
             await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
         try:
             await event.send(event.plain_result(opener))
             await asyncio.sleep(self.broadcast_delay)
             lines, winner_side, replay_segments = self._battle_team3_with_result(attacker_label, attacker_team, defender_label, defender_team)
             animation_sent = await self._send_battle_sequence_safe(event, replay_segments, "3v3 江湖对决回放")
-            if not animation_sent:
+            if animation_sent is BattleDeliveryState.FAILED:
                 await self._send_lines(event, lines)
+            elif animation_sent is BattleDeliveryState.UNKNOWN:
+                winner_label = attacker_label if winner_side == 'attacker' else defender_label if winner_side == 'defender' else '平局'
+                await self._send_text_safe(event, f'本轮 3v3 结果: {winner_label}. 回放未确认, 积分按下方结算.')
             winner_user_id = None
             if winner_side == 'attacker':
                 winner_user_id = attacker_user_id
@@ -935,328 +904,129 @@ class Main(Star):
                     f'{defender_label} +{gain_d} ({reward_detail_d}\uff0c\u73b0\u6709 {defender_points})'
                 ))
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
             event.stop_event()
 
-    def _battle_team_vs_boss(
-        self,
-        team_label: str,
-        team: list[dict[str, Any]],
-        boss_fighter: dict[str, Any],
-        phase_label: str,
-    ) -> tuple[list[str], bool, list[dict[str, Any]], int]:
-        team_state = [
-            {
-                'fighter': deepcopy(fighter),
-                'hp': int(fighter['stats']['hp']),
-            }
-            for fighter in team
-        ]
-        boss_hp = int(boss_fighter['stats']['hp'])
-        lines = [boss_phase_opening_message(team_label, boss_fighter)]
-        duel_no = 1
-
-        for entry in team_state:
-            if boss_hp <= 0:
-                break
-            if int(entry['hp']) <= 0:
-                continue
-            attacker = self._clone_fighter_with_hp(entry['fighter'], int(entry['hp']))
-            defender = self._build_world_boss_fighter(boss_fighter, boss_hp)
-            before_fighter_hp = int(attacker['stats']['hp'])
-            before_boss_hp = int(defender['stats']['hp'])
-            logs, winner_name, state = self.engine.battle_with_state(attacker, defender)
-            fighter_name = str(entry['fighter']['name'])
-            boss_name = str(boss_fighter['name'])
-
-            lines.append(boss_duel_intro_message(phase_label, duel_no, fighter_name, boss_name))
-            lines.append(battle_overview_line(attacker, defender))
-            lines.extend(self._chunk_team3_battle_logs(duel_no, compact_battle_logs(logs)))
-
-            entry['hp'] = max(0, int(state['fighter_a_hp']))
-            boss_hp = max(0, int(state['fighter_b_hp']))
-            lines.append(
-                boss_duel_round_message(
-                    phase_label,
-                    fighter_name,
-                    boss_name,
-                    before_fighter_hp,
-                    entry['hp'],
-                    before_boss_hp,
-                    boss_hp,
-                )
-            )
-            lines.append(
-                boss_duel_result_message(
-                    phase_label,
-                    fighter_name,
-                    boss_name,
-                    winner_name,
-                    entry['hp'],
-                    int(state['fighter_a_max_hp']),
-                    boss_hp,
-                    int(state['fighter_b_max_hp']),
-                )
-            )
-            duel_no += 1
-
-
-        return lines, boss_hp <= 0, team_state, boss_hp
-    def _battle_team_vs_boss_quick(
-        self,
-        team_label: str,
-        team: list[dict[str, Any]],
-        boss_fighter: dict[str, Any],
-        phase_label: str,
-    ) -> tuple[list[str], bool, list[dict[str, Any]], int]:
-        team_state = [
-            {
-                'fighter': deepcopy(fighter),
-                'hp': int(fighter['stats']['hp']),
-            }
-            for fighter in team
-        ]
-        boss_hp = int(boss_fighter['stats']['hp'])
-        lines = [boss_phase_opening_message(team_label, boss_fighter)]
-        duel_no = 1
-
-        for entry in team_state:
-            if boss_hp <= 0:
-                break
-            if int(entry['hp']) <= 0:
-                continue
-            attacker = self._clone_fighter_with_hp(entry['fighter'], int(entry['hp']))
-            defender = self._build_world_boss_fighter(boss_fighter, boss_hp)
-            before_fighter_hp = int(attacker['stats']['hp'])
-            before_boss_hp = int(defender['stats']['hp'])
-            logs, winner_name, state = self.engine.battle_with_state(attacker, defender)
-            fighter_name = str(entry['fighter']['name'])
-            boss_name = str(boss_fighter['name'])
-
-            lines.append(boss_duel_intro_message(phase_label, duel_no, fighter_name, boss_name))
-            entry['hp'] = max(0, int(state['fighter_a_hp']))
-            boss_hp = max(0, int(state['fighter_b_hp']))
-            lines.append(
-                boss_duel_round_message(
-                    phase_label,
-                    fighter_name,
-                    boss_name,
-                    before_fighter_hp,
-                    entry['hp'],
-                    before_boss_hp,
-                    boss_hp,
-                )
-            )
-            lines.append(
-                boss_duel_result_message(
-                    phase_label,
-                    fighter_name,
-                    boss_name,
-                    winner_name,
-                    entry['hp'],
-                    int(state['fighter_a_max_hp']),
-                    boss_hp,
-                    int(state['fighter_b_max_hp']),
-                )
-            )
-            duel_no += 1
-
-        return lines, boss_hp <= 0, team_state, boss_hp
-
-    async def _start_world_boss_fight(
-        self,
-        event: AstrMessageEvent,
-        group_id: str,
-        user_id: str,
-        user_label: str,
-        team: list[dict[str, Any]],
-        activity: dict[str, Any],
-        attempt_info: dict[str, int],
-    ) -> None:
-        if self.is_battling:
-            await event.send(event.plain_result('当前已有战斗正在进行, 请稍后再试。'))
+    async def _run_world_boss(
+        self, event: AstrMessageEvent, *, practice=False, quick=False
+    ):
+        user_id = await self._require_user_id(event)
+        if user_id is None:
+            return
+        group_id = await self._require_group_id(event)
+        if group_id is None:
+            return
+        activity = self.repo.get_active_group_boss(group_id)
+        if activity is None:
+            await self._send_text_safe(event, "当前群没有正在进行的世界 BOSS 活动。")
             event.stop_event()
             return
-        self.is_battling = True
-        try:
-            phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
-            await self._send_text_safe(event, f"【世界BOSS挑战开始】{user_label} 向 {activity['boss_name']} 发起挑战。")
-            await asyncio.sleep(self.broadcast_delay)
-            phase1_lines, phase1_cleared, phase1_team_state, _phase1_boss_hp = self._battle_team_vs_boss(
-                user_label,
-                team,
-                phase1_boss,
-                str((activity['phase1_payload'] or {}).get('label') or '\u4e00\u9636\u6bb5'),
-            )
-            await self._send_lines(event, phase1_lines)
-
-            result_payload: dict[str, Any] = {
-                'boss_name': activity['boss_name'],
-                'phase1_cleared': phase1_cleared,
-                'entered_phase2': False,
-                'phase2_damage': 0,
-                'phase2_current_hp': int(activity['phase2_current_hp']),
-                'phase2_max_hp': int(activity['phase2_max_hp']),
-                'total_damage': 0,
-                'remaining_attempts': int(attempt_info['remaining_attempts']),
-                'daily_limit': WORLD_BOSS_DAILY_LIMIT,
-                'is_killed': False,
+        phase = "full"
+        if practice:
+            parts = str(getattr(event, "message_str", "") or "").strip().split(maxsplit=1)
+            arg = parts[1].strip().lower() if len(parts) > 1 else ""
+            aliases = {
+                "": "full",
+                "phase1": "phase1",
+                "1": "phase1",
+                "一阶段": "phase1",
+                "阶段1": "phase1",
+                "phase2": "phase2",
+                "2": "phase2",
+                "二阶段": "phase2",
+                "阶段2": "phase2",
             }
-            if not phase1_cleared:
-                await asyncio.sleep(self.broadcast_delay)
-                await self._send_text_safe(event, boss_fight_result_message(result_payload))
-                return
-
-            alive_team = self._alive_team_state(phase1_team_state)
-            if not alive_team:
-                await asyncio.sleep(self.broadcast_delay)
-                await self._send_text_safe(event, boss_fight_result_message(result_payload))
-                return
-
-            phase2_team = [
-                self._clone_fighter_with_hp(entry['fighter'], int(entry['hp']))
-                for entry in alive_team
-            ]
-            phase2_boss = self._build_world_boss_fighter(
-                activity['phase2_payload'],
-                int(activity['phase2_current_hp']),
-            )
-            await asyncio.sleep(self.broadcast_delay)
-            await self._send_text_safe(
-                event,
-                boss_phase_transition_message(activity['phase1_payload'], activity['phase2_payload']),
-            )
-            await asyncio.sleep(self.broadcast_delay)
-            phase2_lines, _phase2_cleared, _phase2_team_state, phase2_boss_hp = self._battle_team_vs_boss(
-                user_label,
-                phase2_team,
-                phase2_boss,
-                str((activity['phase2_payload'] or {}).get('label') or '\u4e8c\u9636\u6bb5'),
-            )
-            await self._send_lines(event, phase2_lines)
-
-            phase2_damage = max(0, int(activity['phase2_current_hp']) - max(0, int(phase2_boss_hp)))
-            result_payload['entered_phase2'] = True
-            result_payload['phase2_damage'] = phase2_damage
-
-            if phase2_damage > 0:
-                damage_result = self.repo.apply_group_boss_phase2_damage(activity['boss_id'], group_id, phase2_damage)
-                contribution = self.repo.record_group_boss_damage(
-                    activity['boss_id'],
-                    group_id,
-                    user_id,
-                    user_label,
-                    phase2_damage,
+            if arg not in aliases:
+                await self._send_text_safe(
+                    event, "用法: /bosssim [phase1|phase2] 或 /bosssimquick [phase1|phase2]"
                 )
-                result_payload['phase2_current_hp'] = int(damage_result['after_hp'])
-                result_payload['phase2_max_hp'] = int(damage_result['phase2_max_hp'])
-                result_payload['total_damage'] = int(contribution['total_damage'])
-                result_payload['is_killed'] = bool(damage_result['is_killed'])
-                if damage_result['is_killed']:
-                    self.repo.settle_group_boss(group_id, activity['boss_id'])
-
-            await asyncio.sleep(self.broadcast_delay)
-            await self._send_text_safe(event, boss_fight_result_message(result_payload))
-        finally:
-            self.is_battling = False
-            event.stop_event()
-
-    async def _start_world_boss_fight_quick(
-        self,
-        event: AstrMessageEvent,
-        group_id: str,
-        user_id: str,
-        user_label: str,
-        team: list[dict[str, Any]],
-        activity: dict[str, Any],
-        attempt_info: dict[str, int],
-    ) -> None:
-        if self.is_battling:
-            await event.send(event.plain_result('当前已有战斗正在进行, 请稍后再试。'))
+                event.stop_event()
+                return
+            phase = aliases[arg]
+        if group_id in self._battling_groups:
+            await self._send_text_safe(event, "当前已有战斗正在进行, 请稍后再试。")
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
         try:
-            phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
-            await self._send_text_safe(event, f"【世界BOSS挑战开始】{user_label} 向 {activity['boss_name']} 发起挑战。")
-            await asyncio.sleep(self.broadcast_delay)
-            phase1_lines, phase1_cleared, phase1_team_state, _phase1_boss_hp = self._battle_team_vs_boss_quick(
-                user_label,
-                team,
-                phase1_boss,
-                str((activity['phase1_payload'] or {}).get('label') or '一阶段'),
+            message_id = str(
+                getattr(getattr(event, "message_obj", None), "message_id", "")
+                or uuid.uuid4().hex
             )
-            await self._send_lines(event, phase1_lines)
-
-            result_payload: dict[str, Any] = {
-                'boss_name': activity['boss_name'],
-                'phase1_cleared': phase1_cleared,
-                'entered_phase2': False,
-                'phase2_damage': 0,
-                'phase2_current_hp': int(activity['phase2_current_hp']),
-                'phase2_max_hp': int(activity['phase2_max_hp']),
-                'total_damage': 0,
-                'remaining_attempts': int(attempt_info['remaining_attempts']),
-                'daily_limit': WORLD_BOSS_DAILY_LIMIT,
-                'is_killed': False,
-            }
-            if not phase1_cleared:
-                await asyncio.sleep(self.broadcast_delay)
-                await self._send_text_safe(event, boss_fight_result_message(result_payload))
-                return
-
-            alive_team = self._alive_team_state(phase1_team_state)
-            if not alive_team:
-                await asyncio.sleep(self.broadcast_delay)
-                await self._send_text_safe(event, boss_fight_result_message(result_payload))
-                return
-
-            phase2_team = [
-                self._clone_fighter_with_hp(entry['fighter'], int(entry['hp']))
-                for entry in alive_team
-            ]
-            phase2_boss = self._build_world_boss_fighter(
-                activity['phase2_payload'],
-                int(activity['phase2_current_hp']),
+            request_id = (
+                "bot_"
+                + hashlib.sha256(f"{group_id}:{user_id}:{message_id}".encode()).hexdigest()
             )
-            await asyncio.sleep(self.broadcast_delay)
+            result = await asyncio.to_thread(
+                self.world_boss.challenge,
+                group_id,
+                user_id,
+                extract_user_label(event),
+                request_id,
+                activity["boss_id"],
+                practice=practice,
+                phase=phase,
+            )
             await self._send_text_safe(
                 event,
-                boss_phase_transition_message(activity['phase1_payload'], activity['phase2_payload']),
+                "【BOSS 演练】不扣次数, 不写共享血量与贡献。"
+                if practice
+                else f"【世界 BOSS 挑战】{result['boss_name']}",
             )
-            await asyncio.sleep(self.broadcast_delay)
-            phase2_lines, _phase2_cleared, _phase2_team_state, phase2_boss_hp = self._battle_team_vs_boss_quick(
-                user_label,
-                phase2_team,
-                phase2_boss,
-                str((activity['phase2_payload'] or {}).get('label') or '二阶段'),
-            )
-            await self._send_lines(event, phase2_lines)
-
-            phase2_damage = max(0, int(activity['phase2_current_hp']) - max(0, int(phase2_boss_hp)))
-            result_payload['entered_phase2'] = True
-            result_payload['phase2_damage'] = phase2_damage
-
-            if phase2_damage > 0:
-                damage_result = self.repo.apply_group_boss_phase2_damage(activity['boss_id'], group_id, phase2_damage)
-                contribution = self.repo.record_group_boss_damage(
-                    activity['boss_id'],
-                    group_id,
-                    user_id,
-                    user_label,
-                    phase2_damage,
+            previous_phase = None
+            replay_pending = False
+            for duel in result["duels"]:
+                if replay_pending:
+                    continue
+                if duel["phase"] != previous_phase:
+                    if previous_phase is not None:
+                        await self._send_text_safe(
+                            event, "【阶段切换】前锋剑阵已破, 真身现世, 残阵继续迎战。"
+                        )
+                    previous_phase = duel["phase"]
+                title = f"{duel['boss']['label']} · 第 {duel['index']} 阵 | {duel['attacker']['name']} vs {duel['defender']['name']}"
+                await self._send_text_safe(event, title)
+                sent = (
+                    BattleDeliveryState.FAILED
+                    if quick
+                    else await self._send_battle_animation_safe(
+                        event, duel["fighter_a"], duel["fighter_b"], duel["result"], title
+                    )
                 )
-                result_payload['phase2_current_hp'] = int(damage_result['after_hp'])
-                result_payload['phase2_max_hp'] = int(damage_result['phase2_max_hp'])
-                result_payload['total_damage'] = int(contribution['total_damage'])
-                result_payload['is_killed'] = bool(damage_result['is_killed'])
-                if damage_result['is_killed']:
-                    self.repo.settle_group_boss(group_id, activity['boss_id'])
-
-            await asyncio.sleep(self.broadcast_delay)
-            await self._send_text_safe(event, boss_fight_result_message(result_payload))
+                if sent is BattleDeliveryState.UNKNOWN:
+                    replay_pending = True
+                elif sent is BattleDeliveryState.FAILED:
+                    if quick:
+                        state = duel["state"]
+                        await self._send_text_safe(
+                            event,
+                            f"本阵结束: 我方气血 {state['fighter_a_hp']}/{state['fighter_a_max_hp']}, "
+                            f"BOSS 气血 {state['fighter_b_hp']}/{state['fighter_b_max_hp']}。",
+                        )
+                    else:
+                        await self._send_lines(event, compact_battle_logs(duel["logs"]))
+            if practice:
+                await self._send_text_safe(
+                    event,
+                    f"【演练结果】一阶段{'已通过' if result['phase1_cleared'] else '未通过或未演练'}, "
+                    f"二阶段伤害 {result['phase2_damage']}, 存活 {result['survivors']} 人。\n"
+                    f"当前真实共享血量 {result['phase2_current_hp']}/{result['phase2_max_hp']}。",
+                )
+            else:
+                await self._send_text_safe(event, boss_fight_result_message(result))
+                if result.get("settlement"):
+                    await self._send_text_safe(
+                        event, boss_settlement_message(result["settlement"])
+                    )
+        except ValueError as exc:
+            await self._send_text_safe(event, str(exc))
+        except Exception as exc:
+            logger.exception(f"[name_fight] world boss failed: {exc!r}")
+            await self._send_text_safe(
+                event, "BOSS 回放暂时无法发送, 可在 Web 世界 BOSS 页面查看最近战报与结算。"
+            )
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
             event.stop_event()
 
     async def _try_consume_avatar_upload(self, event: AstrMessageEvent) -> bool:
@@ -1375,7 +1145,7 @@ class Main(Star):
         defender: dict[str, Any],
         replay_state: dict[str, Any],
         title: str = "江湖对决回放",
-    ) -> bool:
+    ) -> BattleDeliveryState:
         data_dir = os.path.join(os.path.dirname(__file__), "data")
         try:
             from .web_battle_renderer import render_battle_animation
@@ -1396,26 +1166,69 @@ class Main(Star):
         event: AstrMessageEvent,
         segments: list[dict[str, Any]],
         title: str = "江湖对决回放",
-    ) -> bool:
-        data_dir = os.path.join(os.path.dirname(__file__), "data")
-        try:
-            from .web_battle_renderer import render_battle_sequence
-        except ImportError:
-            from web_battle_renderer import render_battle_sequence
-        return await self._render_and_send_battle(
-            event,
-            render_battle_sequence,
-            segments,
-            data_dir,
-            title,
+    ) -> BattleDeliveryState:
+        if not segments:
+            return BattleDeliveryState.FAILED
+        for index, segment in enumerate(segments, 1):
+            attacker = segment["fighter_a"]
+            defender = segment["fighter_b"]
+            result = segment["result"]
+            label = (
+                f"{title} - 第 {index}/{len(segments)} 场\n"
+                f"{attacker['name']} vs {defender['name']}"
+            )
+            await event.send(event.plain_result(label))
+            sent = await self._send_battle_animation_safe(
+                event, attacker, defender, result, label
+            )
+            if sent is BattleDeliveryState.UNKNOWN:
+                return sent
+            if sent is BattleDeliveryState.FAILED:
+                # Only replay the failed bout as text; earlier GIFs were delivered.
+                await self._send_lines(event, compact_battle_logs(result["logs"]))
+        # Every bout is handled, including any per-bout text fallback.
+        return BattleDeliveryState.CONFIRMED
+
+    async def _send_battle_image_path_safe(
+        self, event: AstrMessageEvent, image_path: str
+    ) -> BattleDeliveryState:
+        if not image_path or not Path(image_path).is_file():
+            return BattleDeliveryState.FAILED
+        if event.get_platform_name() != "aiocqhttp":
+            sent = await self._send_image_path_safe(event, image_path)
+            return BattleDeliveryState.CONFIRMED if sent else BattleDeliveryState.FAILED
+        from astrbot.api.message_components import Image
+
+        image = Image.fromFileSystem(image_path)
+        encoded = await image.convert_to_base64()
+        outcome = await send_qq_battle_image(
+            event.bot,
+            group_id=event.get_group_id(),
+            user_id=event.get_sender_id(),
+            image_base64=encoded,
         )
+        if outcome is BattleDeliveryState.CONFIRMED:
+            result = event.make_result()
+            result.chain.append(image)
+            # Preserve the base event's send metrics without submitting twice.
+            try:
+                await AstrMessageEvent.send(event, result)
+            except Exception as exc:
+                logger.warning(f"[name_fight] confirmed send metrics failed: {exc!r}")
+        return outcome
 
     async def _render_and_send_battle(
         self, event: AstrMessageEvent, renderer: Any, *args: Any
-    ) -> bool:
+    ) -> BattleDeliveryState:
         image_path = None
         started = time.perf_counter()
-        render_task = asyncio.create_task(asyncio.to_thread(renderer, *args))
+        await self._render_slots.acquire()
+        try:
+            render_task = asyncio.create_task(asyncio.to_thread(renderer, *args))
+        except BaseException:
+            self._render_slots.release()
+            raise
+        render_task.add_done_callback(lambda _: self._render_slots.release())
 
         def discard_result(task: asyncio.Task) -> None:
             if not task.cancelled():
@@ -1436,39 +1249,62 @@ class Main(Star):
                 render_task.add_done_callback(discard_result)
                 raise
             if not image_path:
-                return False
+                return BattleDeliveryState.FAILED
             generated = time.perf_counter()
             size = Path(image_path).stat().st_size
             logger.info(
                 f"[name_fight] GIF generated in {generated - started:.2f}s, bytes={size}"
             )
             try:
-                sent = await asyncio.wait_for(
-                    self._send_image_path_safe(event, image_path), timeout=45
-                )
+                try:
+                    sent = await asyncio.wait_for(
+                        self._send_battle_image_path_safe(event, image_path),
+                        timeout=BATTLE_SEND_TIMEOUT_SECONDS,
+                    )
+                except TimeoutError:
+                    sent = BattleDeliveryState.UNKNOWN
             finally:
                 logger.info(
                     f"[name_fight] GIF send API elapsed={time.perf_counter() - generated:.2f}s"
                 )
+            logger.info(f"[name_fight] GIF delivery state={sent.value}")
+            if sent is BattleDeliveryState.UNKNOWN:
+                await self._send_text_safe(
+                    event,
+                    'GIF 已提交, 发送结果待确认, 可能稍后到达. 不会重发; 本轮后续 GIF 回放暂停, 结算照常进行.',
+                )
             return sent
         except Exception as exc:
             logger.warning(f"[name_fight] battle animation failed: {exc!r}")
-            return False
+            return BattleDeliveryState.FAILED
         finally:
             if image_path:
                 Path(image_path).unlink(missing_ok=True)
 
-    async def _send_world_boss_cards_safe(self, event: AstrMessageEvent, activity: dict[str, Any]) -> None:
-        data_dir = os.path.join(os.path.dirname(__file__), 'data')
-        candidates = [
-            'boss_phase1_template.jpg',
-            'boss_phase2_template.jpg',
-        ]
-        for filename in candidates:
-            image_path = os.path.join(data_dir, filename)
-            if os.path.exists(image_path):
-                await self._send_image_path_safe(event, image_path)
-
+    async def _send_world_boss_cards_safe(
+        self, event: AstrMessageEvent, activity: dict[str, Any]
+    ) -> None:
+        try:
+            from .render_boss_card import render_boss_card
+        except ImportError:
+            from render_boss_card import render_boss_card
+        for phase in (1, 2):
+            payload = deepcopy(activity[f"phase{phase}_payload"])
+            payload.setdefault("boss_key", f"dragon_chief_phase{phase}")
+            if phase == 2:
+                payload["current_hp"] = activity["phase2_current_hp"]
+            image_path = None
+            try:
+                image_path = await asyncio.to_thread(
+                    render_boss_card, payload, str(Path(__file__).parent / "data")
+                )
+                if image_path:
+                    await self._send_image_path_safe(event, image_path)
+            except Exception as exc:
+                logger.warning(f"[name_fight] boss card failed: {exc!r}")
+            finally:
+                if image_path:
+                    Path(image_path).unlink(missing_ok=True)
 
 
     async def _start_battle(
@@ -1482,11 +1318,11 @@ class Main(Star):
         reward_labels: tuple[str, str] | None = None,
         elo_scale: float = 1.0,
     ) -> None:
-        if self.is_battling:
+        if group_id in self._battling_groups:
             await event.send(event.plain_result('\u5f53\u524d\u5df2\u6709\u6218\u6597\u6b63\u5728\u8fdb\u884c, \u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'))
             event.stop_event()
             return
-        self.is_battling = True
+        self._battling_groups.add(group_id)
         try:
             await event.send(event.plain_result(opener))
             await asyncio.sleep(self.broadcast_delay)
@@ -1496,8 +1332,10 @@ class Main(Star):
             logs = battle_result["logs"]
             winner_name = battle_result["winner"]
             animation_sent = await self._send_battle_animation_safe(event, attacker, defender, battle_result)
-            if not animation_sent:
+            if animation_sent is BattleDeliveryState.FAILED:
                 await self._send_lines(event, compact_battle_logs(logs))
+            elif animation_sent is BattleDeliveryState.UNKNOWN:
+                await self._send_text_safe(event, f'本场胜者: {winner_name}. GIF 未确认, 积分按下方结算.')
             rating_change = self.repo.record_group_battle(
                 group_id,
                 attacker["name"],
@@ -1540,8 +1378,28 @@ class Main(Star):
                     f'{defender_label} +{gain_d} ({reward_detail_d}\uff0c\u73b0\u6709 {defender_points})'
                 ))
         finally:
-            self.is_battling = False
+            self._battling_groups.discard(group_id)
             event.stop_event()
+
+    @filter.command("nfweb")
+    async def nfweb(self, event: AstrMessageEvent, code: str = ""):
+        event.stop_event()
+        try:
+            identity = qq_group_identity(event)
+            if not code:
+                await event.send(event.plain_result(
+                    "请打开 https://nfight.trpg.fun, 将网页上的 /nfweb 验证码指令发送到本群。"
+                ))
+                return
+            await asyncio.to_thread(self.web_auth.confirm, code, identity)
+        except ValueError as exc:
+            logger.warning("[name_fight] Web group verification rejected")
+            await event.send(event.plain_result(f"网页验证失败: {exc}"))
+            return
+        logger.info("[name_fight] Web group verification succeeded")
+        await event.send(event.plain_result(
+            "QQ 身份已验证, 请回到刚才打开的 nfight.trpg.fun 网页。仅验证你自己打开的网页。"
+        ))
 
     @filter.command('fhelp', alias={'帮助'})
     async def help_command(self, event: AstrMessageEvent):
@@ -2563,323 +2421,38 @@ class Main(Star):
         await event.send(event.plain_result(boss_status_message(activity, entries, remaining_attempts, WORLD_BOSS_DAILY_LIMIT)))
         event.stop_event()
 
-    @filter.command('bossfight', alias={'打boss', '挑战boss', '挑战世界boss', '挑战世界BOSS'})
+    @filter.command(
+        "bossfight", alias={"打boss", "挑战boss", "挑战世界boss", "挑战世界BOSS"}
+    )
     async def boss_fight_command(self, event: AstrMessageEvent):
-        user_id = await self._require_user_id(event)
-        if user_id is None:
-            return
-        group_id = await self._require_group_id(event)
-        if group_id is None:
-            return
-        activity = self._get_active_world_boss_activity(group_id)
-        if activity is None:
-            await event.send(event.plain_result('当前群没有正在进行的世界BOSS活动。'))
-            event.stop_event()
-            return
-        try:
-            team = self._get_ready_team3_fighters(user_id)
-            attempt_info = self.repo.consume_group_boss_attempt(
-                activity['boss_id'],
-                group_id,
-                user_id,
-                date.today().isoformat(),
-                WORLD_BOSS_DAILY_LIMIT,
-            )
-        except ValueError as exc:
-            await event.send(event.plain_result(str(exc)))
-            event.stop_event()
-            return
-        await self._start_world_boss_fight(
-            event,
-            group_id,
-            user_id,
-            extract_user_label(event),
-            team,
-            activity,
-            attempt_info,
-        )
+        await self._run_world_boss(event)
 
-    @filter.command('bossquick', alias={'快速打boss', '快速挑战boss', '快速挑战世界boss', '快速挑战世界BOSS'})
+    @filter.command(
+        "bossquick",
+        alias={"快速打boss", "快速挑战boss", "快速挑战世界boss", "快速挑战世界BOSS"},
+    )
     async def boss_quick_command(self, event: AstrMessageEvent):
-        user_id = await self._require_user_id(event)
-        if user_id is None:
-            return
-        group_id = await self._require_group_id(event)
-        if group_id is None:
-            return
-        activity = self._get_active_world_boss_activity(group_id)
-        if activity is None:
-            await event.send(event.plain_result('当前群没有正在进行的世界BOSS活动。'))
-            event.stop_event()
-            return
-        try:
-            team = self._get_ready_team3_fighters(user_id)
-            attempt_info = self.repo.consume_group_boss_attempt(
-                activity['boss_id'],
-                group_id,
-                user_id,
-                date.today().isoformat(),
-                WORLD_BOSS_DAILY_LIMIT,
-            )
-        except ValueError as exc:
-            await event.send(event.plain_result(str(exc)))
-            event.stop_event()
-            return
-        await self._start_world_boss_fight_quick(
-            event,
-            group_id,
-            user_id,
-            extract_user_label(event),
-            team,
-            activity,
-            attempt_info,
-        )
+        await self._run_world_boss(event, quick=True)
 
-    @filter.command('bosssim', alias={'模拟boss', 'boss模拟', '演练boss', '演练世界boss', '演练世界BOSS'})
+    @filter.command(
+        "bosssim",
+        alias={"模拟boss", "boss模拟", "演练boss", "演练世界boss", "演练世界BOSS"},
+    )
     async def boss_sim_command(self, event: AstrMessageEvent):
-        user_id = await self._require_user_id(event)
-        if user_id is None:
-            return
-        group_id = await self._require_group_id(event)
-        if group_id is None:
-            return
-        activity = self._get_active_world_boss_activity(group_id)
-        if activity is None:
-            await event.send(event.plain_result('当前群没有正在进行的世界BOSS活动。'))
-            event.stop_event()
-            return
-        try:
-            team = self._get_ready_team3_fighters(user_id)
-        except ValueError as exc:
-            await event.send(event.plain_result(str(exc)))
-            event.stop_event()
-            return
-        text = str(getattr(event, 'message_str', '') or '').strip()
-        parts = text.split(maxsplit=1)
-        stage_arg = parts[1].strip().lower() if len(parts) > 1 else ''
-        if stage_arg in ('phase1', '1', '一阶段', '阶段1'):
-            mode = 'phase1'
-        elif stage_arg in ('phase2', '2', '二阶段', '阶段2'):
-            mode = 'phase2'
-        elif stage_arg:
-            await event.send(event.plain_result('用法: /bosssim 或 /bosssim phase1 或 /bosssim phase2'))
-            event.stop_event()
-            return
-        else:
-            mode = 'full'
+        await self._run_world_boss(event, practice=True)
 
-        team_label = extract_user_label(event)
-        lines: list[str] = [f'【BOSS演练】{team_label} 的本次演练不会消耗次数，也不会写入共享血量。']
-
-        if mode == 'phase1':
-            phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
-            phase1_lines, phase1_cleared, phase1_team_state, phase1_boss_hp = self._battle_team_vs_boss(
-                team_label,
-                team,
-                phase1_boss,
-                str((activity['phase1_payload'] or {}).get('label') or '一阶段'),
-            )
-            lines.extend(phase1_lines)
-            alive_team = self._alive_team_state(phase1_team_state)
-            lines.append(
-                f"【演练结论】一阶段{'已通过' if phase1_cleared else '未通过'}，"
-                f"存活人数 {len(alive_team)}，BOSS 剩余 {phase1_boss_hp}/{int(phase1_boss['stats']['hp'])}。"
-            )
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        if mode == 'phase2':
-            phase2_boss = self._build_world_boss_fighter(activity['phase2_payload'])
-            phase2_lines, _phase2_cleared, phase2_team_state, phase2_boss_hp = self._battle_team_vs_boss(
-                team_label,
-                team,
-                phase2_boss,
-                str((activity['phase2_payload'] or {}).get('label') or '二阶段'),
-            )
-            lines.extend(phase2_lines)
-            phase2_damage = int(phase2_boss['stats']['hp']) - int(phase2_boss_hp)
-            alive_team = self._alive_team_state(phase2_team_state)
-            theoretical_kill = phase2_damage >= int(activity['phase2_current_hp'])
-            lines.append(
-                f'【演练结论】对满血二阶段造成 {phase2_damage} 点伤害，存活人数 {len(alive_team)}。'
-            )
-            lines.append(
-                f"【实战参考】按当前真实共享血量 {activity['phase2_current_hp']}/{activity['phase2_max_hp']}，"
-                f"本次{'理论可斩杀' if theoretical_kill else '理论无法斩杀'}。"
-            )
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
-        phase1_lines, phase1_cleared, phase1_team_state, _phase1_boss_hp = self._battle_team_vs_boss(
-            team_label,
-            team,
-            phase1_boss,
-            str((activity['phase1_payload'] or {}).get('label') or '一阶段'),
-        )
-        lines.extend(phase1_lines)
-        if not phase1_cleared:
-            lines.append('【演练结论】完整双阶段演练止步于一阶段。')
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        alive_team = self._alive_team_state(phase1_team_state)
-        if not alive_team:
-            lines.append('【演练结论】一阶段虽然击穿，但队伍全灭，无法进入二阶段。')
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        phase2_team = [
-            self._clone_fighter_with_hp(entry['fighter'], int(entry['hp']))
-            for entry in alive_team
-        ]
-        phase2_boss = self._build_world_boss_fighter(activity['phase2_payload'])
-        lines.append(boss_phase_transition_message(activity['phase1_payload'], activity['phase2_payload']))
-        phase2_lines, _phase2_cleared, phase2_team_state, phase2_boss_hp = self._battle_team_vs_boss(
-            team_label,
-            phase2_team,
-            phase2_boss,
-            str((activity['phase2_payload'] or {}).get('label') or '二阶段'),
-        )
-        lines.extend(phase2_lines)
-        phase2_damage = int(phase2_boss['stats']['hp']) - int(phase2_boss_hp)
-        final_alive = self._alive_team_state(phase2_team_state)
-        theoretical_kill = phase2_damage >= int(activity['phase2_current_hp'])
-        lines.append(
-            f'【演练结论】已通过一阶段；对满血二阶段造成 {phase2_damage} 点伤害，最终存活人数 {len(final_alive)}。'
-        )
-        lines.append(
-            f"【实战参考】按当前真实共享血量 {activity['phase2_current_hp']}/{activity['phase2_max_hp']}，"
-            f"本次{'理论可斩杀' if theoretical_kill else '理论无法斩杀'}。"
-        )
-        await self._send_lines(event, lines)
-        event.stop_event()
-        return
-
-    @filter.command('bosssimquick', alias={'快速模拟boss', '快速boss模拟', '快速演练boss', '快速演练世界boss', '快速演练世界BOSS'})
+    @filter.command(
+        "bosssimquick",
+        alias={
+            "快速模拟boss",
+            "快速boss模拟",
+            "快速演练boss",
+            "快速演练世界boss",
+            "快速演练世界BOSS",
+        },
+    )
     async def boss_sim_quick_command(self, event: AstrMessageEvent):
-        user_id = await self._require_user_id(event)
-        if user_id is None:
-            return
-        group_id = await self._require_group_id(event)
-        if group_id is None:
-            return
-        activity = self._get_active_world_boss_activity(group_id)
-        if activity is None:
-            await event.send(event.plain_result('当前群没有正在进行的世界BOSS活动。'))
-            event.stop_event()
-            return
-        try:
-            team = self._get_ready_team3_fighters(user_id)
-        except ValueError as exc:
-            await event.send(event.plain_result(str(exc)))
-            event.stop_event()
-            return
-        text = str(getattr(event, 'message_str', '') or '').strip()
-        parts = text.split(maxsplit=1)
-        stage_arg = parts[1].strip().lower() if len(parts) > 1 else ''
-        if stage_arg in ('phase1', '1', '一阶段', '阶段1'):
-            mode = 'phase1'
-        elif stage_arg in ('phase2', '2', '二阶段', '阶段2'):
-            mode = 'phase2'
-        elif stage_arg:
-            await event.send(event.plain_result('用法: /bosssimquick 或 /bosssimquick phase1 或 /bosssimquick phase2'))
-            event.stop_event()
-            return
-        else:
-            mode = 'full'
-
-        team_label = extract_user_label(event)
-        lines: list[str] = [f'【BOSS快速演练】{team_label} 的本次演练不会消耗次数，也不会写入共享血量。']
-
-        if mode == 'phase1':
-            phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
-            phase1_lines, phase1_cleared, phase1_team_state, phase1_boss_hp = self._battle_team_vs_boss_quick(
-                team_label,
-                team,
-                phase1_boss,
-                str((activity['phase1_payload'] or {}).get('label') or '一阶段'),
-            )
-            lines.extend(phase1_lines)
-            alive_team = self._alive_team_state(phase1_team_state)
-            lines.append(
-                f"【演练结论】一阶段{'已通过' if phase1_cleared else '未通过'}，"
-                f"存活人数 {len(alive_team)}，BOSS 剩余 {phase1_boss_hp}/{int(phase1_boss['stats']['hp'])}。"
-            )
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        if mode == 'phase2':
-            phase2_boss = self._build_world_boss_fighter(activity['phase2_payload'])
-            phase2_lines, _phase2_cleared, phase2_team_state, phase2_boss_hp = self._battle_team_vs_boss_quick(
-                team_label,
-                team,
-                phase2_boss,
-                str((activity['phase2_payload'] or {}).get('label') or '二阶段'),
-            )
-            lines.extend(phase2_lines)
-            phase2_damage = int(phase2_boss['stats']['hp']) - int(phase2_boss_hp)
-            alive_team = self._alive_team_state(phase2_team_state)
-            theoretical_kill = phase2_damage >= int(activity['phase2_current_hp'])
-            lines.append(f'【演练结论】对满血二阶段造成 {phase2_damage} 点伤害，存活人数 {len(alive_team)}。')
-            lines.append(
-                f"【实战参考】按当前真实共享血量 {activity['phase2_current_hp']}/{activity['phase2_max_hp']}，"
-                f"本次{'理论可斩杀' if theoretical_kill else '理论无法斩杀'}。"
-            )
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        phase1_boss = self._build_world_boss_fighter(activity['phase1_payload'])
-        phase1_lines, phase1_cleared, phase1_team_state, _phase1_boss_hp = self._battle_team_vs_boss_quick(
-            team_label,
-            team,
-            phase1_boss,
-            str((activity['phase1_payload'] or {}).get('label') or '一阶段'),
-        )
-        lines.extend(phase1_lines)
-        if not phase1_cleared:
-            lines.append('【演练结论】完整双阶段演练止步于一阶段。')
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        alive_team = self._alive_team_state(phase1_team_state)
-        if not alive_team:
-            lines.append('【演练结论】一阶段虽然击穿，但队伍全灭，无法进入二阶段。')
-            await self._send_lines(event, lines)
-            event.stop_event()
-            return
-
-        phase2_team = [
-            self._clone_fighter_with_hp(entry['fighter'], int(entry['hp']))
-            for entry in alive_team
-        ]
-        phase2_boss = self._build_world_boss_fighter(activity['phase2_payload'])
-        lines.append(boss_phase_transition_message(activity['phase1_payload'], activity['phase2_payload']))
-        phase2_lines, _phase2_cleared, phase2_team_state, phase2_boss_hp = self._battle_team_vs_boss_quick(
-            team_label,
-            phase2_team,
-            phase2_boss,
-            str((activity['phase2_payload'] or {}).get('label') or '二阶段'),
-        )
-        lines.extend(phase2_lines)
-        phase2_damage = int(phase2_boss['stats']['hp']) - int(phase2_boss_hp)
-        final_alive = self._alive_team_state(phase2_team_state)
-        theoretical_kill = phase2_damage >= int(activity['phase2_current_hp'])
-        lines.append(f'【演练结论】已通过一阶段；对满血二阶段造成 {phase2_damage} 点伤害，最终存活人数 {len(final_alive)}。')
-        lines.append(
-            f"【实战参考】按当前真实共享血量 {activity['phase2_current_hp']}/{activity['phase2_max_hp']}，"
-            f"本次{'理论可斩杀' if theoretical_kill else '理论无法斩杀'}。"
-        )
-        await self._send_lines(event, lines)
-        event.stop_event()
-        return
+        await self._run_world_boss(event, practice=True, quick=True)
 
     @filter.command('specialsummon', alias={'特殊召唤令'})
     async def special_summon_command(self, event: AstrMessageEvent):
@@ -3027,7 +2600,7 @@ class Main(Star):
         text = str(getattr(event, 'message_str', '') or '').strip()
         parts = text.split()
         mode = 'all'
-        day_key = (date.today() - timedelta(days=1)).isoformat()
+        day_key = (self._settlement_now().date() - timedelta(days=1)).isoformat()
         if len(parts) >= 2:
             candidate = parts[1].strip().lower()
             if candidate in ('all', '1v1', '3v3'):

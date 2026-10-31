@@ -12,7 +12,7 @@ export function drawSwordSequenceEffects(ctx, event, local, tipAt, dir, impact) 
         return;
     const name = event.move, tier = swordEmphasis(event), fade = 1 - unit((local - 1100) / 280);
     const pulses = name === '无边落木' ? [550, 735, 950] : name === '回风斩' ? [620, 950] : [950];
-    const color = name === '回风斩' ? '#8b8fa7' : name === '无边落木' ? '#6d8869' : name === '金雁横空' ? '#b19855' : '#73aabd';
+    const color = name === '回风斩' ? '#0523d6' : name === '无边落木' ? '#20d605' : name === '金雁横空' ? '#d69d05' : '#05a0d6';
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -22,9 +22,9 @@ export function drawSwordSequenceEffects(ctx, event, local, tipAt, dir, impact) 
         if (age < -125 || age > 230)
             continue;
         const end = Math.min(local, pulse + 35), alpha = unit((age + 125) / 75) * (1 - unit((age - 45) / 185));
-        ctx.globalAlpha = alpha * .75 * fade;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (alpha * .75 * fade)), .65) * 1.15);
         for (const width of [7 + tier * 3, 2]) {
-            ctx.strokeStyle = width === 2 ? '#f7f9ec' : color;
+            ctx.strokeStyle = width === 2 ? '#d5f910' : color;
             ctx.lineWidth = width;
             ctx.beginPath();
             for (let i = 0; i < 14; i++) {
@@ -44,7 +44,7 @@ export function drawSwordSequenceEffects(ctx, event, local, tipAt, dir, impact) 
                 ctx.translate(tip[0] + Math.cos(a) * (12 + flight * 64) * dir, tip[1] + Math.sin(a) * 28 + flight * 42);
                 ctx.rotate(a + flight * 3);
                 ctx.fillStyle = color;
-                ctx.globalAlpha = alpha * .6 * fade;
+                ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (alpha * .6 * fade)), .65) * 1.15);
                 ctx.beginPath();
                 ctx.moveTo(-5, 0);
                 ctx.quadraticCurveTo(1, -5, 8, 0);
@@ -58,7 +58,7 @@ export function drawSwordSequenceEffects(ctx, event, local, tipAt, dir, impact) 
         ctx.strokeStyle = color;
         for (let i = 0; i < 7; i++) {
             const a = i * 2.399, r = 12 + (1 - gather) * 45;
-            ctx.globalAlpha = gather * .5;
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (gather * .5)), .65) * 1.15);
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(tip[0] + Math.cos(a) * r, tip[1] + Math.sin(a) * r);
@@ -67,7 +67,7 @@ export function drawSwordSequenceEffects(ctx, event, local, tipAt, dir, impact) 
         }
         const flash = unit((local - 880) / 65) * (1 - unit((local - 990) / 170));
         for (let i = 0; i < 3; i++) {
-            ctx.globalAlpha = flash * (.7 - i * .15);
+            ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, (flash * (.7 - i * .15))), .65) * 1.15);
             ctx.lineWidth = i === 0 ? 8 : 2;
             ctx.beginPath();
             ctx.moveTo(tip[0] - dir * (150 + i * 25), tip[1] + (i - 1) * 12);
@@ -78,7 +78,7 @@ export function drawSwordSequenceEffects(ctx, event, local, tipAt, dir, impact) 
     // Extra visual weight belongs to the move, but contact sparks remain hit-only.
     if (tier && impact.hit && local >= 950 && local < 1150) {
         const p = tipAt(950), phase = (local - 950) / 200;
-        ctx.globalAlpha = (1 - phase) * .6;
+        ctx.globalAlpha = Math.min(1, Math.pow(Math.max(0, ((1 - phase) * .6)), .65) * 1.15);
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         for (let i = 0; i < 16; i++) {

@@ -18,6 +18,7 @@ export type BattleEvent = {
   status?: string;
   reason?: string;
   move?: string;
+  visualMove?: string;
   martialArtId?: string;
   weaponType?: string;
   moveIndex?: number;
@@ -46,9 +47,11 @@ export type BattleEvent = {
 export type ReplayEntry = { id?: string; name: string; type?: string };
 export type ReplayFighter = {
   name: string; stats: { hp: number; spd?: number }; currentHp?: number; martialArt: ReplayEntry;
-  neigong?: ReplayEntry; qinggong?: ReplayEntry;
+  neigong?: ReplayEntry; qinggong?: ReplayEntry; bossKey?: string | null;
 };
+export type BossPresentation = { key: string; phase: number; intro: boolean; label: string; endingLabel: string };
 export type ReplayBattle = {
+  boss?: BossPresentation;
   attacker: ReplayFighter;
   defender: ReplayFighter;
   winner: string | null;

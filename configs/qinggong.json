@@ -92,8 +92,37 @@
     "special_effect": "【移星】每次成功闪避敌方攻击后，自身下一次攻击伤害提升10%。",
     "special_effect_data": {
       "type": "dodge_damage_boost",
-      "damage_bonus_ratio": 0.10,
+      "damage_bonus_ratio": 0.1,
       "trigger_msg": "【移星】{name} 借敌招落空之隙蓄势，下一击威力更盛！"
+    }
+  },
+  {
+    "id": "taxue_wuhen",
+    "name": "踏雪无痕",
+    "description": "绝顶轻灵身法，提气踏步如孤鸿掠过寒江新雪，落足不留痕迹。闪转腾挪间寒雾凝锋，避开敌招刹那便已完成反击蓄势。",
+    "combat_summary": "高闪避反击型身法。兼具优秀的起步速度与闪避能力，每次闪避后都能凝聚寒墨剑势强化下一击。",
+    "spd_multiplier": 1.08,
+    "eva_bonus": 9.0,
+    "special_effect": "【踏雪】每次成功闪避敌方攻击后，自身下一次攻击伤害提升12%。",
+    "special_effect_data": {
+      "type": "dodge_damage_boost",
+      "damage_bonus_ratio": 0.12,
+      "trigger_msg": "【踏雪】{name} 踏雪无痕掠开锋芒，足下寒雾凝锋蓄起反击之势！"
+    }
+  },
+  {
+    "id": "zongyun_ti",
+    "name": "纵云梯",
+    "description": "武林盛传的凌空纵跃绝学，左足踏右足背借力直上青云。身形一旦展开便似流火追云，层层登高，步步压制。",
+    "combat_summary": "高机动叠速型身法。出手越频身法越疾，四层踏云气机叠满后可在中后期牢牢掌控出手节奏。",
+    "spd_multiplier": 1.06,
+    "eva_bonus": 5.5,
+    "special_effect": "【纵云】每次行动结束后，自身速度倍率永久提升0.04（最高叠加4层）。",
+    "special_effect_data": {
+      "type": "action_spd_stack",
+      "bonus_per_stack": 0.04,
+      "max_stacks": 4,
+      "trigger_msg": "【纵云】{name} 借势纵云登高，周身流火罡风愈发迅疾！"
     }
   }
 ]

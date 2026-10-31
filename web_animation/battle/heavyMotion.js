@@ -40,18 +40,18 @@ export function heavyMotion(event,time,travel){
 }
 export function heavyEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
  const index=names.indexOf(event.move);if(index<0||time<260||time>2100)return;
- const black='#202622',ink='#363c32',gray='#6d6e58',gold='#b78b3f',light='#efcf85';
+ const black='#202622',ink='#363c32',gray='#ccd605',gold='#d68905',light='#f9b310';
  const fade=1-ease((time-1670)/380),slam=index===5||index===7,ultimate=index===7;
- const line=(pts,c=black,w=1,a=1)=>{ctx.strokeStyle=c;ctx.lineWidth=w;ctx.globalAlpha=a*fade;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()};
+ const line=(pts,c=black,w=1,a=1)=>{ctx.strokeStyle=c;ctx.lineWidth=w;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (a*fade)), .65) * 1.15);ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()};
  const seed=n=>{const x=Math.sin(n*127.1+index*213.7)*43758.5453;return x-Math.floor(x)};
- const polygon=(pts,c,a)=>{ctx.fillStyle=c;ctx.globalAlpha=a*fade;ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fill()};
+ const polygon=(pts,c,a)=>{ctx.fillStyle=c;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (a*fade)), .65) * 1.15);ctx.beginPath();pts.forEach((p,j)=>j?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fill()};
  const rock=(x,y,size,rotation,id,alpha)=>{
  ctx.save();ctx.translate(x,y);ctx.rotate(rotation);
  const vertices=Array.from({length:6},(_,j)=>{const a=j*Math.PI/3,r=size*(.68+seed(id*8+j)*.37);return [Math.cos(a)*r,Math.sin(a)*r]});
- polygon(vertices,black,alpha);polygon([vertices[0],vertices[1],vertices[2],[-size*.16,size*.06]],'#777461',alpha*.95);
+ polygon(vertices,black,alpha);polygon([vertices[0],vertices[1],vertices[2],[-size*.16,size*.06]],'#d6b905',alpha*.95);
  polygon([vertices[2],vertices[3],vertices[4],[-size*.16,size*.06]],'#434a40',alpha);
  line([vertices[4],vertices[5],vertices[0]],gold,Math.max(.7,size*.06),alpha*.78);
- if(size>10)line([vertices[1],[-size*.12,size*.03],vertices[4]],'#a19570',.65,alpha*.55);
+ if(size>10)line([vertices[1],[-size*.12,size*.03],vertices[4]],'#d6a305',.65,alpha*.55);
  ctx.restore();};
  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';const now=sampleAt(time),root=now.root;
  const charge=ease((time-260)/400)*(1-ease((time-780)/90));
@@ -120,7 +120,7 @@ export function heavyEffects(ctx,event,time,sampleAt,target,dir,impactAge,hit){
  // Broad, low dust fronts: irregular overlapping smudges, no outlined ellipses.
  for(let j=0;j<20;j++){
  const sign=j%2?1:-1,d=(15+age*(120+seed(j+250)*175))*power,r=11+age*22+seed(j+280)*12;
- ctx.globalAlpha=fade*(1-ease((impactAge-350)/650))*(j%3?.14:.22);ctx.fillStyle=j%3?'#8a846a':ink;
+ ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (fade*(1-ease((impactAge-350)/650))*(j%3?.14:.22))), .65) * 1.15);ctx.fillStyle=j%3?'#d6af05':ink;
  ctx.beginPath();ctx.ellipse(cx+sign*d,ground-3-seed(j+300)*14-Math.sin(p*Math.PI)*8,r*1.65,r*.38,-sign*.08,0,Math.PI*2);ctx.fill();
  }
  // Layered ballistic rubble: large tumbling blocks, then chips and black grit.

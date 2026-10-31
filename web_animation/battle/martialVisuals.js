@@ -1,5 +1,6 @@
 import { profileFor, themeColors } from './moveProfiles.js';
 import { expandedArts, expandedTechnique } from './expandedArts.js';
+import { masterArts, masterTechnique } from './wuxiaMasterArts.js';
 const v = (motion, trail, weight = 1, flourish) => ({ motion, trail, weight, flourish });
 // Explicit per-art keys avoid confusing the two different "白虹贯日" entries.
 // Visual flourishes never imply that a probabilistic status actually triggered.
@@ -78,7 +79,12 @@ for (const [id, art] of Object.entries(expandedArts)) {
     techniques[id] = Object.fromEntries(art.moves.map(move => [move.name,
         expandedTechnique({ martialArtId: id, move: move.name })]));
 }
+for (const [id, art] of Object.entries(masterArts)) {
+    techniques[id] = Object.fromEntries(art.moves.map(move => [move.name,
+        masterTechnique({ martialArtId: id, move: move.name })]));
+}
 export function weaponFor(fighter) {
+    if (masterArts[fighter.martialArt.id]) return masterArts[fighter.martialArt.id].weapon;
     if (expandedArts[fighter.martialArt.id]) return expandedArts[fighter.martialArt.id].weapon;
     if (fighter.martialArt.id === 'sword_ittoryu')
         return 'katana';
@@ -107,6 +113,8 @@ export function legacyTechniqueFor(event, fighter) {
     return techniqueFor(event, fighter);
 }
 export function techniqueFor(event, fighter) {
+    const master = masterTechnique(event, fighter);
+    if (master) return master;
     const expanded = expandedTechnique(event, fighter);
     if (expanded) return expanded;
     const known = techniques[event?.martialArtId || fighter.martialArt.id || '']?.[event?.move || ''];
@@ -129,6 +137,7 @@ export function techniqueFor(event, fighter) {
     return v('thrust', 'point');
 }
 export const effectLabels = {
-    regeneration: '回春', vampirism: '汲血', thorns: '反震', burst_heal: '生机爆发',
+    regeneration: '回春', vampirism: '汲血', thorns: '反震', part_counter: '借力反震', burst_heal: '生机爆发',
     crisis_defense: '罡气护体', battle_start_first_strike: '抢占先机', low_hp_extra_action: '绝境提气',
+    action_spd_stack: '提速叠势', dodge_damage_boost: '蓄势反击',
 };
