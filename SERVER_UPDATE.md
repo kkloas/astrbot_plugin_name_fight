@@ -48,11 +48,12 @@ git rev-parse HEAD
 ## 3. 更新 Web 端
 
 - 使用现有后端 Python 环境, 按需安装 `web/backend/requirements.txt` 中的依赖. 仓库提供的后端启动器会优先检查 `web/.python-packages`, 请先确认运行中的服务实际使用哪套环境.
-- 在 Web 仓库中使用 Node 和 npm 构建前端:
+- 在 Web 仓库中使用 Node.js 20.19.x 或 22.12 及以上版本和 npm 构建前端。发布前执行依赖审计:
 
 ```sh
 cd web/frontend
 npm ci
+npm audit
 npm run build
 ```
 

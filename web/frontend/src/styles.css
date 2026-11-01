@@ -324,7 +324,7 @@ input:focus {
   margin: 7px auto;
   border: 2px solid var(--ink);
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   /* 显著降低纸面不透明度，让底图水墨山水透出来 */
   background:
     linear-gradient(rgba(243, 240, 231, 0.18), rgba(227, 222, 210, 0.28)),

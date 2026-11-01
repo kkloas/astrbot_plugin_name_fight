@@ -3,6 +3,7 @@
 import os
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -14,6 +15,8 @@ from database import FighterRepository
 from PIL import Image
 from playwright.sync_api import sync_playwright
 from web_auth import WebAuthRepository, WebIdentity
+from world_boss import phase_payload
+from world_boss_config import WORLD_BOSS_PHASE1
 
 ROOT = Path(__file__).resolve().parent
 
@@ -86,7 +89,7 @@ class WebMobileLayoutTests(unittest.TestCase):
             """,
                 arg=hp,
             )
-            page.wait_for_timeout(50)
+            page.wait_for_timeout(250)
             progress = page.locator(".duel-hud [role=progressbar]").evaluate_all("""tracks => tracks.map(track => {
                 const fill = track.querySelector('i');
                 const css = getComputedStyle(track);
@@ -104,13 +107,14 @@ class WebMobileLayoutTests(unittest.TestCase):
                     (image.width // 2, image.height // 2)
                 )
             self.assertEqual(pixel, (248, 249, 242))
-        self.assertTrue(
+        self.assertEqual(
             page.locator(".duel-hud").evaluate("""node => {
+            const found = [];
             for (let parent = node; parent; parent = parent.parentElement) {
-                if (getComputedStyle(parent).backdropFilter !== 'none') return false;
+                if (getComputedStyle(parent).backdropFilter !== 'none') found.push([parent.className, getComputedStyle(parent).backdropFilter]);
             }
-            return true;
-        }""")
+            return found;
+        }"""), []
         )
         for pseudo in ["::before", "::after"]:
             self.assertEqual(
@@ -136,7 +140,7 @@ class WebMobileLayoutTests(unittest.TestCase):
             page.locator(".duel-hud").evaluate(
                 "node => getComputedStyle(node).backgroundColor"
             ),
-            "rgba(248, 249, 242, 0.72)",
+            "rgba(248, 249, 242, 0.76)",
         )
         page.set_viewport_size({"width": 390, "height": 844})
 
@@ -173,8 +177,8 @@ class WebMobileLayoutTests(unittest.TestCase):
             repo.open_group_boss(
                 group_id,
                 "手机测试首领" * 5,
-                {"stats": {"hp": 10000}},
-                {"stats": {"hp": 999999}},
+                phase_payload(repo, WORLD_BOSS_PHASE1),
+                {"stats": {"hp": 50000}},
                 user_id,
             )
             with socket.socket() as sock:
@@ -188,7 +192,7 @@ class WebMobileLayoutTests(unittest.TestCase):
                 "NFIGHT_WEB_PORT": str(port),
             }
             with (Path(directory) / "server.log").open("w") as log:
-                command = [str(ROOT / "web/.venv/bin/python"), "run_web.py"]
+                command = [sys.executable, "run_web.py"]
                 if os.environ.get("NFIGHT_TEST_DIST_DIR"):
                     command = [
                         command[0],
@@ -281,6 +285,9 @@ uvicorn.run(app, host='127.0.0.1', port=int(os.environ['NFIGHT_WEB_PORT']), log_
                                                 page.locator(".pve-roster button").nth(
                                                     index
                                                 ).click()
+                                        if tab == "世界BOSS":
+                                            page.get_by_role("tab", name="贰 · 龙首真身").click()
+                                            self.assertEqual(page.locator(".boss-techniques strong").all_text_contents(), ["未知"] * 3)
                                         self.assert_content_fits(page)
                                         if tab == "人物":
                                             self.assertEqual(

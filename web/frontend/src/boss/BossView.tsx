@@ -6,8 +6,8 @@ import './boss.css';
 
 type Fighter = ReplayFighter & { slotIndex?: number; starRating?: number };
 type Phase = { boss_key?: string; name: string; label: string; description: string;
-  stats: { hp: number; atk: number; def: number; spd: number; crt: number; eva: number };
-  martial_art: { name: string; boss_summary?: string }; neigong: { name: string; boss_summary?: string }; qinggong: { name: string; boss_summary?: string } };
+  stats?: { hp?: number; atk?: number; def?: number; spd?: number; crt?: number; eva?: number };
+  martial_art?: { name?: string; boss_summary?: string }; neigong?: { name?: string; boss_summary?: string }; qinggong?: { name?: string; boss_summary?: string } };
 type RewardPreview = { points: number; items: { name: string; quantity: number }[] };
 const rewardText = (reward: RewardPreview) => `${reward.points} 积分${reward.items.map(item => ` / ${item.name} ×${item.quantity}`).join('')}`;
 type BossState = {
@@ -102,8 +102,8 @@ export function BossView({ initialBoss, fighters, request, identityKey, onRefres
       <section className={`boss-dossier phase-${phase}`} aria-label="BOSS 情报">
         <div className="boss-portrait">{asset && <img src={asset.portrait} alt={panel.name} decoding="async" />}<span>{phase === 1 ? '先破其阵' : '群侠合击'}</span></div>
         <div className="boss-details"><span className="boss-eyebrow">{panel.label}</span><h3>{panel.name}</h3><p>{panel.description}</p>
-          <dl className="boss-stat-grid">{([['气血', panel.stats.hp], ['攻击', panel.stats.atk], ['防御', panel.stats.def], ['速度', panel.stats.spd], ['暴击', `${panel.stats.crt}%`], ['闪避', `${panel.stats.eva}%`]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-          <div className="boss-techniques">{([['武学', panel.martial_art], ['内功', panel.neigong], ['轻功', panel.qinggong]] as const).map(([label, entry]) => <div key={label}><span>{label}</span><strong>{entry.name}</strong>{entry.boss_summary && <small>{entry.boss_summary}</small>}</div>)}</div>
+          <dl className="boss-stat-grid">{([['气血', panel.stats?.hp ?? '—'], ['攻击', panel.stats?.atk ?? '—'], ['防御', panel.stats?.def ?? '—'], ['速度', panel.stats?.spd ?? '—'], ['暴击', panel.stats?.crt == null ? '—' : `${panel.stats.crt}%`], ['闪避', panel.stats?.eva == null ? '—' : `${panel.stats.eva}%`]] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          <div className="boss-techniques">{([['武学', panel.martial_art], ['内功', panel.neigong], ['轻功', panel.qinggong]] as const).map(([label, entry]) => <div key={label}><span>{label}</span><strong>{entry?.name || '未知'}</strong>{entry?.boss_summary && <small>{entry.boss_summary}</small>}</div>)}</div>
         </div>
       </section>
       <section className="boss-shared-health"><div><strong>全群共享血量</strong><span>{activity.phase2_current_hp.toLocaleString()} / {activity.phase2_max_hp.toLocaleString()}</span></div>

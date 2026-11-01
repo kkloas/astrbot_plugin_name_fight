@@ -98,7 +98,7 @@
 
 /* Keep mobile replay paints separate from background effects and the HUD. */
 @media (max-width:900px) {
-  .app-shell.battle-page { backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .app-shell.battle-page { -webkit-backdrop-filter:none; backdrop-filter:none; }
   .app-shell.battle-page::before,.app-shell.battle-page::after { animation:none; }
   .app-shell.battle-page .duel-hud { background:#f8f9f2; contain:paint; isolation:isolate; }
   .app-shell.battle-page .duel-arena { contain:paint; isolation:isolate; }

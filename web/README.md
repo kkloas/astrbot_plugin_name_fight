@@ -43,6 +43,8 @@ practice endpoints enforce the whitelist and do not update player saves. Route
 `/motion-preview.html` through the Web backend if a separate frontend server
 normally serves static files, so its access check is applied as well.
 
+The frontend build requires Node.js 20.19.x or 22.12 and later.
+
 ```bash
 cd web/frontend
 npm ci
