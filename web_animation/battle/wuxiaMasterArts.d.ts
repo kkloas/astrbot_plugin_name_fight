@@ -75,7 +75,7 @@ export function drawMasterEffects(
     ctx: CanvasRenderingContext2D,
     event: BattleEvent,
     local: number,
-    sampleAt: (t: number) => { tip: [number, number]; hand: [number, number]; root: [number, number] },
+    sampleAt: (t: number) => { tip: [number, number]; hand: [number, number]; rearHand?: [number, number]; root: [number, number]; frame?: unknown },
     target: [number, number],
     dir: number,
     impactAge: number,

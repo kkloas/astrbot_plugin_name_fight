@@ -1,7 +1,7 @@
 import { visualBattle, drawBossPresence, drawBossBackdrop } from './bossVisuals.js';
 import {drawArtTrigger,drawArtFootwork,drawArtAura} from './innerLightEffects.js';
 import { qishangTime, qishangReplayTime, qishangEffects, qishangBody } from './qishangMotion.js';
-import { serpentTime, serpentReplayTime, serpentMotion, inkWhipPath } from './serpentMotion.js';
+import { serpentTime, serpentReplayTime, serpentMotion, inkWhipPath, waitForSerpentAssets } from './serpentMotion.js';
 import { phoenixTime, phoenixReplayTime } from './phoenixMotion.js';
 import { stateAt, statusLabels } from './replay.js';
 import { techniqueFor, legacyTechniqueFor, weaponFor } from './martialVisuals.js';
@@ -23,7 +23,11 @@ import { expandedMoveFor, drawExpandedEffects } from './expandedArts.js';
 import { names as qinNames, qinPose, qinFX, qinTime } from './qinMotion.js';
 import { holyTime, holyReplayTime, holySample } from './holyMotion.js';
 import { heavyTime, heavyReplayTime, heavyHold, heavyShake } from './heavyMotion.js';
-import { isMasterArt, masterMoveFor, drawMasterSash, drawMasterEffects, drawWebSceneBackdrop, drawWebBattleStains, drawWebSceneForeground } from './wuxiaMasterArts.js';
+import { isMasterArt, masterMoveFor, drawMasterSash, drawMasterEffects, drawWebSceneBackdrop, drawWebBattleStains, drawWebSceneForeground, waitForMasterAssets } from './wuxiaMasterArts.js';
+import { waitForXianglongAssets } from './xianglongArts.js';
+export async function waitForBattleAssets() {
+    await Promise.all([waitForMasterAssets(), waitForXianglongAssets(), waitForSerpentAssets()]);
+}
 // Head, neck, waist, rear elbow/hand, sword elbow/hand, rear knee/foot, front knee/foot.
 const poses = {
     idle: { points: [[0, -137], [0, -116], [-7, -65], [-28, -95], [-19, -71], [24, -101], [39, -89], [-24, -34], [-39, 0], [20, -34], [39, 0]], sword: -.45, lean: 0 },
@@ -204,6 +208,8 @@ export function poseAt(battle, side, time, width, turn, mode = 'mixed', webEnhan
     const victim = turn?.actor === 'a' ? battle.defender : battle.attacker;
     const impact = impactFor(outcome, victim.stats.hp, technique);
     if (attack?.martialArtId === 'sword_xuantie' && impact.hit) impact.hold = heavyHold(attack.move);
+    if (attack?.martialArtId === 'palm_xianglong' && impact.hit) impact.hold = Math.max(impact.hold, masterMoveFor(attack)?.ultimate ? 88 : 56);
+    if (attack?.martialArtId === 'whip_baimang' && impact.hit) impact.hold = Math.max(impact.hold, attack.move === '绝技·白蟒索命' ? 82 : 48);
     const contact = outcome && turn ? outcome.time - turn.time : 950;
     const actionTime = contactTime(local, contact, impact.hold);
     if (turn && attack && local >= 0 && local < (['fist_qishang', 'whip_baimang'].includes(attack.martialArtId) ? contact + 730 : attack.martialArtId === 'staff_bainiaochaofeng' && attack.move === '绝技·百鸟朝凤' ? contact + 760 : 1740)) {
@@ -417,7 +423,8 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode, opt
     ctx.clearRect(0, 0, width, 430);
     drawBossBackdrop(ctx, battle, width);
     const webEnhanced = Boolean(options?.webEnhanced);
-    const sceneTheme = options?.sceneTheme || 'sunset';
+    const sceneTheme = options?.sceneTheme || (webEnhanced ? 'sunset' : 'classic');
+    const showStains = options?.battleStains ?? (webEnhanced && sceneTheme !== 'classic');
     const state = stateAt(battle, time);
     const frameAt = (side, at, turn) => poseAt(battle, side, at, width, turn, mode, webEnhanced);
     const frames = { a: frameAt('a', time, state.turn), b: frameAt('b', time, state.turn) };
@@ -430,6 +437,8 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode, opt
     const victim = attack?.actor === 'a' ? battle.defender : battle.attacker;
     const force = impactFor(outcome, victim.stats.hp, technique);
     if (attack?.martialArtId === 'sword_xuantie' && force.hit) force.hold = heavyHold(attack.move);
+    if (attack?.martialArtId === 'palm_xianglong' && force.hit) force.hold = Math.max(force.hold, masterMoveFor(attack)?.ultimate ? 88 : 56);
+    if (attack?.martialArtId === 'whip_baimang' && force.hit) force.hold = Math.max(force.hold, attack.move === '绝技·白蟒索命' ? 82 : 48);
     const impactAge = outcome ? time - outcome.time : -1;
     const turnLocal = turn ? time - turn.time : -1;
     const windImpulse = effects && !reducedMotion && attack && turnLocal > 560 && turnLocal < 1260
@@ -438,7 +447,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode, opt
     ctx.save();
     if (webEnhanced && effects) {
         drawWebSceneBackdrop(ctx, width, time, sceneTheme, windImpulse);
-        drawWebBattleStains(ctx, battle, time, frameAt);
+        if (showStains) drawWebBattleStains(ctx, battle, time, frameAt);
     }
     if (effects && force.cinematic && impactAge > -160 && impactAge < 480) {
         const focus = impactAge < 0 ? smooth((impactAge + 160) / 160) : 1 - smooth((impactAge - 80) / 400);
@@ -475,11 +484,14 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode, opt
         const moving = !['short_shenghuoling', 'sword_xuantie'].includes(attack?.martialArtId) && attack?.actor === side && ((local > 430 && local < 960) || (local > 1210 && local < 1660)) && !['needles', 'zither'].includes(weapon);
         const multiPoseGhosts = webEnhanced && effects && !reducedMotion && attack?.actor === side &&
             ((attack.martialArtId === 'sword_xuanmo' && attack.move === '泼墨回风') ||
-             (attack.martialArtId === 'blade_chixiao' && attack.move === '狂煞乱舞'));
+             (attack.martialArtId === 'blade_chixiao' && attack.move === '狂煞乱舞') ||
+             (attack.martialArtId === 'palm_xianglong' && attack.move === '双龙取水'));
         if (multiPoseGhosts && local >= 590 && local <= 1345) {
             const ghostPoses = attack.move === '狂煞乱舞'
                 ? [poses.overhead, poses.low, poses.rise, poses.slash]
-                : [poses.low, poses.rise, poses.slash];
+                : attack.move === '双龙取水'
+                    ? [poses.low, poses.palm, poses.rise]
+                    : [poses.low, poses.rise, poses.slash];
             for (let i = 0; i < ghostPoses.length; i++) {
                 const age = local - (590 + i * 85);
                 if (age < 0 || age > 500) continue;
@@ -585,15 +597,17 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode, opt
                 const hand = pose.pose.points[6];
                 const angle = pose.pose.sword;
                 const world = (p) => [pose.x + facingDir * p[0], 324 + pose.lift + p[1]];
-                const tipLocal = weapon === 'blade' ? [105, -24] : [100, 0];
+                const tipLocal = weapon === 'blade' ? [105, -24] : weapon === 'unarmed' ? [12, 0] : [100, 0];
                 return {
                     hand: world(hand),
+                    rearHand: world(pose.pose.points[4]),
                     tip: world([hand[0] + Math.cos(angle) * tipLocal[0] - Math.sin(angle) * tipLocal[1], hand[1] + Math.sin(angle) * tipLocal[0] + Math.cos(angle) * tipLocal[1]]),
                     root: [pose.x, 324 + pose.lift],
+                    frame: pose,
                 };
             };
             const contactTarget = [outcome?.type === 'dodge' ? targetX : frameAt(targetSide, outcome?.time || time, turn).x, y];
-            if (frame.armed)
+            if (frame.armed || weapon === 'unarmed')
                 drawMasterEffects(ctx, attack, time - turn.time, sampleAt, contactTarget, dir, impactAge, force.hit, width, webEnhanced);
         }
         else if (expandedMoveFor(attack) && turn) {
@@ -611,7 +625,7 @@ export function draw(ctx, battle, time, width, reducedMotion, effects, mode, opt
             };
             if ((!holy && !heavy && !phoenix && !serpent) || frame.armed)
                 drawExpandedEffects(ctx, attack, holy ? holyTime(time - turn.time, contact) : heavy ? heavyTime(time - turn.time, contact) : phoenix ? phoenixTime(time - turn.time, contact, attack.move) : serpent ? serpentTime(time - turn.time, contact) : time - turn.time, sampleAt,
-                    [(holy || heavy || phoenix) && outcome?.type === 'dodge' ? targetX : frameAt(targetSide, outcome?.time || time, turn).x, y], dir, impactAge, force.hit, webEnhanced);
+                    [(holy || heavy || phoenix || serpent) && outcome?.type === 'dodge' ? targetX : frameAt(targetSide, outcome?.time || time, turn).x, y], dir, impactAge, force.hit, webEnhanced);
         }
         else if (isNewMove(attack) && turn) {
             const sampleAt = (t) => {

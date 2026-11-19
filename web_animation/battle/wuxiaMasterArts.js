@@ -1,5 +1,6 @@
 import { twoBone } from './sampleMotion.js';
 import { ease } from './choreography.js';
+import { xianglongArt, xianglongMotion, drawXianglongEffects } from './xianglongArts.js';
 
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const smooth = (x) => { const v = clamp(x); return v * v * (3 - 2 * v); };
@@ -64,6 +65,7 @@ export const masterArts = {
             m('绝技·赤霄断魂', 'domain_blade', 1.50, 0.36, 102, 1, false, true),
         ],
     },
+    palm_xianglong: xianglongArt,
 };
 
 export const masterMoves = Object.entries(masterArts).flatMap(([id, art]) =>
@@ -95,6 +97,14 @@ export function masterTechnique(event, fighter) {
         ground_wave: 'leap',
         storm: 'flurry',
         domain_blade: 'cleave',
+        dragon_field: 'palm',
+        dragon_coiled: 'palm',
+        dragon_tail: 'sweep',
+        twin_dragons: 'flurry',
+        dragon_quake: 'cleave',
+        dragon_dash: 'draw',
+        dragon_sky: 'leap',
+        domain_dragon: 'palm',
     };
     return {
         motion: motionMap[move.style] || 'slash',
@@ -106,6 +116,7 @@ export function masterTechnique(event, fighter) {
 }
 
 export function masterMotion(event, time, travel, dodged = false) {
+    if (event?.martialArtId === 'palm_xianglong') return xianglongMotion(event, time, travel, dodged);
     const art = masterArts[event?.martialArtId];
     const move = masterMoveFor(event);
     if (!art || !move) return undefined;
@@ -692,6 +703,7 @@ export function drawMasterFigure(ctx, x, side, pose, time, weapon, alpha, lift, 
 // 水墨笔触原语：两端出锋的毛笔笔画 + 飞白断笔 + 淡墨晕染。全部为纯函数(f(参数))，无随机、无状态。
 // 取代早先实心三角 / 实心拱弧 / 粗描边亮线，让招式像宣纸上一笔扫过的淡墨，而不是抛出去的硬块。
 // ---------------------------------------------------------------------------
+const SHOW_ULTIMATE_SEALS = false;
 const INK_RGB = '28,34,38';
 const inkAssets = typeof Image === 'undefined' ? {} : Object.fromEntries(
     ['crescent', 'fissure'].map((name) => {
@@ -700,6 +712,23 @@ const inkAssets = typeof Image === 'undefined' ? {} : Object.fromEntries(
         return [name, image];
     }),
 );
+
+export function waitForMasterAssets() {
+    const imgs = Object.values(inkAssets).filter(Boolean);
+    if (!imgs.length) return Promise.resolve();
+    return Promise.all(
+        imgs.map((img) => {
+            if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+            if (typeof img.decode === 'function') {
+                return img.decode().catch(() => {});
+            }
+            return new Promise((resolve) => {
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+            });
+        }),
+    ).then(() => {});
+}
 const hexRgb = (hex) => {
     const h = String(hex).replace('#', '');
     return `${parseInt(h.slice(0, 2), 16) || 0},${parseInt(h.slice(2, 4), 16) || 0},${parseInt(h.slice(4, 6), 16) || 0}`;
@@ -984,6 +1013,9 @@ function drawFlyingSpiritSword(ctx, x, y, angle, scale, glowColor, brightColor, 
 }
 
 export function drawMasterEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit, width = 960, webEnhanced = false) {
+    if (event?.martialArtId === 'palm_xianglong') {
+        return drawXianglongEffects(ctx, event, local, sampleAt, target, dir, impactAge, hit, width, webEnhanced);
+    }
     const art = masterArts[event?.martialArtId];
     const move = masterMoveFor(event);
     if (!art || !move || local < 160 || local > 1580) return;
@@ -1381,7 +1413,7 @@ export function drawMasterEffects(ctx, event, local, sampleAt, target, dir, impa
         }
         ctx.restore();
 
-        if (move.ultimate) {
+        if (move.ultimate && SHOW_ULTIMATE_SEALS) {
             drawCanvasSeal(
                 ctx,
                 target[0] + dir * 46,
