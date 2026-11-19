@@ -1,0 +1,25 @@
+:root { color-scheme: light; color: #262820; background: #f6f1e6; font: 16px/1.5 system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 55rem; margin: 4vh auto; padding: 1rem clamp(.8rem, 4vw, 2rem); }
+header, .controls { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+h1, h2 { font-family: 'STKaiti', KaiTi, serif; }
+h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); }
+h2 { font-size: clamp(1rem, 3vw, 1.45rem); margin: 0; overflow-wrap: anywhere; }
+.fighters { display: grid; grid-template-columns: 1fr 1fr; gap: 1.3rem; padding: .8rem; background: rgb(248 249 242 / 76%); border-top: 2px solid #595546; }
+.fighters > div:last-child { text-align: right; }
+.fighters span { font-size: .9rem; }
+progress { display: block; width: 100%; height: .65rem; accent-color: #934737; }
+#b-bar { accent-color: #4d6d59; }
+.arena { background: #f5f2e8 url('./ink-bg.webp') center / 100% 100% no-repeat; border: 1px solid #b9b5a6; }
+.stage { position: relative; border-top: 1px solid #c2bca9; }
+#move { position: absolute; top: .45rem; left: 5%; width: 90%; text-align: center; color: #453a2c; text-shadow: 0 1px 3px #fff; font: bold clamp(1rem, 3vw, 1.6rem)/1.2 KaiTi, serif; pointer-events: none; }
+.initiative { display: flex; justify-content: space-between; flex-wrap: wrap; column-gap: .3rem; color: #305857; margin-top: .3rem; }
+.initiative span, .fighters small { font-size: clamp(.73rem, 2.6vw, .85rem); }
+.gauge { accent-color: #427e7d; height: .55rem; }
+.fighters small { display: block; color: #4b4e44; margin-top: .25rem; }
+canvas { width: 100%; height: auto; display: block; }
+#status { min-height: 1.5em; overflow-wrap: anywhere; }
+button, select { font: inherit; border: 1px solid #746a54; border-radius: .3rem; padding: .45rem .7rem; color: inherit; background: #fffdf6; }
+#play { min-width: 5.4rem; }
+#seek { flex: 1; min-width: 0; accent-color: #884731; }

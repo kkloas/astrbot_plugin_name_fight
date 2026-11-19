@@ -27,7 +27,7 @@ from database import (  # noqa: E402
 from engine import CombatEngine  # noqa: E402
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pve import PveService  # noqa: E402
@@ -35,6 +35,7 @@ from world_boss import WorldBossService, reward_preview  # noqa: E402
 from world_boss_config import WORLD_BOSS_DAILY_LIMIT  # noqa: E402
 from pydantic import BaseModel, Field
 from text_resources import compact_battle_logs  # noqa: E402
+from spectator_replay import read_replay  # noqa: E402
 from web_auth import (  # noqa: E402
     CHALLENGE_TTL,
     SESSION_TTL,
@@ -825,6 +826,38 @@ def fighter_avatar(name: str, identity: WebIdentity = Depends(require_session)):
 def unknown_api(path: str):
     raise HTTPException(status_code=404, detail="Unknown API endpoint")
 
+
+SPECTATE_DIR = ROOT_DIR / "web" / "spectate"
+
+
+@app.get("/r/{key}", response_class=HTMLResponse, include_in_schema=False)
+def spectate_battle(key: str):
+    headers = {
+        "Cache-Control": "private, no-store",
+        "Referrer-Policy": "no-referrer",
+        "X-Robots-Tag": "noindex, nofollow",
+    }
+    replay = read_replay(repo.db_path.parent, key)
+    if replay is None:
+        return HTMLResponse(
+            '<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>对战回放</title><p>回放链接无效或已过期。对战回放保留 48 小时。</p></html>',
+            status_code=404,
+            headers=headers,
+        )
+    template = (SPECTATE_DIR / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(
+        template.replace("<!--BOUTS-->", replay.replace("<", "\\u003c")),
+        headers=headers,
+    )
+
+
+app.mount("/spectate/v143/battle", StaticFiles(directory=ROOT_DIR / "web_animation" / "battle"), name="spectator-animation-v143")
+app.mount(
+    "/spectate/battle",
+    StaticFiles(directory=ROOT_DIR / "web_animation" / "battle"),
+    name="spectator-animation",
+)
+app.mount("/spectate/ui", StaticFiles(directory=SPECTATE_DIR), name="spectator-ui")
 
 DIST_DIR = ROOT_DIR / "web" / "frontend" / "dist"
 app.mount("/boss-assets", StaticFiles(directory=ROOT_DIR / "web_animation" / "boss_assets"), name="boss-assets")

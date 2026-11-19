@@ -1,5 +1,6 @@
 import { draw, waitForBattleAssets } from './battle/InkStage.js';
-import { initiativeAt, stateAt, statusLabels, victoryLabels } from './battle/replay.js';
+import { statusLabels } from './battle/replay.js';
+import { battleHudAt } from './battle/hud.js';
 const params = new URLSearchParams(location.search);
 const battle = window.__BATTLE__;
 const canvas = document.querySelector('canvas');
@@ -13,27 +14,18 @@ const text = (id) => document.getElementById(id);
 const hpBar = (side) => document.getElementById(`hp-${side}`);
 const gaugeBar = (side) => document.getElementById(`gauge-${side}`);
 function updateHud(time) {
-    const state = stateAt(battle, time);
-    const gauge = initiativeAt(battle, time, state);
-    const victory = battle.events.find(event => event.type === 'victory_start' && event.time <= time);
-    const attack = battle.events.filter(event => event.type === 'attack' && event.time <= time).pop();
-    const move = victory ? (battle.boss?.endingLabel || victoryLabels[victory.victoryKind || 'standard']) : attack?.move || (time < 1900 ? '起势' : '');
+    const { state, move, victory, sides } = battleHudAt(battle, time);
     text('heading-state').textContent = state.ended ? (battle.boss?.endingLabel || '胜负已分') : victory ? '收势' : '交锋中';
     text('heading-turn').textContent = state.turn ? `第 ${state.turn.action} 手` : '凝神待发';
     text('move-name').textContent = move;
     for (const side of ['a', 'b']) {
         const fighter = side === 'a' ? battle.attacker : battle.defender;
-        const turnEnd = state.turn && battle.events.find(event => event.type === 'turn_end' && event.action === state.turn?.action);
-        const acting = Boolean(state.turn?.actor === side && !state.ended && time < (turnEnd?.time || 0) && state.hp[side] > 0);
-        const skipped = acting && battle.events.some(event => event.type === 'turn_skip' && event.action === state.turn?.action && event.time <= time);
-        const ready = gauge[side] >= 100;
-        const label = state.ended ? '已结束' : victory ? '收势' : state.hp[side] <= 0 ? '退场' : acting ? (skipped ? '行动受阻' : '出招中') : ready ? '待出招' : '蓄势';
         text(`name-${side}`).textContent = fighter.name;
         text(`hp-value-${side}`).textContent = `${state.hp[side]} / ${fighter.stats.hp}`;
         hpBar(side).style.width = `${Math.max(0, state.hp[side] / fighter.stats.hp * 100)}%`;
-        text(`speed-${side}`).textContent = `速度 ${Math.round(state.speeds[side]) || '--'}`;
-        text(`gauge-value-${side}`).textContent = state.hasGauge ? `${label} ${Math.floor(gauge[side])}/100` : `${label}`;
-        gaugeBar(side).style.width = `${Math.min(100, Math.max(0, gauge[side]))}%`;
+        text(`speed-${side}`).textContent = `速度 ${sides[side].speed}`;
+        text(`gauge-value-${side}`).textContent = sides[side].action;
+        gaugeBar(side).style.width = `${sides[side].percent}%`;
         text(`loadout-${side}`).textContent = `${fighter.martialArt.name} / ${fighter.neigong?.name || ''} / ${fighter.qinggong?.name || ''}`;
         text(`states-${side}`).textContent = state.states[side].map(value => statusLabels[value] || '运功').join(' / ') || '正常';
     }
@@ -87,10 +79,10 @@ window.initializeExport = async (source) => {
     exportBackground.src = `data:image/png;base64,${source}`;
     await exportBackground.decode();
     exportCanvas = document.createElement('canvas');
-    const scale = 720 / exportBackground.width;
-    exportCanvas.width = 720;
+    const scale = 640 / exportBackground.width;
+    exportCanvas.width = 640;
     exportCanvas.height = Math.round(exportBackground.height * scale);
-    exportContext = exportCanvas.getContext('2d', { alpha: false });
+    exportContext = exportCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
     exportContext.scale(scale, scale);
     document.getElementById('export-hide').remove();
 };
@@ -189,7 +181,7 @@ window.exportRawFrame = async (time) => {
         const start = ((top + y) * width + left) * 4;
         patch.set(pixels.subarray(start, start + patchWidth * 4), y * patchWidth * 4);
     }
-    const data = await new Promise((resolve, reject) => {
+    const data = typeof patch.toBase64 === 'function' ? patch.toBase64() : await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = () => reject(reader.error);

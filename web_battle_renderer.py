@@ -14,62 +14,30 @@ import urllib.request
 import uuid
 from contextlib import contextmanager, suppress
 from io import BytesIO
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
-from PIL import GifImagePlugin, Image, ImageChops
 import psutil
+from PIL import GifImagePlugin, Image, ImageChops
 from websockets.exceptions import ConnectionClosed
 from websockets.sync.client import connect
 
+try:
+    from .spectator_replay import battle_payload as _battle_payload
+except ImportError:
+    from spectator_replay import battle_payload as _battle_payload
+
 logger = logging.getLogger(__name__)
+
+# GIF delays are stored in centiseconds.
+GIF_FRAME_INTERVAL_MS = 80
 
 
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
-
-
-def _replay_fighter(fighter: dict[str, Any]) -> dict[str, Any]:
-    martial_art = fighter.get("martial_art") or {}
-    neigong = fighter.get("neigong") or {}
-    qinggong = fighter.get("qinggong") or {}
-    stats = fighter.get("stats") or {}
-    return {
-        "name": str(fighter.get("name") or "未知角色"),
-        "bossKey": fighter.get("boss_key"),
-        "stats": {
-            "hp": int(stats.get("hp", 1)),
-            "spd": float(stats.get("spd", 0)),
-        },
-        "currentHp": int(fighter.get("current_hp", stats.get("hp", 1))),
-        "martialArt": {
-            "id": martial_art.get("id", ""),
-            "name": martial_art.get("name", "无名武学"),
-            "type": martial_art.get("type", "sword"),
-        },
-        "neigong": {"id": neigong.get("id", ""), "name": neigong.get("name", "")},
-        "qinggong": {"id": qinggong.get("id", ""), "name": qinggong.get("name", "")},
-    }
-
-
-def _battle_payload(
-    fighter_a: dict[str, Any],
-    fighter_b: dict[str, Any],
-    result: dict[str, Any],
-) -> dict[str, Any] | None:
-    events = result.get("events") if isinstance(result, dict) else None
-    if not isinstance(events, list) or not events:
-        return None
-    payload = {
-        "attacker": _replay_fighter(fighter_a),
-        "defender": _replay_fighter(fighter_b),
-        "winner": result.get("winner"),
-        "boss": result.get("boss"),
-        "events": events,
-    }
-    return payload
 
 
 def _cdp_call(
@@ -390,7 +358,12 @@ def _write_gif(
                 output.write(block)
             previous = frame
 
+        last_offset = None
         for offset, duration in zip(offsets, durations):
+            if offset == last_offset:
+                pending_duration += duration
+                continue
+            last_offset = offset
             rgb = _read_frame(spool, offset)
             if rgb.size != (width, height):
                 padded = Image.new("RGB", (width, height), "white")
@@ -409,6 +382,13 @@ def _write_gif(
         if pending is not None:
             emit(pending, pending_duration)
         output.write(b";")
+
+
+def _frame_times(duration_ms: int) -> list[int]:
+    """Sample the entire replay, retaining its exact final timestamp."""
+    duration_ms = ((max(1900, duration_ms) + 9) // 10) * 10
+    interval = 100 if duration_ms >= 25000 else GIF_FRAME_INTERVAL_MS
+    return list(range(0, duration_ms, interval)) + [duration_ms]
 
 
 def _render_payloads(payloads: list[dict[str, Any]], data_dir: str) -> str | None:
@@ -444,12 +424,10 @@ def _render_payloads(payloads: list[dict[str, Any]], data_dir: str) -> str | Non
                     )
                     page = Path(work_dir) / f"battle-{index}.html"
                     page.write_text(html, encoding="utf-8")
-                    duration = max(1900, int(payload["events"][-1].get("time", 1900)))
-                    # GIF delays are centiseconds. 50 ms gives an exact 20 FPS.
-                    duration = ((duration + 9) // 10) * 10
-                    times = list(range(0, duration, 50)) + [duration]
+                    duration = int(payload["events"][-1].get("time", 1900))
+                    times = _frame_times(duration)
                     offsets.extend(_capture_frames(ws, state, page, times, spool))
-                    durations.extend([b - a for a, b in zip(times, times[1:])] + [500])
+                    durations.extend([b - a for a, b in pairwise(times)] + [500])
             captured = time.perf_counter()
             _write_gif(spool, offsets, durations, output_path)
         logger.info(

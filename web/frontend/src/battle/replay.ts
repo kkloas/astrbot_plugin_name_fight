@@ -1,3 +1,4 @@
+import { waitForBattleAssets } from '../../../../web_animation/battle/InkStage.js';
 import { useEffect, useRef, useState } from 'react';
 
 export type Side = 'a' | 'b';
@@ -68,6 +69,12 @@ export function useBattlePlayback(battle: ReplayBattle | null, loop = false) {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const clock = useRef(0);
+  const [assetsReady, setAssetsReady] = useState(false);
+  useEffect(() => {
+    let active = true;
+    waitForBattleAssets().then(() => { if (active) setAssetsReady(true); });
+    return () => { active = false; };
+  }, []);
   const duration = battle?.events[battle.events.length - 1]?.time || 0;
   useEffect(() => {
     clock.current = 0;
@@ -75,7 +82,7 @@ export function useBattlePlayback(battle: ReplayBattle | null, loop = false) {
     setPlaying(Boolean(battle));
   }, [battle]);
   useEffect(() => {
-    if (!playing || !battle) return;
+    if (!playing || !battle || !assetsReady) return;
     let frame = 0;
     let previous = performance.now();
     const tick = (now: number) => {
@@ -90,7 +97,7 @@ export function useBattlePlayback(battle: ReplayBattle | null, loop = false) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [battle, duration, playing, speed, loop]);
+  }, [battle, duration, playing, speed, loop, assetsReady]);
   const seek = (value: number) => {
     clock.current = Math.max(0, Math.min(duration, value));
     setTime(clock.current);
