@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>江湖对战回放</title>
+<link rel="stylesheet" href="/spectate/ui/player.css?v=143">
+</head>
+<body>
+<main>
+  <header><h1>江湖对战回放</h1><label id="bout-label" hidden>小场 <select id="bout"></select></label></header>
+  <div class="arena">
+  <section aria-label="对阵" class="fighters">
+    <div><h2 id="a-name"></h2><span id="a-hp"></span><progress id="a-bar" aria-label="进攻方气血"></progress>
+      <div class="initiative"><span id="a-speed"></span><span id="a-action"></span></div>
+      <progress class="gauge" id="a-gauge" max="100" aria-label="进攻方行动进度"></progress>
+      <small id="a-arts"></small></div>
+    <div><h2 id="b-name"></h2><span id="b-hp"></span><progress id="b-bar" aria-label="防守方气血"></progress>
+      <div class="initiative"><span id="b-speed"></span><span id="b-action"></span></div>
+      <progress class="gauge" id="b-gauge" max="100" aria-label="防守方行动进度"></progress>
+      <small id="b-arts"></small></div>
+  </section>
+  <div class="stage"><strong id="move"></strong><canvas width="900" height="430" aria-label="战斗动画"></canvas></div>
+  </div>
+  <p id="status">正在载入回放…</p>
+  <div class="controls"><button id="play" disabled>播放</button><input id="seek" type="range" aria-label="回放进度" min="0" max="1" value="0" step="10" disabled></div>
+</main>
+<script id="bouts" type="application/json"><!--BOUTS--></script>
+<script type="module" src="/spectate/ui/player.js?v=143"></script>
+</body>
+</html>

@@ -110,6 +110,7 @@ class SettlementDeliveryTests(unittest.IsolatedAsyncioTestCase):
                     bot = Mock()
                     bot._battling_groups = set()
                     bot.broadcast_delay = 0
+                    bot._announce_replay = AsyncMock()
                     bot.repo.record_group_battle.return_value = rating
                     bot.repo.record_group_team3_battle.return_value = rating
                     bot.engine.battle_with_events.return_value = {

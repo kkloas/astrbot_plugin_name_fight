@@ -43,6 +43,7 @@ class GroupBattleTests(unittest.IsolatedAsyncioTestCase):
         bot = Mock()
         bot._battling_groups = set()
         bot.broadcast_delay = 0
+        bot._announce_replay = AsyncMock()
         bot._send_battle_animation_safe = send_animation
         bot.engine.battle_with_events.return_value = {"logs": [], "winner": "A"}
         bot.repo.record_group_battle.return_value = {
