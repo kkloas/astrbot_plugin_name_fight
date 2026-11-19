@@ -45,6 +45,21 @@ git rev-parse HEAD
 
 如果没有本地 `main` 分支, 且获取后存在 `origin/main`, 可先执行 `git switch --track origin/main`, 再执行上面的 `git pull --ff-only` 和版本检查. 如果切换或快进拉取失败, 停下来检查本地修改和分支历史, 不要强行覆盖. Web 和插件使用不同仓库副本时, 每份都需单独对比.
 
+### 附：使用 GitHub 标签更新包（`.tar.gz` / `.zip`）离线或直拉安装
+
+当本地发版打好标签（如 `v1.4.3`）后，GitHub 会自动生成对应版本的源码更新包。服务器除了 `git pull --ff-only origin main` 外，也可以直接按版本号拉取更新包解压安装：
+
+```sh
+# 1. 下载指定版本更新包（将 VERSION 替换为最新标签，如 v1.4.3）
+VERSION=v1.4.3
+curl -L -o "nfight-${VERSION}.tar.gz" "https://github.com/kkloas/astrbot_plugin_name_fight/archive/refs/tags/${VERSION}.tar.gz"
+
+# 2. 解压到临时目录并同步到实际运行目录（排除自有数据目录 name_fight_data 与环境配置）
+mkdir -p "/tmp/nfight-${VERSION}"
+tar -xzf "nfight-${VERSION}.tar.gz" -C "/tmp/nfight-${VERSION}" --strip-components=1
+rsync -av --exclude='name_fight_data/' --exclude='.env' --exclude='web/frontend/dist/' "/tmp/nfight-${VERSION}/" /path/to/astrbot_plugin_name_fight/
+```
+
 ## 3. 更新 Web 端
 
 - 使用现有后端 Python 环境, 按需安装 `web/backend/requirements.txt` 中的依赖. 仓库提供的后端启动器会优先检查 `web/.python-packages`, 请先确认运行中的服务实际使用哪套环境.

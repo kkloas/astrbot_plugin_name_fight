@@ -22,3 +22,35 @@
 2. 检查健康状态和日志，验证 Web 登录、Web 对战、新武学和动画素材，以及 Bot 加载和 GIF 渲染；真实 QQ 发消息或会改变数据的测试应先明确测试对象与影响。
 3. 验证失败时停止后续发布，按记录恢复代码和构建产物；数据库仅在必要时停止所有写入后恢复。保留备份和故障记录。
 4. 完成验证后，将同一版本通过正常快进或合并推送到 `main`，记录完整提交号。发布前重新检查远端是否变化；如发生分歧，先检查并合并，禁止强推覆盖。
+
+---
+
+## 本地一键打包上传 GitHub 标准 SOP（Agent / 开发者速查）
+
+**原则：以后收到“上传 GitHub / 发更新包”指令时，禁止反复翻查历史提交或分多轮执行，直接按以下 4 步一次性跑完：**
+
+### 第 1 步：只暂存正式发布文件（排除本地临时产物）
+严禁将 `.playwright-mcp/`、`output/`、`web_animation/battle/assets/raw/`（生图中间原图）、`web/frontend/dist/`、`name_fight_data/` 加入 Git。直接显式 `git add` 改动过的正式源码、配置、测试与 `web_animation/battle/assets/ink-*.png` 成品贴图。
+
+### 第 2 步：一条命令完成「拉取远端 -> 变基到 `origin/main` -> 推送 `main` -> 打版本 Tag 并推送」
+在 PowerShell 中一次执行（将 `v1.4.x` 与提交说明替换为本次版本号）：
+```powershell
+git fetch origin --tags
+git checkout main
+git pull --ff-only origin main
+# 若在开发分支提交，先 git rebase origin/main 再切回 main 做 git merge --ff-only <branch>
+git add <正式发布文件列表>
+git commit -m "feat: <简明更新说明>"
+git push origin main
+git tag -a v1.4.x -m "Name Fight 1.4.x: <版本更新摘要>"
+git push origin v1.4.x
+git rev-parse HEAD
+```
+
+### 第 3 步：向用户输出固定格式的交付卡片
+推送完成后，直接贴出以下三项即可：
+1. **最新 `main` 提交号**（`git rev-parse HEAD`）与 **Tag 版本号**（如 `v1.4.x`）
+2. **GitHub 更新包直链**：
+   - `https://github.com/kkloas/astrbot_plugin_name_fight/archive/refs/tags/v1.4.x.tar.gz`
+   - `https://github.com/kkloas/astrbot_plugin_name_fight/archive/refs/tags/v1.4.x.zip`
+3. **服务器端拉取与前端构建命令**（见 [SERVER_UPDATE.md](SERVER_UPDATE.md)）。
