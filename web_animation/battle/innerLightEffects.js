@@ -2,8 +2,8 @@ import {qishangBody} from './qishangMotion.js';
 import {drawTrigger,drawAura,drawFootwork} from './inkEffects.js';
 import {drawCalligraphicFeather} from './holyMotion.js';
 import {drawTaijiBaguaSeal} from './wuxiaMasterArts.js';
-const innerIds=['evergreen_breath','iron_wall_art','blood_moon_skill','golden_wind_record','hunyuan_qigong','biyun_xinfa','xiantian_qigong','shenzhao_jing','jinzhong_zhao','jiayi_shengong','zixia_shengong','qiankun_danuoyi','taiji_xuanmo_gong','chixiao_shaxin_jue'];
-const lightIds=['cloud_step','shadow_drift','earth_root','lightning_flash','phantom_lotus','swan_shadow','shadow_fragrance','wind_rider','star_shifter','taxue_wuhen','zongyun_ti'];
+const innerIds=['evergreen_breath','iron_wall_art','blood_moon_skill','golden_wind_record','hunyuan_qigong','biyun_xinfa','xiantian_qigong','shenzhao_jing','jinzhong_zhao','jiayi_shengong','zixia_shengong','qiankun_danuoyi','taiji_xuanmo_gong','chixiao_shaxin_jue','xianglong_hunyuan_gong'];
+const lightIds=['cloud_step','shadow_drift','earth_root','lightning_flash','phantom_lotus','swan_shadow','shadow_fragrance','wind_rider','star_shifter','taxue_wuhen','zongyun_ti','youlong_tabu'];
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{x=clamp(x);return x*x*(3-2*x)},mix=(a,b,p)=>a+(b-a)*p,seed=n=>{const x=Math.sin(n*127.1)*43758.54;return x-Math.floor(x)};
 function line(ctx,pts,c,w=1,a=1){ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (clamp(a))), .65) * 1.15);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();}
 function ellipse(ctx,x,y,rx,ry,c,w=1,a=1){ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (clamp(a))), .65) * 1.15);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,Math.PI*2);ctx.stroke();}
@@ -37,7 +37,7 @@ function mist(ctx,age,alpha,kind){
 function internal(ctx,i,f,t,layers,weak,otherX){
  const age=t-900;if(age<0)return;
  const p=clamp(age/1150),open=ease(age/250),fade=1-ease((age-650)/600),persist=ease(age/250)*(1-ease((t-3100)/450));
- const c=['#588a50','#78867c','#a14854','#bf983b','#9e8e61','#51a298','#bca968','#e6bd63','#c29c45','#b56344','#9568a4','#668b99','#0ea5e9','#dc2626'][i];
+ const c=['#588a50','#78867c','#a14854','#bf983b','#9e8e61','#51a298','#bca968','#e6bd63','#c29c45','#b56344','#9568a4','#668b99','#0ea5e9','#dc2626','#d97706'][i];
  body(ctx,f,()=>{
   if(i===0){for(let j=0;j<30;j++){const q=clamp((age-j*17)/1020),a=j*2.399,x=Math.cos(a)*(53-25*q),y=64-q*145;curve(ctx,[[x,64],[x-17,23],[x+18,-10],[x,y]],c,1.2,fade*.22);leaf(ctx,x,y,6+seed(j)*5,a-q*2,c,fade*.85);}motes(ctx,c,age,[0,35],40,65,true);}
   if(i===1){for(let j=0;j<7;j++){const x=(j%3-1)*24,y=Math.floor(j/3)*27-32;ctx.globalAlpha=Math.min(1, Math.pow(Math.max(0, (fade*.26)), .65) * 1.15);ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x-13,y-16);ctx.lineTo(x+13,y-16);ctx.lineTo(x+16,y+9);ctx.lineTo(x,y+20);ctx.lineTo(x-16,y+9);ctx.closePath();ctx.fill();ctx.strokeStyle='#7ef910';ctx.lineWidth=1.5;ctx.stroke();line(ctx,[[x,y-12],[x,y+11]],'#f9db10',1,fade*.8);}motes(ctx,'#d6cc05',age,[30,0],30,80);}
@@ -50,6 +50,7 @@ function internal(ctx,i,f,t,layers,weak,otherX){
   if(i===11){for(let j=0;j<2;j++){const a=age*.007+j*Math.PI;const pts=[];for(let n=0;n<=42;n++){const an=a+n/42*Math.PI*1.5,r=34+n*.25;pts.push([Math.cos(an)*r,Math.sin(an)*r]);}line(ctx,pts,j?'#c1cbb9':c,j?2:4,fade*.8);}motes(ctx,c,age,[25,-5],16,45);}
   if(i===12){drawTaijiBaguaSeal(ctx,0,-4,38*open,age*.0045,c,fade*.9,false);motes(ctx,'#38bdf8',age,[0,0],22,55);}
   if(i===13){mist(ctx,age,fade*open,'crimson');for(let j=0;j<9;j++){const q=(age/1100+seed(j+200))%1,a=j*2.399+age*.001,r=20+seed(j+220)*32;dot(ctx,Math.cos(a)*r,45-q*100,0.7+seed(j+240),j%3?'#a94e37':'#d58b51',fade*open*.45*Math.sin(q*Math.PI));}}
+  if(i===14){for(let j=0;j<3;j++)ellipse(ctx,0,4,34+j*8,62+j*5,j?c:'#fbbf24',j===0?2.2:1.2,persist*(.34+j*.12));for(let j=0;j<2;j++){const a=age*.006+j*Math.PI;const pts=[];for(let n=0;n<=32;n++){const an=a+n/32*Math.PI*1.35,r=28+n*.4;pts.push([Math.cos(an)*r,Math.sin(an)*r*1.18]);}line(ctx,pts,j?'#fbbf24':'#211b14',j?1.6:3.0,fade*.72);}motes(ctx,'#f59e0b',age,[0,16],20,54,true);}
  });
  // Replenishment travels back to its owner; counterforce travels toward the attacker.
  if(i===0){ellipse(ctx,f.x,326,35+open*28,7+open*4,c,1.8,fade*.75);ellipse(ctx,f.x,327,49+open*30,9+open*4,c,.9,fade*.35);}
@@ -59,6 +60,7 @@ function internal(ctx,i,f,t,layers,weak,otherX){
  if((i===4||i===11)&&age<1400){for(let j=0;j<6;j++){const local=age-75*j;if(local<0||local>850)continue;const q=local/850,r=i===11?10+(j%3)*10+q*12:22+q*21,x=mix(f.x+20,otherX,ease(q)),a=(1-q)*.75;ellipse(ctx,x,246,r,r,i===11&&j%2?'#a7b4a7':c,2.3,a);ellipse(ctx,x,246,r+4,r+4,c,.7,a*.5);}}
  if(i===12){ellipse(ctx,f.x,327,40+open*24,7+open*3,c,1.8,fade*.72);if(age<1300&&Math.abs(otherX-f.x)>25){for(let j=0;j<5;j++){const local=age-70*j;if(local<0||local>820)continue;const q=local/820,rx=mix(f.x+22,otherX,ease(q));drawTaijiBaguaSeal(ctx,rx,242,14+q*12,local*.008,c,(1-q)*.75,false);}}}
  if(i===13&&age<1150){for(let j=0;j<12;j++){const local=age-j*28;if(local<0)continue;const q=clamp(local/680),sx=mix(otherX,f.x,q),sy=mix(238,244,q)-Math.sin(q*Math.PI)*(22+(j%4)*9);dot(ctx,sx,sy,.8+seed(j+270),j%3?'#9e4135':'#c8834e',fade*Math.sin(q*Math.PI)*.55);}}
+ if(i===14){ellipse(ctx,f.x,327,42+open*26,7+open*4,c,2.0,fade*.72);}
 }
 function foot(ctx,i,x,y,a,t,layers){
  if(i===0){for(let j=0;j<3;j++)curve(ctx,[[x-32,y+j*3],[x-20,y-14-j*4],[x+12,y+12],[x+33,y-2]],'#7d9b90',2,a*.45);}
@@ -72,6 +74,7 @@ function foot(ctx,i,x,y,a,t,layers){
  if(i===8){dot(ctx,x,y,8,'#bba0d8',a*.16);line(ctx,[[x-9,y],[x+9,y]],'#9b77bd',1.8,a);line(ctx,[[x,y-12],[x,y+12]],'#9b77bd',1.8,a);line(ctx,[[x-4,y-4],[x+4,y+4]],'#c0a6dc',1,a);line(ctx,[[x-4,y+4],[x+4,y-4]],'#c0a6dc',1,a);dot(ctx,x,y,2.4,'#f1e6ff',a);}
  if(i===9){ellipse(ctx,x,y,28,5,'#0ea5e9',1.6,a*.55);for(let k=0;k<6;k++){const an=k*Math.PI/3+t*.0015;line(ctx,[[x,y-2],[x+Math.cos(an)*12,y-2+Math.sin(an)*4.5]],'#7dd3fc',1.5,a*.8);}curve(ctx,[[x-36,y-4],[x-18,y-18],[x+12,y+4],[x+28,y-6]],'#16232b',3.2,a*.32);dot(ctx,x,y-2,2.4,'#ffffff',a*.9);}
  if(i===10){for(let k=0;k<Math.min(4,layers+1);k++){const cy=y-k*9;ellipse(ctx,x-k*5,cy,26-k*3,4.5,'#dc2626',1.8,a*(.68-k*.12));ellipse(ctx,x-k*5,cy,18-k*2,3,'#fb923c',1,a*(.75-k*.12));}for(let k=0;k<5;k++)dot(ctx,x+(seed(k)-.5)*36,y-6-seed(k+9)*22,1.5,'#fb923c',a*.8);}
+ if(i===11){ellipse(ctx,x,y,30,5.5,'#d97706',1.6,a*.6);curve(ctx,[[x-42,y-2],[x-20,y-18],[x+10,y+6],[x+32,y-4]],'#211b14',2.8,a*.38);curve(ctx,[[x-34,y-4],[x-14,y-14],[x+12,y+4],[x+28,y-5]],'#fbbf24',1.2,a*.68);for(let k=0;k<4;k++)dot(ctx,x+(seed(k+50)-.5)*34,y-4-seed(k+70)*16,1.4,'#f59e0b',a*.75);}
 }
 
 // Only real replay events emit bursts. Legacy revival, deferred damage and purple aura stay intact.
@@ -88,7 +91,7 @@ export function drawArtTrigger(ctx,event,frame,dir,other,age){
    internal(ctx,i,local,age+900,layers,(event.multiplier||1)>1,(other.x-frame.x)*dir);
   }
  }else{
-  const customLight=(id==='wind_rider'&&effect==='action_spd_stack')||(id==='star_shifter'&&['dodge_damage_boost','next_attack_bonus'].includes(effect))||(id==='taxue_wuhen'&&['dodge_damage_boost','next_attack_bonus'].includes(effect))||(id==='zongyun_ti'&&effect==='action_spd_stack');
+  const customLight=(id==='wind_rider'&&effect==='action_spd_stack')||(id==='star_shifter'&&['dodge_damage_boost','next_attack_bonus'].includes(effect))||(id==='taxue_wuhen'&&['dodge_damage_boost','next_attack_bonus'].includes(effect))||(id==='zongyun_ti'&&effect==='action_spd_stack')||(id==='youlong_tabu'&&['dodge_damage_boost','next_attack_bonus'].includes(effect));
   if(!customLight)drawTrigger(ctx,event,frame.x,other.x,age);
   const fade=Math.sin(clamp(age/1150)*Math.PI),x=frame.x,y=324+(frame.lift||0);
   if(id==='swan_shadow'&&effect==='battle_start_first_strike'&&age<1150){for(const s of [-1,1])for(let j=0;j<7;j++)drawCalligraphicFeather(ctx,x,y-96,44+j*7,Math.PI+s*(.2+j*.14),s*.16,'#05d6ba','#75f910',fade*.65);}
@@ -97,6 +100,7 @@ export function drawArtTrigger(ctx,event,frame,dir,other,age){
   if(id==='star_shifter'&&['dodge_damage_boost','next_attack_bonus'].includes(effect)&&age<1150){const p=ease(age/1150),pts=[];for(let j=0;j<18;j++){const a=j*2.399,r=(1-p)*(28+seed(j)*65),sx=x+Math.cos(a)*r,sy=y-80+Math.sin(a)*r;pts.push([sx,sy]);foot(ctx,8,sx,sy,fade*(j%3===0?.95:.6),age,layers);}line(ctx,pts,'#a48bc1',.7,fade*.25);for(let j=0;j<24;j++)dot(ctx,x+(seed(j)-.5)*150*(1-p),y-80+(seed(j+40)-.5)*130*(1-p),1+seed(j)*1.3,'#b69ace',fade*.7);}
   if(id==='taxue_wuhen'&&['dodge_damage_boost','next_attack_bonus'].includes(effect)&&age<1150){const p=ease(age/1150);ellipse(ctx,x,y-2,44+p*26,8+p*4,'#0ea5e9',2,fade*.75);for(let j=0;j<16;j++){const an=j*Math.PI/8+age*.003,r=(1-p)*(36+seed(j)*54),sx=x+Math.cos(an)*r,sy=y-78+Math.sin(an)*r*.75;foot(ctx,9,sx,sy,fade*.8,age,1);}}
   if(id==='zongyun_ti'&&effect==='action_spd_stack'&&age<1150){const h=90+layers*16;for(let k=0;k<layers+2;k++){const u=k/(layers+2),ry=y-u*h*.75;ellipse(ctx,x,ry,34-k*3,6,'#dc2626',2,fade*.6);ellipse(ctx,x,ry,24-k*2,4,'#fb923c',1.1,fade*.75);}for(let j=0;j<18;j++){const u=(age*.0008+j/18)%1,an=u*12+age*.004;dot(ctx,x+Math.cos(an)*(26+u*32),y-u*h,1.6,'#fb923c',fade*.8);}}
+  if(id==='youlong_tabu'&&['dodge_damage_boost','next_attack_bonus'].includes(effect)&&age<1150){const p=ease(age/1150);ellipse(ctx,x,y-2,46+p*24,8+p*3.5,'#d97706',2,fade*.78);for(let j=0;j<2;j++){const pts=[];for(let n=0;n<=28;n++){const u=n/28,an=u*Math.PI*2.2+j*Math.PI+age*.005,r=22+(1-p)*28;pts.push([x+Math.cos(an)*r,y-14-u*105]);}line(ctx,pts,j?'#fbbf24':'#211b14',j?1.4:2.6,fade*.65);}for(let j=0;j<14;j++){const an=j*2.399+age*.003,r=(1-p)*(34+seed(j+120)*48);dot(ctx,x+Math.cos(an)*r,y-76+Math.sin(an)*r*.7,1.6,'#fbbf24',fade*.82);}}
  }
  ctx.restore();
 }

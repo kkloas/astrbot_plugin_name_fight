@@ -2490,5 +2490,100 @@
         "effects": []
       }
     ]
+  },
+  {
+    "id": "palm_xianglong",
+    "name": "降龙十八掌",
+    "type": "palm",
+    "description": "丐帮镇帮绝学，天下第一至刚掌法。出掌重若山岳、势如奔雷，讲究发劲吐吞有悔之余势，掌力所及墨浪翻卷，隐现龙吟罡风。",
+    "combat_summary": "刚猛无俦的正面爆发掌法。胸腹部位压制力极强，兼具破甲、虚弱与重击眩晕手段，每一掌皆有排山倒海之势。",
+    "stat_modifiers": {
+      "atk": 1.13,
+      "spd": 0.99,
+      "crt": 1.07,
+      "eva": 0.97
+    },
+    "target_bias": {
+      "head": 1.05,
+      "chest": 1.25,
+      "abdomen": 1.2,
+      "arm": 0.9,
+      "leg": 0.85
+    },
+    "crit_reactions": [
+      "沉雄龙啸震碎空气！{defender} 只觉胸前如遭万钧石锤轰击，连退数步呕出一口浊血！",
+      "刚猛掌劲透体而入！{defender} 护体真气轰然崩散，浑身筋骨一阵剧痛发麻。",
+      "这一掌打得浑厚无匹，{defender} 闷哼一声双膝微曲，险些被霸道余劲直接掀翻在地！"
+    ],
+    "moves": [
+      {
+        "name": "见龙在田",
+        "damage_multiplier": 0.92,
+        "template": "{attacker} 沉肩落马步，左掌平推、右掌随行，一式「{move_name}」裹挟劲风压向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "潜龙勿用",
+        "damage_multiplier": 0.96,
+        "template": "{attacker} 屈膝缩身敛气，随即寸劲陡吐，「{move_name}」自下而上骤然轰向 {defender} 的{body_part}。",
+        "effects": []
+      },
+      {
+        "name": "神龙摆尾",
+        "damage_multiplier": 1.02,
+        "template": "{attacker} 旋身拧胯反手横扫，「{move_name}」带起刚猛回旋劲风，抽打在 {defender} 的{body_part}！",
+        "effects": [
+          {
+            "type": "weakened",
+            "chance": 0.22,
+            "duration": 2,
+            "atk_multiplier": 0.86
+          }
+        ]
+      },
+      {
+        "name": "双龙取水",
+        "damage_multiplier": 1.08,
+        "template": "{attacker} 双掌齐发如巨龙分涛，「{move_name}」左右叠浪劲力直冲 {defender} 的{body_part}，震散护体真气！",
+        "effects": [
+          {
+            "type": "armor_broken",
+            "chance": 0.25,
+            "duration": 2,
+            "def_multiplier": 0.8
+          }
+        ]
+      },
+      {
+        "name": "震惊百里",
+        "damage_multiplier": 1.14,
+        "template": "{attacker} 踏地如雷、震裂青石，一式「{move_name}」挟滚滚墨浪正面推向 {defender} 的{body_part}！",
+        "effects": []
+      },
+      {
+        "name": "突如其来",
+        "damage_multiplier": 1.18,
+        "template": "{attacker} 身形暴起掠地贴进，毫不留情地使出「{move_name}」，沉重掌影瞬间轰中 {defender} 的{body_part}！",
+        "effects": []
+      },
+      {
+        "name": "飞龙在天",
+        "damage_multiplier": 1.34,
+        "template": "{attacker} 拔地腾空三丈，自九天之上俯冲压掌，「{move_name}」如金龙扑地轰向 {defender} 的{body_part}！",
+        "effects": [
+          {
+            "type": "stunned",
+            "chance": 0.14,
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "name": "绝技·亢龙有悔",
+        "damage_multiplier": 1.48,
+        "template": "龙吟惊世，飞白蔽空！{attacker} 深蹲蓄极双掌平推，绝技「{move_name}」催出苍金水墨巨龙贯阵而出，排山倒海轰穿 {defender} 的{body_part}！",
+        "effects": []
+      }
+    ]
   }
 ]

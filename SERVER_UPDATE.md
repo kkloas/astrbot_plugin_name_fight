@@ -4,9 +4,9 @@
 
 ## 本次更新内容
 
-- 新增玄墨剑典, 赤霄断魂刀及配套内功和轻功, 以及 Web 演武和逐招拆解页面.
-- 更新共享动作和 Web 专属水墨素材及特效, 包括白蟒软鞭. Bot GIF 使用共享动画模块, Web 专属增强效果不会自动使 Bot 画面与 Web 完全一致.
-- 包含相关战斗配置和测试. `dev-web` 也包含之前已在提交 `2472de4` 中发布的 Web 和 PVE 更新.
+- 新增丐帮宗师三件套：《降龙十八掌》（`palm_xianglong`）、《擒龙混元功》（`xianglong_hunyuan_gong`）、《游龙踏步》（`youlong_tabu`），以及早先新增的玄墨剑典、赤霄断魂刀及配套内功和轻功、Web 演武和逐招拆解页面.
+- 重做《白蟒软鞭》（`whip_baimang`）为「青色鞭影 + 白色毒液」水墨特效，并默认隐藏 4 套新改武学绝招的方形文字印章（`SHOW_ULTIMATE_SEALS = false`，代码完整保留）.
+- 对齐 Bot GIF 与 Web 端招式贴图特效：Bot 端（`web_animation/capture.js`）现启用与 Web 同步的完整招式贴图、条带波浪游动与多姿态残影，同时保持静态 `ink-bg.png` 宣纸背景以控制 GIF 体积.
 - 动画源素材在 `web_animation/battle/assets/`. `web/frontend/dist/` 是服务器上生成的前端构建产物, Git 不跟踪该目录.
 
 ## 1. 确认安装位置并备份

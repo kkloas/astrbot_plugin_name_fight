@@ -293,5 +293,28 @@
         "leech_ratio": 0.24
       }
     ]
+  },
+  {
+    "id": "xianglong_hunyuan_gong",
+    "name": "擒龙混元功",
+    "description": "丐帮历代绝顶高手秘修的至刚内功，主旨在于积蓄混元阳刚之气。寻常交手时内息浑厚护住胸腹，一旦身陷重伤危局，周身金龙罡气便会骤然外放，愈战愈硬。",
+    "combat_summary": "丐帮核心硬战型内功。大幅抬升气血并重点稳固胸腹防线，濒危阶段能爆发性提升大量防御力，硬抗敌招后以重掌反杀。",
+    "hp_multiplier": 1.18,
+    "def_multiplier": 1.1,
+    "part_guard": {
+      "head": 0.92,
+      "chest": 0.86,
+      "abdomen": 0.86,
+      "arm": 0.94,
+      "leg": 0.94
+    },
+    "passives": [
+      {
+        "type": "crisis_defense",
+        "trigger_hp_ratio": 0.4,
+        "def_bonus_ratio": 0.46,
+        "trigger_msg": "【擒龙混元功】苍金龙罡轰然外放，护体真气陡然暴涨！"
+      }
+    ]
   }
 ]

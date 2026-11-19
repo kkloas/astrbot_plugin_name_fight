@@ -46,14 +46,26 @@ for (const [id, art] of Object.entries(masterArts)) {
                     frames++;
                 }
             }
-            // Bot path (no options) must not paint the Web-only scenery gradient.
+            // Bot path (both bare default and Web-aligned static-paper mode) must not paint Web scenery gradients.
             const bot = context();
             draw(bot.ctx, battle, 1000, 1000, false, true, 'mixed');
             assert.ok(!bot.calls.some((c) => c[0] === 'createLinearGradient'), 'Bot render must stay on the static background');
+            const botAligned = context();
+            draw(botAligned.ctx, battle, 1000, 1000, false, true, 'mixed', { webEnhanced: true, sceneTheme: 'classic', battleStains: false });
+            assert.ok(!botAligned.calls.some((c) => c[0] === 'createLinearGradient'), 'Bot Web-aligned render must not use linear gradients');
+            if (move.ultimate) {
+                const sealCheck = context();
+                draw(sealCheck.ctx, battle, 1040, 1000, false, true, 'mixed', { webEnhanced: true, sceneTheme: 'sunset' });
+                const texts = sealCheck.calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
+                for (const ch of ['霜', '寒', '断', '魂', '亢', '龙', '白', '蟒']) {
+                    assert.ok(!texts.includes(ch), `Ultimate square seal text '${ch}' should be hidden while SHOW_ULTIMATE_SEALS=false`);
+                }
+            }
             assert.equal(JSON.stringify(battle), before);
             const frame = poseAt(battle, 'a', 800, 1000, battle.events[1]);
             assert.ok(frame.pose.points.every((p) => p.every(Number.isFinite)));
         }
     }
 }
-console.log(`Master arts: ${frames} deterministic frames across 16 moves, hit and dodge, Bot and Web modes passed.`);
+const totalMoves = Object.values(masterArts).reduce((n, art) => n + art.moves.length, 0);
+console.log(`Master arts: ${frames} deterministic frames across ${totalMoves} moves, hit and dodge, Bot and Web modes passed.`);

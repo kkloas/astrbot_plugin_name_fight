@@ -1,4 +1,4 @@
-import { draw } from './battle/InkStage.js';
+import { draw, waitForBattleAssets } from './battle/InkStage.js';
 import { initiativeAt, stateAt, statusLabels, victoryLabels } from './battle/replay.js';
 const params = new URLSearchParams(location.search);
 const battle = window.__BATTLE__;
@@ -8,6 +8,7 @@ canvas.height = 430;
 const ctx = canvas.getContext('2d');
 if (!ctx)
     throw new Error('canvas unavailable');
+const botRenderOptions = { webEnhanced: true, sceneTheme: 'classic', battleStains: false };
 const text = (id) => document.getElementById(id);
 const hpBar = (side) => document.getElementById(`hp-${side}`);
 const gaugeBar = (side) => document.getElementById(`gauge-${side}`);
@@ -38,11 +39,13 @@ function updateHud(time) {
     }
 }
 const renderFrame = (time) => {
-    draw(ctx, battle, time, 900, false, true, 'mixed');
+    draw(ctx, battle, time, 900, false, true, 'mixed', botRenderOptions);
     updateHud(time);
 };
 window.renderFrame = renderFrame;
-renderFrame(Number(params.get('time') || 0));
+const initialTime = Number(params.get('time') || 0);
+renderFrame(initialTime);
+waitForBattleAssets().then(() => renderFrame(initialTime));
 document.body.dataset.ready = '1';
 
 // Export the existing stage with a cached browser-rendered background.
@@ -51,7 +54,10 @@ const exportTextIds = ['heading-state', 'heading-turn', 'move-name', ...['a', 'b
 let exportCanvas, exportContext, exportBackground, exportOrigin;
 window.prepareExport = async () => {
     await document.fonts.ready;
-    await Promise.all([...document.images].map(image => image.decode().catch(() => {})));
+    await Promise.all([
+        waitForBattleAssets(),
+        ...[...document.images].map(image => image.decode().catch(() => {})),
+    ]);
     const background = new Image();
     background.src = new URL('./ink-bg.png', document.baseURI).href;
     await background.decode();

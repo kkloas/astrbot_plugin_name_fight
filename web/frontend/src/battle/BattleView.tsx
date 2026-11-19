@@ -38,8 +38,8 @@ export function BattleView({ battle, playback, startBattle, showResult = true, d
     for(const ev of battle.events){
       if(ev.time<=prev || ev.time>curr) continue;
       if(ev.type==='attack'){
-        const isUlt=Boolean(ev.move?.startsWith('绝技')||ev.move?.startsWith('绝招')||ev.move==='万剑归宗');
-        const crimson=ev.martialArtId==='blade_chixiao';
+        const isUlt=Boolean(ev.move?.startsWith('绝技')||ev.move?.startsWith('绝招')||ev.move==='万剑归宗'||ev.move==='飞龙在天');
+        const crimson=ev.martialArtId==='blade_chixiao'||ev.martialArtId==='palm_xianglong';
         if(isUlt) wuxiaAudio.playUltimateGuqin();
         wuxiaAudio.playSlash(isUlt,crimson);
       } else if(ev.type==='damage' && ev.cause==='strike'){

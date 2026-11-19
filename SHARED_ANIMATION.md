@@ -28,6 +28,13 @@ time or Math.random in drawing. Multiple visual strokes must not create extra
 damage events. Misses may show trails, but must not show a landed-impact burst.
 New internal and lightness effects are triggered by recorded engine events.
 
+Unified VFX authoring & asset pipeline standards (pure-white-to-alpha matting,
+zero-overlap strip-sliced wave animation, 4-phase impact rhythm, Bot fallback
+contrast rules, and `palm_xianglong` / `whip_baimang` reference implementations)
+are documented in `web_animation/battle/INK_VFX_REFERENCE.md`. Use
+`tools/ink_asset_pipeline.py` to process raw artwork and
+`tools/local_preview_server.py --port 0` for dual-canvas local inspection.
+
 The engine keeps the main event format. Two Web-compatible extensions remain:
 optional current_hp for PVE relay fights and deterministic victory variation.
 Neither changes ordinary full-health Bot damage rules or consumes combat RNG.

@@ -124,5 +124,19 @@
       "max_stacks": 4,
       "trigger_msg": "【纵云】{name} 借势纵云登高，周身流火罡风愈发迅疾！"
     }
+  },
+  {
+    "id": "youlong_tabu",
+    "name": "游龙踏步",
+    "description": "丐帮灵动身法，于方寸之间龙蛇游走、进退沉稳。看似大开大合，实则最擅在擦身避开敌招的刹那沉腰转胯，将整副身架的劲力顺势蓄进下一记重掌之中。",
+    "combat_summary": "兼顾提速与避锋蓄力的实用身法。每次闪避成功都能为下一击增伤，极度契合降龙十八掌这类高倍率爆发武学。",
+    "spd_multiplier": 1.07,
+    "eva_bonus": 8.5,
+    "special_effect": "【游龙】每次成功闪避敌方攻击后，自身下一次攻击伤害提升13%。",
+    "special_effect_data": {
+      "type": "dodge_damage_boost",
+      "damage_bonus_ratio": 0.13,
+      "trigger_msg": "【游龙】{name} 步若游龙掠开锋芒，顺势沉腰蓄起排山掌劲！"
+    }
   }
 ]

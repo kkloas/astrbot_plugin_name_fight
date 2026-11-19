@@ -16,7 +16,7 @@ function limb(ctx, root, joint, end, width, color) {
 }
 export function drawCurvedFigure(ctx, x, dir, pose, time, weapon, alpha, lift, sheathed, artId) {
     const p = pose.points, s = pose.shoulders || [p[1], p[1]], ink = dir === 1 ? '#252925' : '#475049';
-    const accent = artId === 'sword_danyu' ? '#9c3b31' : artId === 'blade_jingchao' ? '#839897' : dir === 1 ? '#87372d' : '#aaa996';
+    const accent = artId === 'sword_danyu' ? '#9c3b31' : artId === 'blade_jingchao' ? '#839897' : artId === 'palm_xianglong' ? '#b45309' : dir === 1 ? '#87372d' : '#aaa996';
     ctx.save();
     ctx.globalAlpha *= alpha;
     ctx.translate(x, 324 + lift);

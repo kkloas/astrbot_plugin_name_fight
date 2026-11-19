@@ -30,7 +30,7 @@ class NewMartialTests(unittest.TestCase):
             ["git", "show", "2229cda:configs/martial_arts.json"], cwd=ROOT).decode("utf-8"))
         self.assertEqual(self.arts[:len(previous)], previous)
         self.assertEqual(len(previous), 18)
-        self.assertEqual([a["id"] for a in self.arts[18:]], ["sword_xuanmo", "blade_chixiao"])
+        self.assertEqual([a["id"] for a in self.arts[18:]], ["sword_xuanmo", "blade_chixiao", "palm_xianglong"])
         self.assertEqual(len({a["id"] for a in self.arts}), len(self.arts))
 
     def test_generation_and_reroll_pools(self):
